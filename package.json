@@ -1,0 +1,15 @@
+{
+  "name": "etf-canvas",
+  "private": true,
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "typecheck": "turbo typecheck",
+    "lint": "turbo lint"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.0",
+    "typescript": "^5.9.3"
+  },
+  "packageManager": "pnpm@10.11.0"
+}
