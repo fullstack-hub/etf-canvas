@@ -1,0 +1,35 @@
+import { create } from 'zustand';
+import type { ETFSummary } from '@etf-canvas/shared';
+
+interface CanvasStore {
+  selected: ETFSummary[];
+  comparing: string[];
+  addToCanvas: (etf: ETFSummary) => void;
+  removeFromCanvas: (code: string) => void;
+  toggleCompare: (code: string) => void;
+  clearCanvas: () => void;
+}
+
+export const useCanvasStore = create<CanvasStore>((set, get) => ({
+  selected: [],
+  comparing: [],
+  addToCanvas: (etf) => {
+    const { selected } = get();
+    if (selected.length >= 10 || selected.some((s) => s.code === etf.code)) return;
+    set({ selected: [...selected, etf] });
+  },
+  removeFromCanvas: (code) =>
+    set((state) => ({
+      selected: state.selected.filter((s) => s.code !== code),
+      comparing: state.comparing.filter((c) => c !== code),
+    })),
+  toggleCompare: (code) => {
+    const { comparing } = get();
+    if (comparing.includes(code)) {
+      set({ comparing: comparing.filter((c) => c !== code) });
+    } else if (comparing.length < 3) {
+      set({ comparing: [...comparing, code] });
+    }
+  },
+  clearCanvas: () => set({ selected: [], comparing: [] }),
+}));
