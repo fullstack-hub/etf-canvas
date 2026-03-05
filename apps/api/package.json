@@ -14,7 +14,7 @@
     "@nestjs/common": "^11.1.0",
     "@nestjs/core": "^11.1.0",
     "@nestjs/platform-fastify": "^11.1.0",
-    "@nestjs/schedule": "^5.0.0",
+
     "@prisma/client": "^6.10.0",
     "ioredis": "^5.6.1",
     "reflect-metadata": "^0.2.2",
