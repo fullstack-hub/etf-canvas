@@ -1,0 +1,68 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Etf {
+  code         String   @id @db.VarChar(10)
+  name         String   @db.VarChar(100)
+  category     String?  @db.VarChar(50)
+  benchmark    String?  @db.VarChar(100)
+  issuer       String?  @db.VarChar(50)
+  listedDate   DateTime? @map("listed_date") @db.Date
+  aum          BigInt?
+  expenseRatio Decimal? @map("expense_ratio") @db.Decimal(5, 4)
+  updatedAt    DateTime @default(now()) @map("updated_at") @updatedAt
+
+  holdings    EtfHolding[]
+  dailyPrices EtfDailyPrice[]
+  returns     EtfReturn[]
+
+  @@map("etf")
+}
+
+model EtfHolding {
+  id        Int      @id @default(autoincrement())
+  etfCode   String   @map("etf_code") @db.VarChar(10)
+  stockCode String?  @map("stock_code") @db.VarChar(10)
+  stockName String?  @map("stock_name") @db.VarChar(100)
+  weight    Decimal? @db.Decimal(6, 3)
+  shares    BigInt?
+  updatedAt DateTime @default(now()) @map("updated_at") @updatedAt
+
+  etf Etf @relation(fields: [etfCode], references: [code])
+
+  @@map("etf_holding")
+}
+
+model EtfDailyPrice {
+  etfCode String   @map("etf_code") @db.VarChar(10)
+  date    DateTime @db.Date
+  close   Int
+  open    Int
+  high    Int
+  low     Int
+  volume  BigInt
+  nav     Decimal? @db.Decimal(12, 2)
+
+  etf Etf @relation(fields: [etfCode], references: [code])
+
+  @@id([etfCode, date])
+  @@map("etf_daily_price")
+}
+
+model EtfReturn {
+  etfCode    String   @map("etf_code") @db.VarChar(10)
+  period     String   @db.VarChar(10)
+  returnRate Decimal  @map("return_rate") @db.Decimal(8, 4)
+  updatedAt  DateTime @default(now()) @map("updated_at") @updatedAt
+
+  etf Etf @relation(fields: [etfCode], references: [code])
+
+  @@id([etfCode, period])
+  @@map("etf_return")
+}
