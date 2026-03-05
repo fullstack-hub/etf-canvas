@@ -1,0 +1,36 @@
+replicaCount: 1
+
+image:
+  repository: 696938875922.dkr.ecr.ap-northeast-2.amazonaws.com/apps/etf-canvas-api
+  pullPolicy: IfNotPresent
+  tag: ""
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+service:
+  type: ClusterIP
+  port: 4000
+  targetPort: 4000
+
+ingress:
+  enabled: false
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    memory: 512Mi
+
+env: []
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
