@@ -1,10 +1,47 @@
 'use client';
 
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, AreaChart, Area } from 'recharts';
 import type { ETFDailyPrice } from '@etf-canvas/shared';
 
-export function PriceChart({ data }: { data: ETFDailyPrice[] }) {
-  if (!data.length) return <div className="text-muted-foreground text-center py-8">데이터 없음</div>;
+interface Props {
+  data: ETFDailyPrice[];
+  compact?: boolean;
+}
+
+export function PriceChart({ data, compact }: Props) {
+  if (!data.length) return <div className="text-muted-foreground text-center py-8 text-sm">데이터 없음</div>;
+
+  if (compact) {
+    // Normalize to percentage returns
+    const basePrice = data[0].close;
+    const chartData = data.map((d) => ({
+      date: d.date,
+      value: Math.round(((d.close - basePrice) / basePrice) * 10000) / 100,
+    }));
+
+    return (
+      <ResponsiveContainer width="100%" height="100%">
+        <AreaChart data={chartData}>
+          <XAxis dataKey="date" hide />
+          <YAxis hide />
+          <Tooltip
+            formatter={(value: number) => [`${value}%`, '수익률']}
+            labelFormatter={(label: string) => label}
+            contentStyle={{ fontSize: 11 }}
+          />
+          <Area
+            type="monotone"
+            dataKey="value"
+            stroke="hsl(var(--primary))"
+            fill="hsl(var(--primary))"
+            fillOpacity={0.1}
+            strokeWidth={1.5}
+            dot={false}
+          />
+        </AreaChart>
+      </ResponsiveContainer>
+    );
+  }
 
   return (
     <ResponsiveContainer width="100%" height={300}>

@@ -1,7 +1,18 @@
 import { create } from 'zustand';
 import type { ETFSummary } from '@etf-canvas/shared';
 
+type View = 'explore' | 'canvas' | 'simulate';
+
 interface CanvasStore {
+  // Navigation
+  activeView: View;
+  setActiveView: (view: View) => void;
+
+  // ETF selection (detail panel)
+  selectedEtfCode: string | null;
+  selectEtf: (code: string) => void;
+
+  // Canvas (max 10 selected, max 3 comparing)
   selected: ETFSummary[];
   comparing: string[];
   addToCanvas: (etf: ETFSummary) => void;
@@ -11,6 +22,12 @@ interface CanvasStore {
 }
 
 export const useCanvasStore = create<CanvasStore>((set, get) => ({
+  activeView: 'explore',
+  setActiveView: (view) => set({ activeView: view }),
+
+  selectedEtfCode: null,
+  selectEtf: (code) => set({ selectedEtfCode: code }),
+
   selected: [],
   comparing: [],
   addToCanvas: (etf) => {
