@@ -22,7 +22,7 @@ interface CanvasStore {
 }
 
 export const useCanvasStore = create<CanvasStore>((set, get) => ({
-  activeView: 'explore',
+  activeView: 'canvas',
   setActiveView: (view) => set({ activeView: view }),
 
   selectedEtfCode: null,

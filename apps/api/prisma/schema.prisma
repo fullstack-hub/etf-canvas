@@ -8,15 +8,21 @@ datasource db {
 }
 
 model Etf {
-  code         String   @id @db.VarChar(10)
-  name         String   @db.VarChar(100)
-  category     String?  @db.VarChar(50)
-  benchmark    String?  @db.VarChar(100)
-  issuer       String?  @db.VarChar(50)
-  listedDate   DateTime? @map("listed_date") @db.Date
-  aum          BigInt?
-  expenseRatio Decimal? @map("expense_ratio") @db.Decimal(5, 4)
-  updatedAt    DateTime @default(now()) @map("updated_at") @updatedAt
+  code                String   @id @db.VarChar(10)
+  name                String   @db.VarChar(100)
+  categories          String[] @default([])
+  etfTabCode          Int?     @map("etf_tab_code")
+  benchmark           String?  @db.VarChar(100)
+  issuer              String?  @db.VarChar(50)
+  listedDate          DateTime? @map("listed_date") @db.Date
+  price               Int?
+  changeRate          Decimal? @map("change_rate") @db.Decimal(8, 4)
+  nav                 Decimal? @db.Decimal(12, 2)
+  threeMonthEarnRate  Decimal? @map("three_month_earn_rate") @db.Decimal(8, 4)
+  volume              BigInt?
+  aum                 BigInt?
+  expenseRatio        Decimal? @map("expense_ratio") @db.Decimal(5, 4)
+  updatedAt           DateTime @default(now()) @map("updated_at") @updatedAt
 
   holdings    EtfHolding[]
   dailyPrices EtfDailyPrice[]

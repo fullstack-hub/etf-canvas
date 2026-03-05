@@ -6,7 +6,7 @@ export function CompareTable({ etfs }: { etfs: ETFDetail[] }) {
   if (!etfs.length) return null;
 
   const metrics = [
-    { label: '카테고리', get: (e: ETFDetail) => e.category },
+    { label: '카테고리', get: (e: ETFDetail) => e.categories.join(', ') || '-' },
     { label: '운용사', get: (e: ETFDetail) => e.issuer },
     { label: '벤치마크', get: (e: ETFDetail) => e.benchmark || '-' },
     { label: 'AUM', get: (e: ETFDetail) => e.aum ? `${(e.aum / 100_000_000).toFixed(0)}억` : '-' },

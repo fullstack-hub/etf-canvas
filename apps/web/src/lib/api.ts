@@ -1,4 +1,4 @@
-import type { ETFSummary, ETFDetail, ETFDailyPrice, SimulateRequest, SimulateResult } from '@etf-canvas/shared';
+import type { ETFSummary, ETFDetail, ETFDailyPrice, SimulateRequest, SimulateResult, ETFSortBy } from '@etf-canvas/shared';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
@@ -12,10 +12,10 @@ async function fetcher<T>(url: string, options?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  search: (q: string, category?: string) =>
-    fetcher<ETFSummary[]>(`/etf/search?q=${encodeURIComponent(q)}${category ? `&category=${category}` : ''}`),
-  list: (category?: string) =>
-    fetcher<ETFSummary[]>(`/etf/list${category ? `?category=${category}` : ''}`),
+  search: (q: string, category?: string, sort?: ETFSortBy) =>
+    fetcher<ETFSummary[]>(`/etf/search?q=${encodeURIComponent(q)}${category ? `&category=${category}` : ''}${sort ? `&sort=${sort}` : ''}`),
+  list: (category?: string, sort?: ETFSortBy) =>
+    fetcher<ETFSummary[]>(`/etf/list?${category ? `category=${category}&` : ''}${sort ? `sort=${sort}` : ''}`),
   getDetail: (code: string) =>
     fetcher<ETFDetail>(`/etf/${code}`),
   getDailyPrices: (code: string, period = '1y') =>

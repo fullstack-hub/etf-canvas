@@ -46,7 +46,8 @@ export function EtfDetailPanel() {
   }
 
   const isInCanvas = selected.some((s) => s.code === detail.code);
-  const oneYearReturn = detail.returns.find((r) => r.period === '1y');
+  const isKorea = detail.categories.some((c) => c === '국내 대표지수' || c === '섹터/테마');
+  const assetType = detail.categories[0] || '기타';
 
   return (
     <div className="flex-1 overflow-auto p-6 space-y-6">
@@ -63,6 +64,36 @@ export function EtfDetailPanel() {
         </Button>
       </div>
 
+      {/* 5 Metric Cards */}
+      <div className="grid grid-cols-5 gap-2">
+        <MetricCard
+          icon="📈"
+          value={assetType}
+          label="자산"
+        />
+        <MetricCard
+          icon={isKorea ? '🇰🇷' : '🌍'}
+          value={isKorea ? '한국' : '해외'}
+          label="국가"
+        />
+        <MetricCard
+          icon="💼"
+          value={detail.aum ? `${detail.aum.toLocaleString()}억` : '-'}
+          label="AUM"
+        />
+        <MetricCard
+          icon="📊"
+          value={detail.threeMonthEarnRate != null ? `${detail.threeMonthEarnRate > 0 ? '+' : ''}${detail.threeMonthEarnRate.toFixed(1)}%` : '-'}
+          label="3개월 수익률"
+          positive={detail.threeMonthEarnRate != null ? detail.threeMonthEarnRate >= 0 : undefined}
+        />
+        <MetricCard
+          icon="%"
+          value={detail.expenseRatio ? `${(detail.expenseRatio * 100).toFixed(3)}%` : '-'}
+          label="운용보수"
+        />
+      </div>
+
       {/* Tabs */}
       <div className="flex gap-2 border-b pb-2">
         <button
@@ -71,7 +102,7 @@ export function EtfDetailPanel() {
             tab === 'overview' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
           }`}
         >
-          검기
+          개요
         </button>
         <button
           onClick={() => setTab('analysis')}
@@ -81,32 +112,6 @@ export function EtfDetailPanel() {
         >
           분석
         </button>
-      </div>
-
-      {/* Metric Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <MetricCard
-          icon="📊"
-          label="펀드"
-          sublabel="AUM"
-          value={detail.aum ? `${(detail.aum / 100_000_000).toFixed(0)}억` : '-'}
-        />
-        <MetricCard
-          icon="📈"
-          label="1년 수익률"
-          value={oneYearReturn ? `${oneYearReturn.returnRate > 0 ? '+' : ''}${oneYearReturn.returnRate.toFixed(1)}%` : '-'}
-          positive={oneYearReturn ? oneYearReturn.returnRate >= 0 : undefined}
-        />
-        <MetricCard
-          icon="%"
-          label="보수 변수"
-          value={detail.expenseRatio ? `${(detail.expenseRatio * 100).toFixed(3)}%` : '-'}
-        />
-        <MetricCard
-          icon="🏢"
-          label="운용사"
-          value={detail.issuer || '-'}
-        />
       </div>
 
       {tab === 'overview' ? (
@@ -150,7 +155,7 @@ export function EtfDetailPanel() {
               <h3 className="text-sm font-medium mb-3">기본 정보</h3>
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div><span className="text-muted-foreground">종목코드</span><p>{detail.code}</p></div>
-                <div><span className="text-muted-foreground">카테고리</span><p>{detail.category}</p></div>
+                <div><span className="text-muted-foreground">카테고리</span><p>{detail.categories.join(', ') || '-'}</p></div>
                 <div><span className="text-muted-foreground">벤치마크</span><p>{detail.benchmark || '-'}</p></div>
                 <div><span className="text-muted-foreground">상장일</span><p>{detail.listedDate || '-'}</p></div>
               </div>
@@ -175,29 +180,24 @@ export function EtfDetailPanel() {
 function MetricCard({
   icon,
   label,
-  sublabel,
   value,
   positive,
 }: {
   icon: string;
   label: string;
-  sublabel?: string;
   value: string;
   positive?: boolean;
 }) {
   return (
     <Card>
-      <CardContent className="p-3 flex flex-col items-center text-center gap-1">
+      <CardContent className="p-3 flex flex-col items-center text-center gap-1.5">
         <span className="text-lg">{icon}</span>
-        <span className="text-[11px] text-muted-foreground leading-tight">
-          {label}
-          {sublabel && <><br />{sublabel}</>}
-        </span>
         <span className={`text-sm font-semibold ${
           positive === true ? 'text-green-600' : positive === false ? 'text-red-600' : ''
         }`}>
           {value}
         </span>
+        <span className="text-[10px] text-muted-foreground">{label}</span>
       </CardContent>
     </Card>
   );

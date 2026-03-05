@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { KiwoomService } from '../kiwoom/kiwoom.service';
+import { NaverService } from '../naver/naver.service';
 import type {
   ETFSummary,
   ETFDetail,
@@ -9,6 +10,7 @@ import type {
   CompareRequest,
   SimulateRequest,
   SimulateResult,
+  ETFSortBy,
 } from '@etf-canvas/shared';
 
 @Injectable()
@@ -19,21 +21,22 @@ export class EtfService {
     private prisma: PrismaService,
     private redis: RedisService,
     private kiwoom: KiwoomService,
+    private naver: NaverService,
   ) {}
 
   // --- Public API ---
 
-  async search(query: string, category?: string): Promise<ETFSummary[]> {
-    const cacheKey = `etf:search:${query}:${category || 'all'}`;
+  async search(query: string, category?: string, sort: ETFSortBy = 'aum'): Promise<ETFSummary[]> {
+    const cacheKey = `etf:search:${query}:${category || 'all'}:${sort}`;
 
     // 1. Redis
     const cached = await this.redis.getJson<ETFSummary[]>(cacheKey);
     if (cached) return cached;
 
-    // 2. DB (비어있으면 전종목 시딩)
+    // 2. DB (empty -> seed from Naver)
     const count = await this.prisma.etf.count();
     if (count === 0) {
-      await this.seedEtfList();
+      await this.naver.seedAllEtfs();
     }
 
     const where: Record<string, unknown> = {};
@@ -43,29 +46,37 @@ export class EtfService {
         { code: { startsWith: query } },
       ];
     }
-    if (category) {
-      where.category = category;
+    if (category === 'New') {
+      const twoMonthsAgo = new Date();
+      twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
+      where.listedDate = { gte: twoMonthsAgo };
+    } else if (category) {
+      where.categories = { has: category };
     }
+
+    const orderBy = sort === 'returnRate'
+      ? { threeMonthEarnRate: 'desc' as const }
+      : { aum: 'desc' as const };
 
     const etfs = await this.prisma.etf.findMany({
       where,
       take: 50,
-      orderBy: { aum: 'desc' },
+      orderBy,
     });
 
     const result: ETFSummary[] = etfs.map((e) => ({
       code: e.code,
       name: e.name,
-      category: e.category || '기타',
+      categories: e.categories,
       issuer: e.issuer || '',
-      price: 0,
-      changeRate: 0,
+      price: e.price || 0,
+      changeRate: e.changeRate ? Number(e.changeRate) : 0,
       aum: e.aum ? Number(e.aum) : null,
       expenseRatio: e.expenseRatio ? Number(e.expenseRatio) : null,
-      nav: null,
+      nav: e.nav ? Number(e.nav) : null,
+      threeMonthEarnRate: e.threeMonthEarnRate ? Number(e.threeMonthEarnRate) : null,
     }));
 
-    // Redis 저장
     await this.redis.setJson(cacheKey, result, 300);
     return result;
   }
@@ -73,11 +84,9 @@ export class EtfService {
   async getDetail(code: string): Promise<ETFDetail> {
     const cacheKey = `etf:detail:${code}`;
 
-    // 1. Redis
     const cached = await this.redis.getJson<ETFDetail>(cacheKey);
     if (cached) return cached;
 
-    // 2. DB
     let etf = await this.prisma.etf.findUnique({
       where: { code },
       include: {
@@ -86,7 +95,6 @@ export class EtfService {
       },
     });
 
-    // 3. 키움API → DB 저장
     if (!etf) {
       await this.fetchAndStoreEtf(code);
       etf = await this.prisma.etf.findUniqueOrThrow({
@@ -98,25 +106,37 @@ export class EtfService {
       });
     }
 
-    // 수익률 없으면 on-demand
     if (etf.returns.length === 0) {
       await this.fetchAndStoreReturns(code);
       const returns = await this.prisma.etfReturn.findMany({ where: { etfCode: code } });
       etf = { ...etf, returns };
     }
 
+    // 운용보수 없으면 네이버에서 on-demand 조회
+    if (!etf.expenseRatio) {
+      const ratio = await this.naver.fetchExpenseRatio(code);
+      if (ratio != null) {
+        await this.prisma.etf.update({
+          where: { code },
+          data: { expenseRatio: ratio },
+        });
+        etf = { ...etf, expenseRatio: ratio as any };
+      }
+    }
+
     const result: ETFDetail = {
       code: etf.code,
       name: etf.name,
-      category: etf.category || '기타',
+      categories: etf.categories,
       issuer: etf.issuer || '',
       benchmark: etf.benchmark || '',
       listedDate: etf.listedDate?.toISOString().split('T')[0] || '',
-      price: 0,
-      changeRate: 0,
+      price: etf.price || 0,
+      changeRate: etf.changeRate ? Number(etf.changeRate) : 0,
       aum: etf.aum ? Number(etf.aum) : null,
       expenseRatio: etf.expenseRatio ? Number(etf.expenseRatio) : null,
-      nav: null,
+      nav: etf.nav ? Number(etf.nav) : null,
+      threeMonthEarnRate: etf.threeMonthEarnRate ? Number(etf.threeMonthEarnRate) : null,
       holdings: etf.holdings.map((h) => ({
         stockCode: h.stockCode || '',
         stockName: h.stockName || '',
@@ -128,7 +148,6 @@ export class EtfService {
       })),
     };
 
-    // Redis 저장
     await this.redis.setJson(cacheKey, result, 600);
     return result;
   }
@@ -136,11 +155,9 @@ export class EtfService {
   async getDailyPrices(code: string, period: string): Promise<ETFDailyPrice[]> {
     const cacheKey = `etf:prices:${code}:${period}`;
 
-    // 1. Redis
     const cached = await this.redis.getJson<ETFDailyPrice[]>(cacheKey);
     if (cached) return cached;
 
-    // 2. DB
     const days = this.periodToDays(period);
     const since = new Date();
     since.setDate(since.getDate() - days);
@@ -150,9 +167,8 @@ export class EtfService {
       orderBy: { date: 'asc' },
     });
 
-    // 3. 키움API → DB 저장
     if (prices.length === 0) {
-      await this.fetchAndStoreDailyPrices(code);
+      await this.fetchAndStoreDailyPricesFromNaver(code, days);
       prices = await this.prisma.etfDailyPrice.findMany({
         where: { etfCode: code, date: { gte: since } },
         orderBy: { date: 'asc' },
@@ -169,7 +185,6 @@ export class EtfService {
       nav: p.nav ? Number(p.nav) : null,
     }));
 
-    // Redis 저장
     await this.redis.setJson(cacheKey, result, 300);
     return result;
   }
@@ -250,22 +265,11 @@ export class EtfService {
     return result;
   }
 
-  // --- Private: On-demand 데이터 로딩 ---
-
-  private async seedEtfList(): Promise<void> {
-    this.logger.log('ETF 전종목 시딩 시작 (최초)...');
-    const response = await this.kiwoom.etf.getETFAllQuote();
-    const items = response.etf_all_qt || [];
-
-    for (const item of items) {
-      await this.prisma.etf.upsert({
-        where: { code: item.stk_cd },
-        update: { name: item.stk_nm, updatedAt: new Date() },
-        create: { code: item.stk_cd, name: item.stk_nm },
-      });
-    }
-    this.logger.log(`ETF ${items.length}종목 시딩 완료`);
+  async seed(): Promise<number> {
+    return this.naver.seedAllEtfs();
   }
+
+  // --- Private: On-demand ---
 
   private async fetchAndStoreEtf(code: string): Promise<void> {
     this.logger.log(`ETF ${code} 기본정보 조회...`);
@@ -281,6 +285,7 @@ export class EtfService {
         create: {
           code,
           name: response.stk_nm,
+          categories: [],
           benchmark: response.bnchmk_idx_nm || null,
         },
       });
@@ -288,6 +293,39 @@ export class EtfService {
       const message = e instanceof Error ? e.message : String(e);
       this.logger.warn(`ETF ${code} 기본정보 조회 실패: ${message}`);
       throw e;
+    }
+  }
+
+  private async fetchAndStoreDailyPricesFromNaver(code: string, days: number): Promise<void> {
+    this.logger.log(`ETF ${code} 네이버 일별시세 조회...`);
+    try {
+      const items = await this.naver.fetchDailyPrices(code, days);
+      for (const item of items) {
+        const date = new Date(item.date);
+        await this.prisma.etfDailyPrice.upsert({
+          where: { etfCode_date: { etfCode: code, date } },
+          update: {
+            close: item.close,
+            open: item.open,
+            high: item.high,
+            low: item.low,
+            volume: BigInt(item.volume),
+          },
+          create: {
+            etfCode: code,
+            date,
+            close: item.close,
+            open: item.open,
+            high: item.high,
+            low: item.low,
+            volume: BigInt(item.volume),
+          },
+        });
+      }
+      this.logger.log(`ETF ${code} 네이버 일별시세 ${items.length}건 저장`);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      this.logger.warn(`ETF ${code} 네이버 일별시세 조회 실패: ${message}`);
     }
   }
 

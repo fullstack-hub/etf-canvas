@@ -1,13 +1,14 @@
 export interface ETFSummary {
   code: string;
   name: string;
-  category: string;
+  categories: string[];
   issuer: string;
   price: number;
   changeRate: number;
   aum: number | null;
   expenseRatio: number | null;
   nav: number | null;
+  threeMonthEarnRate: number | null;
 }
 
 export interface ETFDetail extends ETFSummary {
@@ -64,12 +65,14 @@ export interface SimulateResult {
 }
 
 export type ETFCategory =
-  | '국내주식'
-  | '해외주식'
+  | '국내 대표지수'
+  | '해외 대표지수'
+  | '섹터/테마'
   | '채권'
   | '원자재'
-  | '부동산'
-  | '통화'
-  | '레버리지'
-  | '인버스'
-  | '기타';
+  | '레버리지/인버스'
+  | '혼합'
+  | '액티브'
+  | 'New';
+
+export type ETFSortBy = 'returnRate' | 'aum';

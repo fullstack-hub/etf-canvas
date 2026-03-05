@@ -1,19 +1,31 @@
 import { Controller, Get, Post, Param, Query, Body } from '@nestjs/common';
 import { EtfService } from './etf.service';
-import type { CompareRequest, SimulateRequest } from '@etf-canvas/shared';
+import type { CompareRequest, SimulateRequest, ETFSortBy } from '@etf-canvas/shared';
 
 @Controller('etf')
 export class EtfController {
   constructor(private etfService: EtfService) {}
 
   @Get('search')
-  search(@Query('q') q: string, @Query('category') category?: string) {
-    return this.etfService.search(q || '', category);
+  search(
+    @Query('q') q: string,
+    @Query('category') category?: string,
+    @Query('sort') sort?: ETFSortBy,
+  ) {
+    return this.etfService.search(q || '', category, sort);
   }
 
   @Get('list')
-  list(@Query('category') category?: string) {
-    return this.etfService.search('', category);
+  list(
+    @Query('category') category?: string,
+    @Query('sort') sort?: ETFSortBy,
+  ) {
+    return this.etfService.search('', category, sort);
+  }
+
+  @Post('seed')
+  seed() {
+    return this.etfService.seed();
   }
 
   @Get(':code')
