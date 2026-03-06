@@ -119,7 +119,7 @@ export class NaverService {
     for (let i = 0; i < missingIntegration.length; i += BATCH) {
       const batch = missingIntegration.slice(i, i + BATCH);
       const results = await Promise.allSettled(
-        batch.map(async ({ code }) => {
+        batch.map(async ({ code }: { code: string }) => {
           const { benchmark, expenseRatio, issuer } = await this.fetchIntegrationData(code);
           const update: Record<string, unknown> = {};
           if (benchmark) update.benchmark = benchmark;
@@ -158,7 +158,7 @@ export class NaverService {
     for (let i = 0; i < etfs.length; i += BATCH) {
       const batch = etfs.slice(i, i + BATCH);
       const results = await Promise.allSettled(
-        batch.map(async ({ code }) => {
+        batch.map(async ({ code }: { code: string }) => {
           const { benchmark, expenseRatio, issuer } = await this.fetchIntegrationData(code);
           const update: Record<string, unknown> = {};
           if (benchmark) update.benchmark = benchmark;

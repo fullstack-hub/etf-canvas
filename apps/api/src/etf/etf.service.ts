@@ -67,7 +67,7 @@ export class EtfService {
       orderBy,
     });
 
-    const result: ETFSummary[] = etfs.map((e) => ({
+    const result: ETFSummary[] = etfs.map((e: any) => ({
       code: e.code,
       name: e.name,
       categories: e.categories,
@@ -125,7 +125,7 @@ export class EtfService {
     }
 
     // 구성종목: DB → 네이버 HTML fallback (가져오면 DB에 저장)
-    let holdings = etf.holdings.map((h) => ({
+    let holdings = etf.holdings.map((h: any) => ({
       stockCode: h.stockCode || '',
       stockName: h.stockName || '',
       weight: Number(h.weight),
@@ -160,7 +160,7 @@ export class EtfService {
       nav: etf.nav ? Number(etf.nav) : null,
       threeMonthEarnRate: etf.threeMonthEarnRate ? Number(etf.threeMonthEarnRate) : null,
       holdings,
-      returns: etf.returns.map((r) => ({
+      returns: etf.returns.map((r: any) => ({
         period: r.period,
         returnRate: Number(r.returnRate),
       })),
@@ -202,7 +202,7 @@ export class EtfService {
       orderBy: { date: 'asc' },
     });
 
-    const result: ETFDailyPrice[] = prices.map((p) => ({
+    const result: ETFDailyPrice[] = prices.map((p: any) => ({
       date: p.date.toISOString().split('T')[0],
       close: p.close,
       open: p.open,
