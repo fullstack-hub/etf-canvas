@@ -22,3 +22,4 @@ COPY --from=builder /app/apps/api/prisma ./prisma
 ENV NODE_ENV=production
 USER nestjs
 CMD ["node", "dist/main.js"]
+# trigger
