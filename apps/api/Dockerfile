@@ -12,7 +12,7 @@ RUN GITHUB_TOKEN=${GITHUB_TOKEN} pnpm install --frozen-lockfile
 COPY . .
 RUN pnpm turbo build --filter=@etf-canvas/api
 RUN cd apps/api && npx prisma generate
-RUN pnpm deploy --filter=@etf-canvas/api --prod /app/deploy
+RUN pnpm deploy --filter=@etf-canvas/api --prod --legacy /app/deploy
 
 FROM node:23.11.0-slim AS runner
 WORKDIR /app
