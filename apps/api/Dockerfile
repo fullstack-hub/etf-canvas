@@ -13,6 +13,7 @@ COPY . .
 RUN pnpm turbo build --filter=@etf-canvas/api
 RUN cd apps/api && npx prisma generate
 RUN pnpm deploy --filter=@etf-canvas/api --prod --legacy /app/deploy
+RUN cp -r /app/node_modules/.pnpm/@prisma+client*/node_modules/.prisma /app/deploy/node_modules/.prisma
 
 FROM node:23.11.0-slim AS runner
 WORKDIR /app
