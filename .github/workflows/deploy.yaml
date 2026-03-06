@@ -66,9 +66,11 @@ jobs:
       - name: Build and push API image
         env:
           IMAGE_TAG: ${{ steps.version.outputs.tag }}
+          GITHUB_TOKEN: ${{ secrets.GH_PKG_TOKEN }}
         run: |
           docker build \
             --platform linux/arm64 \
+            --build-arg GITHUB_TOKEN="$GITHUB_TOKEN" \
             -t "$ECR_REGISTRY/apps/etf-canvas-api:$IMAGE_TAG" \
             -t "$ECR_REGISTRY/apps/etf-canvas-api:latest" \
             -f apps/api/Dockerfile .
@@ -105,9 +107,11 @@ jobs:
       - name: Build and push Web image
         env:
           IMAGE_TAG: ${{ steps.version.outputs.tag }}
+          GITHUB_TOKEN: ${{ secrets.GH_PKG_TOKEN }}
         run: |
           docker build \
             --platform linux/arm64 \
+            --build-arg GITHUB_TOKEN="$GITHUB_TOKEN" \
             -t "$ECR_REGISTRY/apps/etf-canvas-web:$IMAGE_TAG" \
             -t "$ECR_REGISTRY/apps/etf-canvas-web:latest" \
             -f apps/web/Dockerfile .

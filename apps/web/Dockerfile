@@ -1,4 +1,5 @@
 FROM node:23.11.0-slim AS builder
+ARG GITHUB_TOKEN
 WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@10.11.0 --activate
 
@@ -6,7 +7,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
 COPY apps/web/package.json apps/web/
 COPY packages/shared/package.json packages/shared/
 COPY .npmrc ./
-RUN pnpm install --frozen-lockfile
+RUN GITHUB_TOKEN=${GITHUB_TOKEN} pnpm install --frozen-lockfile
 
 COPY . .
 RUN pnpm turbo build --filter=web
