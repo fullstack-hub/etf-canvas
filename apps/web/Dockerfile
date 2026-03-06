@@ -9,7 +9,7 @@ COPY .npmrc ./
 RUN pnpm install --frozen-lockfile
 
 COPY . .
-RUN pnpm turbo build --filter=@etf-canvas/web
+RUN pnpm turbo build --filter=web
 
 FROM node:23.11.0-slim AS runner
 WORKDIR /app
