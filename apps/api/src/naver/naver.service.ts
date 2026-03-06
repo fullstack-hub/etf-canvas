@@ -89,8 +89,97 @@ export class NaverService {
       });
     }
 
-    this.logger.log(`네이버 ETF ${items.length}종목 시딩 완료`);
+    // 네이버 목록에 없는 종목 삭제 (상폐/합병 등) — 연관 데이터 먼저 삭제
+    const activeCodes = items.map((i) => i.itemcode);
+    const staleFilter = { where: { etfCode: { notIn: activeCodes } } };
+    await this.prisma.etfHolding.deleteMany(staleFilter);
+    await this.prisma.etfDailyPrice.deleteMany(staleFilter);
+    await this.prisma.etfReturn.deleteMany(staleFilter);
+    const deleted = await this.prisma.etf.deleteMany({
+      where: { code: { notIn: activeCodes } },
+    });
+    if (deleted.count > 0) {
+      this.logger.log(`상폐/제거 ETF ${deleted.count}건 삭제`);
+    }
+
+    this.logger.log(`네이버 ETF ${items.length}종목 기본 시딩 완료. 통합정보 조회 시작...`);
+
+    // 기초지수/운용보수 미등록 종목 조회 — 10개씩 병렬
+    const missingIntegration = await this.prisma.etf.findMany({
+      where: {
+        OR: [
+          { benchmark: null }, { benchmark: '' },
+          { expenseRatio: null },
+        ],
+      },
+      select: { code: true },
+    });
+    const BATCH = 10;
+    let updatedCount = 0;
+    for (let i = 0; i < missingIntegration.length; i += BATCH) {
+      const batch = missingIntegration.slice(i, i + BATCH);
+      const results = await Promise.allSettled(
+        batch.map(async ({ code }) => {
+          const { benchmark, expenseRatio, issuer } = await this.fetchIntegrationData(code);
+          const update: Record<string, unknown> = {};
+          if (benchmark) update.benchmark = benchmark;
+          if (expenseRatio != null) update.expenseRatio = expenseRatio;
+          if (issuer) update.issuer = issuer;
+          if (Object.keys(update).length > 0) {
+            await this.prisma.etf.update({ where: { code }, data: update });
+            return true;
+          }
+          return false;
+        }),
+      );
+      updatedCount += results.filter((r) => r.status === 'fulfilled' && r.value).length;
+      await new Promise((r) => setTimeout(r, 200));
+    }
+
+    this.logger.log(`네이버 ETF ${items.length}종목 시딩 완료 (통합정보 ${updatedCount}건 업데이트)`);
     return items.length;
+  }
+
+  async seedBenchmarks(): Promise<number> {
+    this.logger.log('통합정보(기초지수/운용보수) 미등록 ETF 일괄 조회 시작...');
+    const etfs = await this.prisma.etf.findMany({
+      where: {
+        OR: [
+          { benchmark: null }, { benchmark: '' },
+          { expenseRatio: null },
+        ],
+      },
+      select: { code: true },
+    });
+
+    this.logger.log(`미등록 ${etfs.length}건 조회`);
+    const BATCH = 10;
+    let count = 0;
+    for (let i = 0; i < etfs.length; i += BATCH) {
+      const batch = etfs.slice(i, i + BATCH);
+      const results = await Promise.allSettled(
+        batch.map(async ({ code }) => {
+          const { benchmark, expenseRatio, issuer } = await this.fetchIntegrationData(code);
+          const update: Record<string, unknown> = {};
+          if (benchmark) update.benchmark = benchmark;
+          if (expenseRatio != null) update.expenseRatio = expenseRatio;
+          if (issuer) update.issuer = issuer;
+          if (Object.keys(update).length > 0) {
+            await this.prisma.etf.update({ where: { code }, data: update });
+            return true;
+          }
+          return false;
+        }),
+      );
+      count += results.filter((r) => r.status === 'fulfilled' && r.value).length;
+      if (i % 100 === 0 && i > 0) {
+        this.logger.log(`진행: ${i}/${etfs.length} (${count}건 업데이트)`);
+      }
+      await new Promise((r) => setTimeout(r, 200));
+    }
+
+    this.logger.log(`통합정보 시딩 완료: ${count}건 업데이트`);
+    return count;
   }
 
   private buildCategories(item: NaverETFItem): string[] {
@@ -135,21 +224,78 @@ export class NaverService {
     }));
   }
 
-  async fetchExpenseRatio(code: string): Promise<number | null> {
+  async fetchIntegrationData(code: string): Promise<{ benchmark: string | null; expenseRatio: number | null; issuer: string | null }> {
     try {
-      const url = `https://m.stock.naver.com/api/stock/${code}/integration`;
-      const resp = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
-      if (!resp.ok) return null;
-      const data: any = await resp.json();
+      const data = await this.fetchIntegration(code);
+      if (!data) return { benchmark: null, expenseRatio: null, issuer: null };
       const infos = data.totalInfos || [];
+
+      const baseIdx = infos.find((i: any) => i.code === 'etfBaseIdx');
+      const benchmark = baseIdx?.value || null;
+
       const fundPay = infos.find((i: any) => i.code === 'fundPay');
-      if (!fundPay?.value) return null;
-      // "0.15%" -> 0.0015
-      const pct = parseFloat(fundPay.value.replace('%', ''));
-      return isNaN(pct) ? null : pct / 100;
+      let expenseRatio: number | null = null;
+      if (fundPay?.value) {
+        const pct = parseFloat(fundPay.value.replace('%', ''));
+        expenseRatio = isNaN(pct) ? null : pct / 100;
+      }
+
+      const issueInfo = infos.find((i: any) => i.code === 'issueName');
+      const issuer = issueInfo?.value?.replace('(ETF)', '').trim() || null;
+
+      return { benchmark, expenseRatio, issuer };
     } catch {
-      return null;
+      return { benchmark: null, expenseRatio: null, issuer: null };
     }
+  }
+
+  async fetchExpenseRatio(code: string): Promise<number | null> {
+    return (await this.fetchIntegrationData(code)).expenseRatio;
+  }
+
+  async fetchBenchmark(code: string): Promise<string | null> {
+    return (await this.fetchIntegrationData(code)).benchmark;
+  }
+
+  async fetchHoldings(code: string): Promise<{ stockName: string; weight: number }[]> {
+    try {
+      const url = `https://finance.naver.com/item/main.naver?code=${encodeURIComponent(code)}`;
+      const resp = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+      if (!resp.ok) return [];
+      const html = await resp.text();
+
+      const sectionMatch = html.match(/etf_asset[\s\S]*?<\/table>/);
+      if (!sectionMatch) return [];
+
+      const tdRegex = /<td[^>]*>([\s\S]*?)<\/td>/g;
+      const cells: string[] = [];
+      let m: RegExpExecArray | null;
+      while ((m = tdRegex.exec(sectionMatch[0])) !== null) {
+        cells.push(m[1].replace(/<[^>]+>/g, '').trim());
+      }
+
+      const holdings: { stockName: string; weight: number }[] = [];
+      for (let i = 0; i < cells.length; i++) {
+        const pct = cells[i].match(/^(\d+\.?\d*)%$/);
+        if (pct) {
+          const name = cells[i - 2] || '';
+          if (name) {
+            holdings.push({ stockName: name, weight: parseFloat(pct[1]) });
+          }
+        }
+      }
+
+      return holdings;
+    } catch {
+      return [];
+    }
+  }
+
+  private async fetchIntegration(code: string): Promise<any | null> {
+    const url = `https://m.stock.naver.com/api/stock/${code}/integration`;
+    const resp = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+    if (!resp.ok) return null;
+    return resp.json();
   }
 
   private extractIssuer(name: string): string {

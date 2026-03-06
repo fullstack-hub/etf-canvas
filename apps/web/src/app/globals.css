@@ -124,3 +124,10 @@
     @apply bg-background text-foreground;
   }
 }
+
+@layer utilities {
+  .bg-canvas-dot {
+    background-image: radial-gradient(var(--border) 1.5px, transparent 1.5px);
+    background-size: 24px 24px;
+  }
+}

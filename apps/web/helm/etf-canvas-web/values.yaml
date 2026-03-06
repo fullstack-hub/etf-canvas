@@ -37,6 +37,8 @@ resources:
   limits:
     memory: 384Mi
 
+env: []
+
 nodeSelector: {}
 tolerations: []
 affinity: {}

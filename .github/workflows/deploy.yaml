@@ -1,0 +1,115 @@
+name: CI/CD
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  AWS_REGION: ap-northeast-2
+  ECR_REGISTRY: 696938875922.dkr.ecr.ap-northeast-2.amazonaws.com
+
+jobs:
+  detect_changes:
+    runs-on: self-hosted
+    outputs:
+      api: ${{ steps.changes.outputs.api }}
+      web: ${{ steps.changes.outputs.web }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Detect changes
+        id: changes
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+          AFTER_SHA: ${{ github.sha }}
+        run: |
+          DIFF=$(git diff --name-only "$BEFORE_SHA" "$AFTER_SHA")
+          echo "api=false" >> $GITHUB_OUTPUT
+          echo "web=false" >> $GITHUB_OUTPUT
+          if echo "$DIFF" | grep -qE "^(apps/api/|packages/shared/)"; then
+            echo "api=true" >> $GITHUB_OUTPUT
+          fi
+          if echo "$DIFF" | grep -qE "^(apps/web/|packages/shared/)"; then
+            echo "web=true" >> $GITHUB_OUTPUT
+          fi
+
+  build_api:
+    needs: detect_changes
+    runs-on: self-hosted
+    if: ${{ needs.detect_changes.outputs.api == 'true' }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Unlock macOS keychain
+        run: |
+          security unlock-keychain -p "${{ secrets.KEYCHAIN_PASSWORD }}" ~/Library/Keychains/login.keychain-db
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Get version
+        id: version
+        run: |
+          version=$(grep appVersion: apps/api/helm/etf-canvas-api/Chart.yaml | cut -d ' ' -f 2 | tr -d '"')
+          echo "tag=$version" >> $GITHUB_OUTPUT
+
+      - name: Build and push API image
+        env:
+          IMAGE_TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          docker build \
+            --platform linux/arm64 \
+            -t "$ECR_REGISTRY/apps/etf-canvas-api:$IMAGE_TAG" \
+            -t "$ECR_REGISTRY/apps/etf-canvas-api:latest" \
+            -f apps/api/Dockerfile .
+          docker push "$ECR_REGISTRY/apps/etf-canvas-api:$IMAGE_TAG"
+          docker push "$ECR_REGISTRY/apps/etf-canvas-api:latest"
+
+  build_web:
+    needs: detect_changes
+    runs-on: self-hosted
+    if: ${{ needs.detect_changes.outputs.web == 'true' }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Unlock macOS keychain
+        run: |
+          security unlock-keychain -p "${{ secrets.KEYCHAIN_PASSWORD }}" ~/Library/Keychains/login.keychain-db
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Get version
+        id: version
+        run: |
+          version=$(grep appVersion: apps/web/helm/etf-canvas-web/Chart.yaml | cut -d ' ' -f 2 | tr -d '"')
+          echo "tag=$version" >> $GITHUB_OUTPUT
+
+      - name: Build and push Web image
+        env:
+          IMAGE_TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          docker build \
+            --platform linux/arm64 \
+            -t "$ECR_REGISTRY/apps/etf-canvas-web:$IMAGE_TAG" \
+            -t "$ECR_REGISTRY/apps/etf-canvas-web:latest" \
+            -f apps/web/Dockerfile .
+          docker push "$ECR_REGISTRY/apps/etf-canvas-web:$IMAGE_TAG"
+          docker push "$ECR_REGISTRY/apps/etf-canvas-web:latest"

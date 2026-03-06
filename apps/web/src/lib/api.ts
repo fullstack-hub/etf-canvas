@@ -16,6 +16,8 @@ export const api = {
     fetcher<ETFSummary[]>(`/etf/search?q=${encodeURIComponent(q)}${category ? `&category=${category}` : ''}${sort ? `&sort=${sort}` : ''}`),
   list: (category?: string, sort?: ETFSortBy) =>
     fetcher<ETFSummary[]>(`/etf/list?${category ? `category=${category}&` : ''}${sort ? `sort=${sort}` : ''}`),
+  listByBenchmark: (benchmark: string, sort?: ETFSortBy) =>
+    fetcher<ETFSummary[]>(`/etf/list?benchmark=${encodeURIComponent(benchmark)}${sort ? `&sort=${sort}` : ''}`),
   getDetail: (code: string) =>
     fetcher<ETFDetail>(`/etf/${code}`),
   getDailyPrices: (code: string, period = '1y') =>

@@ -11,21 +11,28 @@ export class EtfController {
     @Query('q') q: string,
     @Query('category') category?: string,
     @Query('sort') sort?: ETFSortBy,
+    @Query('benchmark') benchmark?: string,
   ) {
-    return this.etfService.search(q || '', category, sort);
+    return this.etfService.search(q || '', category, sort, benchmark);
   }
 
   @Get('list')
   list(
     @Query('category') category?: string,
     @Query('sort') sort?: ETFSortBy,
+    @Query('benchmark') benchmark?: string,
   ) {
-    return this.etfService.search('', category, sort);
+    return this.etfService.search('', category, sort, benchmark);
   }
 
   @Post('seed')
   seed() {
     return this.etfService.seed();
+  }
+
+  @Post('seed-benchmarks')
+  seedBenchmarks() {
+    return this.etfService.seedBenchmarks();
   }
 
   @Get(':code')

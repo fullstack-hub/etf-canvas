@@ -11,7 +11,7 @@ interface Props {
 
 export function CompareChart({ datasets }: Props) {
   if (!datasets.length || !datasets[0].prices.length) {
-    return <div className="text-muted-foreground text-center py-8">비교할 ETF를 선택해주세요.</div>;
+    return <div className="text-muted-foreground text-center py-8">비교할 ETF를 선택해 주세요.</div>;
   }
 
   // Normalize to percentage returns from first day

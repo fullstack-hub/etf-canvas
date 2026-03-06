@@ -1,37 +1,10 @@
 'use client';
 
-import { useCanvasStore } from '@/lib/store';
-
-const navItems = [
-  { view: 'explore' as const, label: 'ETF 탐색', icon: GridIcon },
-  { view: 'canvas' as const, label: '캔버스', icon: LayersIcon },
-  { view: 'simulate' as const, label: '시뮬레이션', icon: ChartIcon },
-] as const;
-
 export function IconSidebar() {
-  const { activeView, setActiveView } = useCanvasStore();
-
   return (
     <div className="flex flex-col items-center w-12 border-r bg-muted/30 py-3 gap-1 shrink-0">
-      {/* Logo */}
-      <div className="w-8 h-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold mb-4">
-        ETF
-      </div>
-
-      {navItems.map((item) => (
-        <button
-          key={item.view}
-          onClick={() => setActiveView(item.view)}
-          className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${
-            activeView === item.view
-              ? 'bg-primary text-primary-foreground'
-              : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-          }`}
-          title={item.label}
-        >
-          <item.icon />
-        </button>
-      ))}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/logo.svg" alt="ETF Canvas" width={32} height={32} className="mb-4" />
 
       <div className="mt-auto">
         <button
@@ -42,31 +15,6 @@ export function IconSidebar() {
         </button>
       </div>
     </div>
-  );
-}
-
-function GridIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" />
-      <rect x="3" y="14" width="7" height="7" /><rect x="14" y="14" width="7" height="7" />
-    </svg>
-  );
-}
-
-function LayersIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" />
-    </svg>
-  );
-}
-
-function ChartIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 3v18h18" /><path d="M18 17V9" /><path d="M13 17V5" /><path d="M8 17v-3" />
-    </svg>
   );
 }
 

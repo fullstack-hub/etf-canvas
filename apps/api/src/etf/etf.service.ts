@@ -16,18 +16,19 @@ import type {
 @Injectable()
 export class EtfService {
   private readonly logger = new Logger(EtfService.name);
+  private fetchLocks = new Map<string, Promise<void>>();
 
   constructor(
     private prisma: PrismaService,
     private redis: RedisService,
     private kiwoom: KiwoomService,
     private naver: NaverService,
-  ) {}
+  ) { }
 
   // --- Public API ---
 
-  async search(query: string, category?: string, sort: ETFSortBy = 'aum'): Promise<ETFSummary[]> {
-    const cacheKey = `etf:search:${query}:${category || 'all'}:${sort}`;
+  async search(query: string, category?: string, sort: ETFSortBy = 'aum', benchmark?: string): Promise<ETFSummary[]> {
+    const cacheKey = `etf:search:${query}:${category || 'all'}:${sort}:${benchmark || ''}`;
 
     // 1. Redis
     const cached = await this.redis.getJson<ETFSummary[]>(cacheKey);
@@ -46,7 +47,9 @@ export class EtfService {
         { code: { startsWith: query } },
       ];
     }
-    if (category === 'New') {
+    if (benchmark) {
+      where.benchmark = benchmark;
+    } else if (category === 'New') {
       const twoMonthsAgo = new Date();
       twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
       where.listedDate = { gte: twoMonthsAgo };
@@ -75,6 +78,7 @@ export class EtfService {
       expenseRatio: e.expenseRatio ? Number(e.expenseRatio) : null,
       nav: e.nav ? Number(e.nav) : null,
       threeMonthEarnRate: e.threeMonthEarnRate ? Number(e.threeMonthEarnRate) : null,
+      listedDate: e.listedDate?.toISOString().split('T')[0] || null,
     }));
 
     await this.redis.setJson(cacheKey, result, 300);
@@ -85,7 +89,7 @@ export class EtfService {
     const cacheKey = `etf:detail:${code}`;
 
     const cached = await this.redis.getJson<ETFDetail>(cacheKey);
-    if (cached) return cached;
+    if (cached && cached.benchmark) return cached;
 
     let etf = await this.prisma.etf.findUnique({
       where: { code },
@@ -106,11 +110,7 @@ export class EtfService {
       });
     }
 
-    if (etf.returns.length === 0) {
-      await this.fetchAndStoreReturns(code);
-      const returns = await this.prisma.etfReturn.findMany({ where: { etfCode: code } });
-      etf = { ...etf, returns };
-    }
+    // 수익률은 네이버 일별시세 기반 simulate API로 계산하므로 키움 호출 생략
 
     // 운용보수 없으면 네이버에서 on-demand 조회
     if (!etf.expenseRatio) {
@@ -121,6 +121,28 @@ export class EtfService {
           data: { expenseRatio: ratio },
         });
         etf = { ...etf, expenseRatio: ratio as any };
+      }
+    }
+
+    // 구성종목: DB → 네이버 HTML fallback (가져오면 DB에 저장)
+    let holdings = etf.holdings.map((h) => ({
+      stockCode: h.stockCode || '',
+      stockName: h.stockName || '',
+      weight: Number(h.weight),
+    }));
+    if (holdings.length === 0) {
+      const naverHoldings = await this.naver.fetchHoldings(code);
+      if (naverHoldings.length > 0) {
+        holdings = naverHoldings.map((h) => ({ stockCode: '', stockName: h.stockName, weight: h.weight }));
+        // DB에 저장
+        await this.prisma.etfHolding.deleteMany({ where: { etfCode: code } });
+        await this.prisma.etfHolding.createMany({
+          data: naverHoldings.map((h) => ({
+            etfCode: code,
+            stockName: h.stockName,
+            weight: h.weight,
+          })),
+        });
       }
     }
 
@@ -137,11 +159,7 @@ export class EtfService {
       expenseRatio: etf.expenseRatio ? Number(etf.expenseRatio) : null,
       nav: etf.nav ? Number(etf.nav) : null,
       threeMonthEarnRate: etf.threeMonthEarnRate ? Number(etf.threeMonthEarnRate) : null,
-      holdings: etf.holdings.map((h) => ({
-        stockCode: h.stockCode || '',
-        stockName: h.stockName || '',
-        weight: Number(h.weight),
-      })),
+      holdings,
       returns: etf.returns.map((r) => ({
         period: r.period,
         returnRate: Number(r.returnRate),
@@ -153,10 +171,27 @@ export class EtfService {
   }
 
   async getDailyPrices(code: string, period: string): Promise<ETFDailyPrice[]> {
-    const cacheKey = `etf:prices:${code}:${period}`;
+    const cacheKey = `etf:prices:v3:${code}:${period}`;
 
     const cached = await this.redis.getJson<ETFDailyPrice[]>(cacheKey);
     if (cached) return cached;
+
+    const greedyKey = `etf:greedy_fetched:${code}`;
+    const hasGreedyFetched = await this.redis.getJson<boolean>(greedyKey);
+
+    if (!hasGreedyFetched) {
+      if (!this.fetchLocks.has(code)) {
+        const fetchPromise = (async () => {
+          const PREFETCH_DAYS = 1095;
+          await this.fetchAndStoreDailyPricesFromNaver(code, PREFETCH_DAYS);
+          await this.redis.setJson(greedyKey, true, 86400); // cache flag for 24h
+        })().finally(() => {
+          this.fetchLocks.delete(code);
+        });
+        this.fetchLocks.set(code, fetchPromise);
+      }
+      await this.fetchLocks.get(code); // Wait until the fetch finishes
+    }
 
     const days = this.periodToDays(period);
     const since = new Date();
@@ -166,14 +201,6 @@ export class EtfService {
       where: { etfCode: code, date: { gte: since } },
       orderBy: { date: 'asc' },
     });
-
-    if (prices.length === 0) {
-      await this.fetchAndStoreDailyPricesFromNaver(code, days);
-      prices = await this.prisma.etfDailyPrice.findMany({
-        where: { etfCode: code, date: { gte: since } },
-        orderBy: { date: 'asc' },
-      });
-    }
 
     const result: ETFDailyPrice[] = prices.map((p) => ({
       date: p.date.toISOString().split('T')[0],
@@ -202,7 +229,7 @@ export class EtfService {
   }
 
   async simulate(req: SimulateRequest): Promise<SimulateResult> {
-    const cacheKey = `etf:simulate:${JSON.stringify(req)}`;
+    const cacheKey = `etf:simulate:v3:${JSON.stringify(req)}`;
 
     const cached = await this.redis.getJson<SimulateResult>(cacheKey);
     if (cached) return cached;
@@ -269,6 +296,10 @@ export class EtfService {
     return this.naver.seedAllEtfs();
   }
 
+  async seedBenchmarks(): Promise<number> {
+    return this.naver.seedBenchmarks();
+  }
+
   // --- Private: On-demand ---
 
   private async fetchAndStoreEtf(code: string): Promise<void> {
@@ -297,31 +328,27 @@ export class EtfService {
   }
 
   private async fetchAndStoreDailyPricesFromNaver(code: string, days: number): Promise<void> {
-    this.logger.log(`ETF ${code} 네이버 일별시세 조회...`);
+    this.logger.log(`ETF ${code} 네이버 일별시세 ${days}일치 조회...`);
     try {
       const items = await this.naver.fetchDailyPrices(code, days);
-      for (const item of items) {
-        const date = new Date(item.date);
-        await this.prisma.etfDailyPrice.upsert({
-          where: { etfCode_date: { etfCode: code, date } },
-          update: {
-            close: item.close,
-            open: item.open,
-            high: item.high,
-            low: item.low,
-            volume: BigInt(item.volume),
-          },
-          create: {
-            etfCode: code,
-            date,
-            close: item.close,
-            open: item.open,
-            high: item.high,
-            low: item.low,
-            volume: BigInt(item.volume),
-          },
-        });
-      }
+      if (items.length === 0) return;
+
+      // Bulk: delete existing rows for this ETF, then bulk insert
+      const dates = items.map((i) => new Date(i.date));
+      await this.prisma.etfDailyPrice.deleteMany({
+        where: { etfCode: code, date: { in: dates } },
+      });
+      await this.prisma.etfDailyPrice.createMany({
+        data: items.map((item) => ({
+          etfCode: code,
+          date: new Date(item.date),
+          close: item.close,
+          open: item.open,
+          high: item.high,
+          low: item.low,
+          volume: BigInt(item.volume),
+        })),
+      });
       this.logger.log(`ETF ${code} 네이버 일별시세 ${items.length}건 저장`);
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);
@@ -404,8 +431,13 @@ export class EtfService {
   }
 
   private periodToDays(period: string): number {
+    if (period === 'ytd') {
+      const now = new Date();
+      const jan1 = new Date(now.getFullYear(), 0, 1);
+      return Math.ceil((now.getTime() - jan1.getTime()) / (1000 * 60 * 60 * 24));
+    }
     const map: Record<string, number> = {
-      '1m': 30, '3m': 90, '6m': 180, '1y': 365, '3y': 1095,
+      '1w': 7, '1m': 30, '3m': 90, '6m': 180, '1y': 365, '3y': 1095,
     };
     return map[period] || 365;
   }

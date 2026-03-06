@@ -7,18 +7,34 @@ import { useCanvasStore } from '@/lib/store';
 import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { PriceChart } from '@/components/price-chart';
+import {
+  ChevronUp, ChevronDown, BarChart3, Globe, Crosshair,
+  FileText, Gem, ArrowUpDown, Blend, Zap, Sparkles,
+} from 'lucide-react';
 import type { ETFSummary, ETFSortBy } from '@etf-canvas/shared';
 
+const CATEGORY_STYLES: Record<string, { active: string; icon: string }> = {
+  '국내 대표지수': { active: 'border-blue-400 bg-blue-50 text-blue-800 dark:bg-blue-950/40 dark:text-blue-200', icon: 'text-blue-400' },
+  '해외 대표지수': { active: 'border-sky-400 bg-sky-50 text-sky-800 dark:bg-sky-950/40 dark:text-sky-200', icon: 'text-sky-400' },
+  '섹터/테마': { active: 'border-violet-400 bg-violet-50 text-violet-800 dark:bg-violet-950/40 dark:text-violet-200', icon: 'text-violet-400' },
+  '채권': { active: 'border-emerald-400 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200', icon: 'text-emerald-400' },
+  '원자재': { active: 'border-amber-400 bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200', icon: 'text-amber-400' },
+  '레버리지/인버스': { active: 'border-red-400 bg-red-50 text-red-800 dark:bg-red-950/40 dark:text-red-200', icon: 'text-red-400' },
+  '혼합': { active: 'border-teal-400 bg-teal-50 text-teal-800 dark:bg-teal-950/40 dark:text-teal-200', icon: 'text-teal-400' },
+  '액티브': { active: 'border-purple-400 bg-purple-50 text-purple-800 dark:bg-purple-950/40 dark:text-purple-200', icon: 'text-purple-400' },
+  'New': { active: 'border-pink-400 bg-pink-50 text-pink-800 dark:bg-pink-950/40 dark:text-pink-200', icon: 'text-pink-400' },
+};
+
 const categories = [
-  { key: '국내 대표지수', label: '국내\n대표지수', icon: '🇰🇷' },
-  { key: '해외 대표지수', label: '해외\n대표지수', icon: '🌍' },
-  { key: '섹터/테마', label: '섹터/테마', icon: '🎯' },
-  { key: '채권', label: '채권', icon: '📄' },
-  { key: '원자재', label: '원자재', icon: '⛏️' },
-  { key: '레버리지/인버스', label: '레버리지\n/인버스', icon: '↕️' },
-  { key: '혼합', label: '혼합', icon: '🔀' },
-  { key: '액티브', label: '액티브', icon: '⚡' },
-  { key: 'New', label: 'New', icon: '🆕' },
+  { key: '국내 대표지수', label: '국내\n대표지수', icon: <BarChart3 className="w-4 h-4" /> },
+  { key: '해외 대표지수', label: '해외\n대표지수', icon: <Globe className="w-4 h-4" /> },
+  { key: '섹터/테마', label: '섹터/테마', icon: <Crosshair className="w-4 h-4" /> },
+  { key: '채권', label: '채권', icon: <FileText className="w-4 h-4" /> },
+  { key: '원자재', label: '원자재', icon: <Gem className="w-4 h-4" /> },
+  { key: '레버리지/인버스', label: '레버리지&\n인버스', icon: <ArrowUpDown className="w-4 h-4" /> },
+  { key: '혼합', label: '혼합', icon: <Blend className="w-4 h-4" /> },
+  { key: '액티브', label: '액티브', icon: <Zap className="w-4 h-4" /> },
+  { key: 'New', label: 'New', icon: <Sparkles className="w-4 h-4" /> },
 ];
 
 export function LeftPanel() {
@@ -27,7 +43,20 @@ export function LeftPanel() {
   const [category, setCategory] = useState('국내 대표지수');
   const [sortBy, setSortBy] = useState<ETFSortBy>('aum');
   const [catOpen, setCatOpen] = useState(true);
-  const { selectedEtfCode, selectEtf, addToCanvas } = useCanvasStore();
+  const { selectedEtfCode, selectEtf, addToCanvas, addLoadingCode, removeLoadingCode, updateEtfData } = useCanvasStore();
+
+  const handleAddToCanvas = useCallback(async (etf: ETFSummary) => {
+    addToCanvas(etf);
+    if (etf.expenseRatio == null) {
+      addLoadingCode(etf.code);
+      try {
+        const detail = await api.getDetail(etf.code);
+        updateEtfData(etf.code, { expenseRatio: detail.expenseRatio });
+      } finally {
+        removeLoadingCode(etf.code);
+      }
+    }
+  }, [addToCanvas, addLoadingCode, removeLoadingCode, updateEtfData]);
 
   // Debounced search
   const handleQueryChange = useCallback((value: string) => {
@@ -37,7 +66,7 @@ export function LeftPanel() {
   }, []);
 
   const { data: etfs } = useQuery({
-    queryKey: ['etf-search', debouncedQuery, category, sortBy],
+    queryKey: ['etf-search', debouncedQuery, category || undefined, sortBy],
     queryFn: () =>
       debouncedQuery
         ? api.search(debouncedQuery, category || undefined, sortBy)
@@ -64,10 +93,10 @@ export function LeftPanel() {
   });
 
   return (
-    <div className="w-72 border-r flex flex-col h-full shrink-0 bg-background">
+    <div className="w-80 border-r flex flex-col h-full shrink-0 bg-background">
       {/* Header */}
       <div className="px-3 pt-3 pb-2">
-        <h2 className="text-lg font-bold mb-2">ETF</h2>
+        <h2 className="text-lg font-bold mb-2">ETF Canvas</h2>
         <Input
           placeholder="검색"
           value={query}
@@ -80,34 +109,36 @@ export function LeftPanel() {
       <div className="px-3 py-2 border-b">
         <button
           onClick={() => setCatOpen(!catOpen)}
-          className="flex items-center justify-between w-full text-sm font-medium text-muted-foreground"
+          className="flex items-center justify-between w-full text-sm font-bold text-foreground"
         >
           ETF 카테고리
-          <span className="text-xs">{catOpen ? '▲' : '▼'}</span>
+          {catOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
         </button>
         {catOpen && (
-          <div className="grid grid-cols-3 gap-1.5 mt-2">
-            {categories.map((cat) => (
-              <button
-                key={cat.key}
-                onClick={() => setCategory(category === cat.key ? '' : cat.key)}
-                className={`flex flex-col items-center gap-0.5 p-2 rounded-lg border text-xs transition-colors ${
-                  category === cat.key
-                    ? 'border-primary bg-primary/5 text-primary'
-                    : 'border-border hover:bg-accent'
-                }`}
-              >
-                <span className="text-base">{cat.icon}</span>
-                <span className="whitespace-pre-wrap text-center leading-tight">{cat.label}</span>
-              </button>
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-3 gap-1.5 mt-2">
+              {categories.map((cat) => (
+                <button
+                  key={cat.key}
+                  onClick={() => setCategory(category === cat.key ? '' : cat.key)}
+                  className={`flex items-center justify-between gap-1 px-2.5 h-[48px] rounded-lg border text-[11px] leading-tight transition-colors ${
+                    category === cat.key
+                      ? `${CATEGORY_STYLES[cat.key]?.active || 'border-blue-500 bg-blue-50 text-blue-900'} font-bold`
+                      : 'border-border hover:bg-accent text-muted-foreground'
+                  }`}
+                >
+                  <span className="flex-1 min-w-0 text-left whitespace-pre-wrap">{cat.label}</span>
+                  <span className={`shrink-0 transition-opacity ${category === cat.key ? `${CATEGORY_STYLES[cat.key]?.icon || 'text-blue-400'} opacity-70` : 'opacity-20'}`}>{cat.icon}</span>
+                </button>
+              ))}
+            </div>
+          </>
         )}
       </div>
 
       {/* ETF List */}
       <div className="px-3 py-2 flex items-center justify-between border-b">
-        <span className="text-sm font-medium text-muted-foreground">ETF</span>
+        <span className="text-sm font-bold text-foreground">ETF</span>
         <div className="flex gap-1">
           <button
             onClick={() => setSortBy('returnRate')}
@@ -133,7 +164,7 @@ export function LeftPanel() {
                 isSelected={selectedEtfCode === etf.code}
                 sortBy={sortBy}
                 onSelect={() => selectEtf(etf.code)}
-                onAdd={() => addToCanvas(etf)}
+                onAdd={() => handleAddToCanvas(etf)}
               />
             ))}
             {etfs?.length === 0 && (
@@ -148,9 +179,7 @@ export function LeftPanel() {
       {/* Mini Chart / Return Rate */}
       {selectedEtfCode && selectedDetail && (
         <div className="border-t px-3 py-2">
-          <p className="text-xs font-medium mb-1">
-            {selectedDetail.name}
-          </p>
+          <p className="text-xs font-bold text-foreground leading-tight">{selectedDetail.name}</p>
           <p className="text-[10px] text-muted-foreground mb-1">3개월 수익률</p>
           <div className="h-28">
             <PriceChart data={selectedPrices || []} compact />
