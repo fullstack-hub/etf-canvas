@@ -10,6 +10,8 @@ COPY .npmrc ./
 RUN GITHUB_TOKEN=${GITHUB_TOKEN} pnpm install --frozen-lockfile
 
 COPY . .
+ARG NEXT_PUBLIC_API_URL=https://api.etfcanva.com
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 RUN pnpm turbo build --filter=web
 
 FROM node:23.11.0-slim AS runner
