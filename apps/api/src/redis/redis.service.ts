@@ -14,6 +14,8 @@ export class RedisService implements OnModuleDestroy {
           return { host, port: Number(port) };
         }),
         name: process.env.REDIS_MASTER_NAME || 'mymaster',
+        password: process.env.REDIS_PASSWORD || undefined,
+        sentinelPassword: process.env.REDIS_PASSWORD || undefined,
       });
     } else {
       this.client = new Redis({
