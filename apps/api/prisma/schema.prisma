@@ -18,7 +18,10 @@ model Etf {
   price               Int?
   changeRate          Decimal? @map("change_rate") @db.Decimal(8, 4)
   nav                 Decimal? @db.Decimal(12, 2)
+  oneMonthEarnRate    Decimal? @map("one_month_earn_rate") @db.Decimal(8, 4)
   threeMonthEarnRate  Decimal? @map("three_month_earn_rate") @db.Decimal(8, 4)
+  sixMonthEarnRate    Decimal? @map("six_month_earn_rate") @db.Decimal(8, 4)
+  oneYearEarnRate     Decimal? @map("one_year_earn_rate") @db.Decimal(8, 4)
   volume              BigInt?
   aum                 BigInt?
   expenseRatio        Decimal? @map("expense_ratio") @db.Decimal(5, 4)

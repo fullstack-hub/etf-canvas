@@ -30,11 +30,6 @@ export class EtfController {
     return this.etfService.seed();
   }
 
-  @Post('seed-benchmarks')
-  seedBenchmarks() {
-    return this.etfService.seedBenchmarks();
-  }
-
   @Get(':code')
   getDetail(@Param('code') code: string) {
     return this.etfService.getDetail(code);

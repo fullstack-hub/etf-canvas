@@ -9,6 +9,7 @@ export interface ETFSummary {
   expenseRatio: number | null;
   nav: number | null;
   threeMonthEarnRate: number | null;
+  oneYearEarnRate: number | null;
   listedDate: string | null;
 }
 

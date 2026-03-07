@@ -82,7 +82,7 @@ export function LeftPanel() {
 
   const { data: selectedPrices } = useQuery({
     queryKey: ['etf-mini-prices', selectedEtfCode],
-    queryFn: () => api.getDailyPrices(selectedEtfCode!, '3m'),
+    queryFn: () => api.getDailyPrices(selectedEtfCode!, '1y'),
     enabled: !!selectedEtfCode,
   });
 
@@ -180,7 +180,7 @@ export function LeftPanel() {
       {selectedEtfCode && selectedDetail && (
         <div className="border-t px-3 py-2">
           <p className="text-xs font-bold text-foreground leading-tight">{selectedDetail.name}</p>
-          <p className="text-[10px] text-muted-foreground mb-1">3개월 수익률</p>
+          <p className="text-[10px] text-muted-foreground mb-1">1년 수익률</p>
           <div className="h-28">
             <PriceChart data={selectedPrices || []} compact />
           </div>
@@ -230,11 +230,11 @@ function EtfListItem({
           <span className="flex-1 min-w-0 truncate text-left">{etf.name}</span>
           {sortBy === 'returnRate' ? (
             <span className={`text-xs shrink-0 text-right tabular-nums ${
-              etf.threeMonthEarnRate != null && etf.threeMonthEarnRate > 0 ? 'text-red-500'
-              : etf.threeMonthEarnRate != null && etf.threeMonthEarnRate < 0 ? 'text-blue-500'
+              etf.oneYearEarnRate != null && etf.oneYearEarnRate > 0 ? 'text-red-500'
+              : etf.oneYearEarnRate != null && etf.oneYearEarnRate < 0 ? 'text-blue-500'
               : 'text-muted-foreground'
             }`}>
-              {etf.threeMonthEarnRate != null ? `${etf.threeMonthEarnRate.toFixed(1)}%` : '-'}
+              {etf.oneYearEarnRate != null ? `${etf.oneYearEarnRate.toFixed(1)}%` : '-'}
             </span>
           ) : (
             <span className="text-xs shrink-0 text-right tabular-nums text-muted-foreground">
@@ -249,7 +249,7 @@ function EtfListItem({
           <span className="opacity-60">자산</span><span>{etf.categories[0] || '-'}</span>
           <span className="opacity-60">국가</span><span>{etf.categories.some((c: string) => c === '국내 대표지수' || c === '섹터/테마') ? '한국' : '해외'}</span>
           <span className="opacity-60">AUM</span><span>{etf.aum ? `${etf.aum.toLocaleString()}억` : '-'}</span>
-          <span className="opacity-60">3개월 수익률</span><span className={etf.threeMonthEarnRate != null && etf.threeMonthEarnRate > 0 ? 'text-red-400' : etf.threeMonthEarnRate != null && etf.threeMonthEarnRate < 0 ? 'text-blue-400' : ''}>{etf.threeMonthEarnRate != null ? `${etf.threeMonthEarnRate > 0 ? '+' : ''}${etf.threeMonthEarnRate.toFixed(2)}%` : '-'}</span>
+          <span className="opacity-60">1년 수익률</span><span className={etf.oneYearEarnRate != null && etf.oneYearEarnRate > 0 ? 'text-red-400' : etf.oneYearEarnRate != null && etf.oneYearEarnRate < 0 ? 'text-blue-400' : ''}>{etf.oneYearEarnRate != null ? `${etf.oneYearEarnRate > 0 ? '+' : ''}${etf.oneYearEarnRate.toFixed(2)}%` : '-'}</span>
           <span className="opacity-60">운용보수</span><span>{expenseRatio != null ? `${(expenseRatio * 100).toFixed(3)}%` : <span className="inline-block w-3 h-3 border-2 border-muted-foreground/40 border-t-muted-foreground rounded-full animate-spin" />}</span>
         </div>
         <p className="text-[10px] opacity-40 pt-1">더블클릭: 캔버스에 추가</p>

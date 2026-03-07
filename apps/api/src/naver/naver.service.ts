@@ -102,29 +102,24 @@ export class NaverService {
       this.logger.log(`상폐/제거 ETF ${deleted.count}건 삭제`);
     }
 
-    this.logger.log(`네이버 ETF ${items.length}종목 기본 시딩 완료. 통합정보 조회 시작...`);
+    this.logger.log(`네이버 ETF ${items.length}종목 기본 시딩 완료. 통합정보 전종목 조회 시작...`);
 
-    // 기초지수/운용보수 미등록 종목 조회 — 10개씩 병렬
-    const missingIntegration = await this.prisma.etf.findMany({
-      where: {
-        OR: [
-          { benchmark: null }, { benchmark: '' },
-          { expenseRatio: null },
-        ],
-      },
-      select: { code: true },
-    });
+    // 전종목 integration 호출 (수익률 매일 갱신) — 10개씩 병렬
+    const allCodes = items.map((i) => i.itemcode);
     const BATCH = 10;
     let updatedCount = 0;
-    for (let i = 0; i < missingIntegration.length; i += BATCH) {
-      const batch = missingIntegration.slice(i, i + BATCH);
+    for (let i = 0; i < allCodes.length; i += BATCH) {
+      const batch = allCodes.slice(i, i + BATCH);
       const results = await Promise.allSettled(
-        batch.map(async ({ code }: { code: string }) => {
-          const { benchmark, expenseRatio, issuer } = await this.fetchIntegrationData(code);
+        batch.map(async (code: string) => {
+          const { benchmark, expenseRatio, issuer, oneMonthEarnRate, sixMonthEarnRate, oneYearEarnRate } = await this.fetchIntegrationData(code);
           const update: Record<string, unknown> = {};
           if (benchmark) update.benchmark = benchmark;
           if (expenseRatio != null) update.expenseRatio = expenseRatio;
           if (issuer) update.issuer = issuer;
+          if (oneMonthEarnRate != null) update.oneMonthEarnRate = oneMonthEarnRate;
+          if (sixMonthEarnRate != null) update.sixMonthEarnRate = sixMonthEarnRate;
+          if (oneYearEarnRate != null) update.oneYearEarnRate = oneYearEarnRate;
           if (Object.keys(update).length > 0) {
             await this.prisma.etf.update({ where: { code }, data: update });
             return true;
@@ -133,53 +128,14 @@ export class NaverService {
         }),
       );
       updatedCount += results.filter((r) => r.status === 'fulfilled' && r.value).length;
+      if (i % 100 === 0 && i > 0) {
+        this.logger.log(`통합정보 진행: ${i}/${allCodes.length}`);
+      }
       await new Promise((r) => setTimeout(r, 200));
     }
 
     this.logger.log(`네이버 ETF ${items.length}종목 시딩 완료 (통합정보 ${updatedCount}건 업데이트)`);
     return items.length;
-  }
-
-  async seedBenchmarks(): Promise<number> {
-    this.logger.log('통합정보(기초지수/운용보수) 미등록 ETF 일괄 조회 시작...');
-    const etfs = await this.prisma.etf.findMany({
-      where: {
-        OR: [
-          { benchmark: null }, { benchmark: '' },
-          { expenseRatio: null },
-        ],
-      },
-      select: { code: true },
-    });
-
-    this.logger.log(`미등록 ${etfs.length}건 조회`);
-    const BATCH = 10;
-    let count = 0;
-    for (let i = 0; i < etfs.length; i += BATCH) {
-      const batch = etfs.slice(i, i + BATCH);
-      const results = await Promise.allSettled(
-        batch.map(async ({ code }: { code: string }) => {
-          const { benchmark, expenseRatio, issuer } = await this.fetchIntegrationData(code);
-          const update: Record<string, unknown> = {};
-          if (benchmark) update.benchmark = benchmark;
-          if (expenseRatio != null) update.expenseRatio = expenseRatio;
-          if (issuer) update.issuer = issuer;
-          if (Object.keys(update).length > 0) {
-            await this.prisma.etf.update({ where: { code }, data: update });
-            return true;
-          }
-          return false;
-        }),
-      );
-      count += results.filter((r) => r.status === 'fulfilled' && r.value).length;
-      if (i % 100 === 0 && i > 0) {
-        this.logger.log(`진행: ${i}/${etfs.length} (${count}건 업데이트)`);
-      }
-      await new Promise((r) => setTimeout(r, 200));
-    }
-
-    this.logger.log(`통합정보 시딩 완료: ${count}건 업데이트`);
-    return count;
   }
 
   private buildCategories(item: NaverETFItem): string[] {
@@ -224,28 +180,45 @@ export class NaverService {
     }));
   }
 
-  async fetchIntegrationData(code: string): Promise<{ benchmark: string | null; expenseRatio: number | null; issuer: string | null }> {
+  async fetchIntegrationData(code: string): Promise<{
+    benchmark: string | null;
+    expenseRatio: number | null;
+    issuer: string | null;
+    oneMonthEarnRate: number | null;
+    sixMonthEarnRate: number | null;
+    oneYearEarnRate: number | null;
+  }> {
+    const empty = { benchmark: null, expenseRatio: null, issuer: null, oneMonthEarnRate: null, sixMonthEarnRate: null, oneYearEarnRate: null };
     try {
       const data = await this.fetchIntegration(code);
-      if (!data) return { benchmark: null, expenseRatio: null, issuer: null };
+      if (!data) return empty;
+
+      const indicator = data.etfKeyIndicator || {};
       const infos = data.totalInfos || [];
 
       const baseIdx = infos.find((i: any) => i.code === 'etfBaseIdx');
       const benchmark = baseIdx?.value || null;
 
-      const fundPay = infos.find((i: any) => i.code === 'fundPay');
       let expenseRatio: number | null = null;
-      if (fundPay?.value) {
-        const pct = parseFloat(fundPay.value.replace('%', ''));
-        expenseRatio = isNaN(pct) ? null : pct / 100;
+      if (indicator.totalFee != null) {
+        expenseRatio = indicator.totalFee / 100;
+      } else {
+        const fundPay = infos.find((i: any) => i.code === 'fundPay');
+        if (fundPay?.value) {
+          const pct = parseFloat(fundPay.value.replace('%', ''));
+          expenseRatio = isNaN(pct) ? null : pct / 100;
+        }
       }
 
-      const issueInfo = infos.find((i: any) => i.code === 'issueName');
-      const issuer = issueInfo?.value?.replace('(ETF)', '').trim() || null;
+      const issuer = indicator.issuerName?.replace('(ETF)', '').trim() || null;
 
-      return { benchmark, expenseRatio, issuer };
+      const oneMonthEarnRate = indicator.returnRate1m ?? null;
+      const sixMonthEarnRate = indicator.returnRate6m ?? null;
+      const oneYearEarnRate = indicator.returnRate1y ?? null;
+
+      return { benchmark, expenseRatio, issuer, oneMonthEarnRate, sixMonthEarnRate, oneYearEarnRate };
     } catch {
-      return { benchmark: null, expenseRatio: null, issuer: null };
+      return empty;
     }
   }
 

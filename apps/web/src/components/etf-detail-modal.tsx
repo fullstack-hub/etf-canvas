@@ -75,9 +75,9 @@ export function EtfDetailModal({ etf, onClose }: Props) {
             />
             <InfoBadge
               icon={<TrendingUp className="w-3.5 h-3.5" />}
-              label={etf.threeMonthEarnRate != null ? `${etf.threeMonthEarnRate > 0 ? '+' : ''}${etf.threeMonthEarnRate.toFixed(1)}%` : '-'}
-              valueColor={etf.threeMonthEarnRate != null && etf.threeMonthEarnRate > 0 ? 'text-red-500' : etf.threeMonthEarnRate != null && etf.threeMonthEarnRate < 0 ? 'text-blue-500' : undefined}
-              sublabel="3M 수익률"
+              label={etf.oneYearEarnRate != null ? `${etf.oneYearEarnRate > 0 ? '+' : ''}${etf.oneYearEarnRate.toFixed(1)}%` : '-'}
+              valueColor={etf.oneYearEarnRate != null && etf.oneYearEarnRate > 0 ? 'text-red-500' : etf.oneYearEarnRate != null && etf.oneYearEarnRate < 0 ? 'text-blue-500' : undefined}
+              sublabel="1Y 수익률"
             />
             <InfoBadge
               icon={<Percent className="w-3.5 h-3.5" />}

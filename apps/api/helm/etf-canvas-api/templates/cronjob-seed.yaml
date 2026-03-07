@@ -1,0 +1,53 @@
+{{- if .Values.seedCronJob.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "etf-canvas-api.fullname" . }}-seed
+  labels:
+    {{- include "etf-canvas-api.labels" . | nindent 4 }}
+spec:
+  schedule: {{ .Values.seedCronJob.schedule | quote }}
+  timeZone: "Asia/Seoul"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 600
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: seed
+              image: curlimages/curl:latest
+              env:
+                - name: DISCORD_WEBHOOK
+                  value: {{ .Values.seedCronJob.discordWebhook | quote }}
+              command:
+                - sh
+                - -c
+                - |
+                  RESULT=$(curl -sf -X POST \
+                    "http://{{ include "etf-canvas-api.fullname" . }}:{{ .Values.service.port }}/etf/seed" \
+                    --max-time 300 2>&1)
+                  EXIT_CODE=$?
+
+                  if [ $EXIT_CODE -eq 0 ]; then
+                    PAYLOAD="{\"content\":\"✅ **ETF 시딩 완료**\n${RESULT}\"}"
+                  else
+                    PAYLOAD="{\"content\":\"❌ **ETF 시딩 실패** (exit: ${EXIT_CODE})\n${RESULT}\"}"
+                  fi
+
+                  curl -sf -H "Content-Type: application/json" \
+                    -d "$PAYLOAD" \
+                    "$DISCORD_WEBHOOK"
+
+                  exit $EXIT_CODE
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 32Mi
+                limits:
+                  memory: 64Mi
+{{- end }}

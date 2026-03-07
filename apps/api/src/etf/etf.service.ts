@@ -58,7 +58,7 @@ export class EtfService {
     }
 
     const orderBy = sort === 'returnRate'
-      ? { threeMonthEarnRate: 'desc' as const }
+      ? { oneYearEarnRate: 'desc' as const }
       : { aum: 'desc' as const };
 
     const etfs = await this.prisma.etf.findMany({
@@ -78,6 +78,7 @@ export class EtfService {
       expenseRatio: e.expenseRatio ? Number(e.expenseRatio) : null,
       nav: e.nav ? Number(e.nav) : null,
       threeMonthEarnRate: e.threeMonthEarnRate ? Number(e.threeMonthEarnRate) : null,
+      oneYearEarnRate: e.oneYearEarnRate ? Number(e.oneYearEarnRate) : null,
       listedDate: e.listedDate?.toISOString().split('T')[0] || null,
     }));
 
@@ -159,6 +160,7 @@ export class EtfService {
       expenseRatio: etf.expenseRatio ? Number(etf.expenseRatio) : null,
       nav: etf.nav ? Number(etf.nav) : null,
       threeMonthEarnRate: etf.threeMonthEarnRate ? Number(etf.threeMonthEarnRate) : null,
+      oneYearEarnRate: etf.oneYearEarnRate ? Number(etf.oneYearEarnRate) : null,
       holdings,
       returns: etf.returns.map((r: any) => ({
         period: r.period,
@@ -294,10 +296,6 @@ export class EtfService {
 
   async seed(): Promise<number> {
     return this.naver.seedAllEtfs();
-  }
-
-  async seedBenchmarks(): Promise<number> {
-    return this.naver.seedBenchmarks();
   }
 
   // --- Private: On-demand ---
