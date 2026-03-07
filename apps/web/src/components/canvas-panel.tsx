@@ -2,18 +2,22 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useSession } from 'next-auth/react';
 import { api } from '@/lib/api';
 import { useCanvasStore } from '@/lib/store';
 import { Button } from '@/components/ui/button';
-import { ArrowLeftRight, Loader2, Check, Info, Trash2 } from 'lucide-react';
+import { ArrowLeftRight, Loader2, Check, Info, Trash2, Sparkles } from 'lucide-react';
 import { EtfDetailModal } from '@/components/etf-detail-modal';
 import { SimilarEtfModal } from '@/components/similar-etf-modal';
+import { LoginModal } from '@/components/login-modal';
 import type { ETFSummary } from '@etf-canvas/shared';
 
 export function CanvasPanel() {
-  const { selected, comparing, loadingCodes, removeFromCanvas, toggleCompare, clearCanvas, addToCanvas, addLoadingCode, removeLoadingCode, updateEtfData } = useCanvasStore();
+  const { selected, comparing, weights, loadingCodes, removeFromCanvas, toggleCompare, clearCanvas, addToCanvas, addLoadingCode, removeLoadingCode, updateEtfData, synthesize, synthesized } = useCanvasStore();
+  const { data: session } = useSession();
   const [detailTarget, setDetailTarget] = useState<ETFSummary | null>(null);
   const [replaceTarget, setReplaceTarget] = useState<ETFSummary | null>(null);
+  const [showLogin, setShowLogin] = useState(false);
   const [dragOver, setDragOver] = useState(false);
 
   const handleDrop = async (e: React.DragEvent) => {
@@ -52,7 +56,21 @@ export function CanvasPanel() {
         </div>
         <div className="flex gap-2">
           {selected.length > 0 && (
-            <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={clearCanvas}>초기화</Button>
+            <>
+              <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={clearCanvas}>초기화</Button>
+              {comparing.length > 0 && !synthesized && (
+                <Button size="sm" onClick={() => {
+                  if (!session) {
+                    setShowLogin(true);
+                  } else {
+                    synthesize();
+                  }
+                }} className="gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  합성
+                </Button>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -87,6 +105,7 @@ export function CanvasPanel() {
       )}
       {detailTarget && <EtfDetailModal etf={detailTarget} onClose={() => setDetailTarget(null)} />}
       {replaceTarget && <SimilarEtfModal etf={replaceTarget} onClose={() => setReplaceTarget(null)} />}
+      {showLogin && <LoginModal onClose={() => setShowLogin(false)} />}
     </div>
   );
 }

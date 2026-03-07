@@ -16,6 +16,8 @@ interface CanvasStore {
   toggleCompare: (code: string) => void;
   setWeight: (code: string, weight: number) => void;
   clearCanvas: () => void;
+  synthesized: boolean;
+  synthesize: () => void;
   performanceExpanded: boolean;
   togglePerformanceExpanded: () => void;
   addLoadingCode: (code: string) => void;
@@ -92,7 +94,9 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
       weights: { ...state.weights, [code]: weight },
     }));
   },
-  clearCanvas: () => set({ selected: [], comparing: [], weights: {}, loadingCodes: [] }),
+  clearCanvas: () => set({ selected: [], comparing: [], weights: {}, loadingCodes: [], synthesized: false, performanceExpanded: false }),
+  synthesized: false,
+  synthesize: () => set({ synthesized: true }),
   performanceExpanded: false,
   togglePerformanceExpanded: () => set((state) => ({ performanceExpanded: !state.performanceExpanded })),
   addLoadingCode: (code) =>

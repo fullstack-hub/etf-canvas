@@ -275,6 +275,7 @@ export function LeftPanel() {
           </div>
         );
       })()}
+
     </div>
   );
 }

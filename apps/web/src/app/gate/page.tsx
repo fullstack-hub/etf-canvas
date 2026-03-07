@@ -13,7 +13,7 @@ export default function GatePage() {
     setLoading(true);
     setError(false);
 
-    const res = await fetch('/api/auth', {
+    const res = await fetch('/api/auth/password', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ password }),

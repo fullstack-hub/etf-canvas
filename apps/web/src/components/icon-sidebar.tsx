@@ -1,20 +1,98 @@
 'use client';
 
-export function IconSidebar() {
-  return (
-    <div className="flex flex-col items-center w-12 border-r bg-muted/30 py-3 gap-1 shrink-0">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/logo.svg" alt="ETF Canvas" width={32} height={32} className="mb-4" />
+import { useState } from 'react';
+import { useSession, signOut } from 'next-auth/react';
+import { Layers, LogOut, User } from 'lucide-react';
+import { LoginModal } from '@/components/login-modal';
 
-      <div className="mt-auto">
+export function IconSidebar() {
+  const { data: session } = useSession();
+  const [showLogin, setShowLogin] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+
+  return (
+    <>
+      <div className="flex flex-col items-center w-12 border-r bg-muted/30 py-3 gap-1 shrink-0">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo.svg" alt="ETF Canvas" width={32} height={32} className="mb-4" />
+
         <button
-          className="w-9 h-9 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-accent hover:text-foreground"
-          title="설정"
+          className="w-9 h-9 rounded-lg flex items-center justify-center bg-accent text-foreground"
+          title="합성"
         >
-          <SettingsIcon />
+          <Layers className="w-[18px] h-[18px]" />
         </button>
+
+        <div className="mt-auto flex flex-col items-center gap-1">
+          {/* 유저 / 로그인 */}
+          <div className="relative">
+            {session?.user ? (
+              <>
+                <button
+                  onClick={() => setShowMenu(!showMenu)}
+                  className="w-9 h-9 rounded-lg flex items-center justify-center overflow-hidden hover:ring-2 hover:ring-ring/30 transition-all"
+                  title={session.user.name || '프로필'}
+                >
+                  {session.user.image ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={session.user.image} alt="" width={36} height={36} className="rounded-lg object-cover" />
+                  ) : (
+                    <div className="w-9 h-9 rounded-lg bg-primary/15 text-primary flex items-center justify-center text-xs font-bold">
+                      {(session.user.name || '?')[0].toUpperCase()}
+                    </div>
+                  )}
+                </button>
+
+                {/* 드롭업 메뉴 */}
+                {showMenu && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
+                    <div className="absolute bottom-full left-12 mb-1 ml-1 z-50 w-40 rounded-lg border bg-popover shadow-lg py-1 animate-in fade-in slide-in-from-bottom-2 duration-150">
+                      <div className="px-3 py-2 border-b">
+                        <p className="text-xs font-medium truncate">{session.user.name}</p>
+                        <p className="text-[10px] text-muted-foreground truncate">{session.user.email}</p>
+                      </div>
+                      <button
+                        onClick={() => { setShowMenu(false); }}
+                        className="flex items-center gap-2 w-full px-3 py-1.5 text-xs hover:bg-muted transition-colors text-left"
+                      >
+                        <User className="w-3.5 h-3.5 text-muted-foreground" />
+                        마이페이지
+                      </button>
+                      <button
+                        onClick={() => { setShowMenu(false); signOut(); }}
+                        className="flex items-center gap-2 w-full px-3 py-1.5 text-xs hover:bg-destructive/10 text-destructive transition-colors text-left"
+                      >
+                        <LogOut className="w-3.5 h-3.5" />
+                        로그아웃
+                      </button>
+                    </div>
+                  </>
+                )}
+              </>
+            ) : (
+              <button
+                onClick={() => setShowLogin(true)}
+                className="w-9 h-9 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                title="로그인"
+              >
+                <User className="w-[18px] h-[18px]" />
+              </button>
+            )}
+          </div>
+
+          {/* 설정 */}
+          <button
+            className="w-9 h-9 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+            title="설정"
+          >
+            <SettingsIcon />
+          </button>
+        </div>
       </div>
-    </div>
+
+      {showLogin && <LoginModal onClose={() => setShowLogin(false)} />}
+    </>
   );
 }
 
