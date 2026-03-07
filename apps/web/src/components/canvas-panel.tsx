@@ -60,8 +60,8 @@ export function CanvasPanel() {
         <div className="flex items-center gap-2.5">
           <h2 className="text-xl font-bold tracking-tight">캔버스</h2>
           {selected.length > 0 && (
-            <span className="inline-flex items-center h-5 px-2 rounded-full bg-muted text-[11px] font-medium text-muted-foreground tabular-nums">
-              {comparing.length}/{selected.length}
+            <span className={`inline-flex items-center h-5 px-2 rounded-full text-[11px] font-medium tabular-nums ${selected.length >= 20 ? 'bg-red-500/15 text-red-500' : 'bg-muted text-muted-foreground'}`}>
+              {selected.length}/20
             </span>
           )}
         </div>
