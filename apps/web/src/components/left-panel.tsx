@@ -47,8 +47,8 @@ export function LeftPanel() {
   const { selectedEtfCode, selectEtf, selected: canvasEtfs, addToCanvas, addLoadingCode, removeLoadingCode, updateEtfData } = useCanvasStore();
 
   const { data: countData } = useQuery({
-    queryKey: ['etf-count', category || undefined],
-    queryFn: () => api.count(category || undefined),
+    queryKey: ['etf-count', debouncedQuery, category || undefined],
+    queryFn: () => api.count(debouncedQuery || undefined, category || undefined),
   });
 
   const handleAddToCanvas = useCallback(async (etf: ETFSummary) => {
@@ -64,9 +64,10 @@ export function LeftPanel() {
     }
   }, [addToCanvas, addLoadingCode, removeLoadingCode, updateEtfData]);
 
-  // Debounced search
+  // Debounced search — 검색 시 카테고리 해제하고 전체에서 검색
   const handleQueryChange = useCallback((value: string) => {
     setQuery(value);
+    if (value) setCategory('');
     const timer = setTimeout(() => setDebouncedQuery(value), 300);
     return () => clearTimeout(timer);
   }, []);

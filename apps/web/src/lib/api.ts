@@ -32,6 +32,11 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(req),
     }),
-  count: (category?: string) =>
-    fetcher<{ total: number; filtered: number }>(`/etf/count${category ? `?category=${category}` : ''}`),
+  count: (query?: string, category?: string) => {
+    const params = new URLSearchParams();
+    if (query) params.set('q', query);
+    if (category) params.set('category', category);
+    const qs = params.toString();
+    return fetcher<{ total: number; filtered: number }>(`/etf/count${qs ? `?${qs}` : ''}`);
+  },
 };

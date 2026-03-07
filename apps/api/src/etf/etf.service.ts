@@ -327,21 +327,44 @@ export class EtfService {
     return result;
   }
 
-  async count(category?: string): Promise<{ total: number; filtered: number }> {
-    const cacheKey = `etf:count:${category || 'all'}`;
+  async count(query?: string, category?: string): Promise<{ total: number; filtered: number }> {
+    const cacheKey = `etf:count:${query || ''}:${category || 'all'}`;
     const cached = await this.redis.getJson<{ total: number; filtered: number }>(cacheKey);
     if (cached) return cached;
 
     const total = await this.prisma.etf.count();
 
-    let filtered = total;
+    const where: Record<string, unknown> = {};
+    if (query) {
+      const tokens = query
+        .split(/\s+/)
+        .flatMap((part) =>
+          part.split(/(?<=[a-zA-Z0-9&])(?=[가-힣])|(?<=[가-힣])(?=[a-zA-Z0-9&])/)
+        )
+        .filter(Boolean);
+      if (tokens.length > 1) {
+        where.OR = [
+          { AND: tokens.map((t) => ({ name: { contains: t, mode: 'insensitive' } })) },
+          { code: { startsWith: query.replace(/\s+/g, '') } },
+        ];
+      } else {
+        where.OR = [
+          { name: { contains: query, mode: 'insensitive' } },
+          { code: { startsWith: query } },
+        ];
+      }
+    }
     if (category === 'New') {
       const twoMonthsAgo = new Date();
       twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
-      filtered = await this.prisma.etf.count({ where: { listedDate: { gte: twoMonthsAgo } } });
+      where.listedDate = { gte: twoMonthsAgo };
     } else if (category) {
-      filtered = await this.prisma.etf.count({ where: { categories: { has: category } } });
+      where.categories = { has: category };
     }
+
+    const filtered = Object.keys(where).length > 0
+      ? await this.prisma.etf.count({ where })
+      : total;
 
     const result = { total, filtered };
     await this.redis.setJson(cacheKey, result, 300);

@@ -30,8 +30,8 @@ export class EtfController {
   }
 
   @Get('count')
-  count(@Query('category') category?: string) {
-    return this.etfService.count(category);
+  count(@Query('q') q?: string, @Query('category') category?: string) {
+    return this.etfService.count(q, category);
   }
 
   @Post('seed')
