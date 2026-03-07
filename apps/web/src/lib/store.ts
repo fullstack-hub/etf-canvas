@@ -34,22 +34,18 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
   loadingCodes: [],
   addToCanvas: (etf) => {
     const { selected, comparing, weights } = get();
-    if (selected.length >= 10 || selected.some((s) => s.code === etf.code)) return;
+    if (selected.length >= 20 || selected.some((s) => s.code === etf.code)) return;
 
     const newSelected = [...selected, etf];
 
     // 3개 미만이면 자동으로 comparing에 추가 + 비중 균등 재분배
-    if (comparing.length < 3) {
-      const newComparing = [...comparing, etf.code];
-      const newWeights: Record<string, number> = {};
-      const equal = Math.floor(100 / newComparing.length);
-      newComparing.forEach((c, idx) => {
-        newWeights[c] = idx === newComparing.length - 1 ? 100 - equal * (newComparing.length - 1) : equal;
-      });
-      set({ selected: newSelected, comparing: newComparing, weights: newWeights });
-    } else {
-      set({ selected: newSelected });
-    }
+    const newComparing = [...comparing, etf.code];
+    const newWeights: Record<string, number> = {};
+    const equal = Math.floor(100 / newComparing.length);
+    newComparing.forEach((c, idx) => {
+      newWeights[c] = idx === newComparing.length - 1 ? 100 - equal * (newComparing.length - 1) : equal;
+    });
+    set({ selected: newSelected, comparing: newComparing, weights: newWeights });
   },
   removeFromCanvas: (code) =>
     set((state) => {
@@ -79,7 +75,7 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
         });
       }
       set({ comparing: newComparing, weights: newWeights });
-    } else if (comparing.length < 3) {
+    } else {
       // Default weight logic. If 1st element, 100%. If 2nd, 50% each. If 3rd, 33/33/34.
       // For simplicity, just set to 0 initially and let user adjust, or split evenly.
       const newComparing = [...comparing, code];

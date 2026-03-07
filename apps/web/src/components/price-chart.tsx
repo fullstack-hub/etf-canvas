@@ -15,16 +15,26 @@ export function PriceChart({ data, compact }: Props) {
     // Normalize to percentage returns
     const basePrice = data[0].close;
     const seenMonths = new Set<string>();
+    const monthList: string[] = [];
     const chartData = data.map((d) => {
-      const month = d.date.slice(0, 7); // "YYYY-MM"
+      const month = d.date.slice(0, 7);
       const isFirstOfMonth = !seenMonths.has(month);
-      if (isFirstOfMonth) seenMonths.add(month);
+      if (isFirstOfMonth) {
+        seenMonths.add(month);
+        monthList.push(month);
+      }
       return {
         date: d.date,
         value: Math.round(((d.close - basePrice) / basePrice) * 10000) / 100,
         isFirstOfMonth,
+        month,
       };
     });
+
+    // 월 수에 따라 간격 결정: 6개월 이하 → 매월, 12개월 이하 → 2개월, 그 이상 → 3개월
+    const totalMonths = monthList.length;
+    const interval = totalMonths <= 6 ? 1 : totalMonths <= 13 ? 2 : 3;
+    const visibleMonths = new Set(monthList.filter((_, i) => i % interval === 0));
 
     return (
       <ResponsiveContainer width="100%" height="100%">
@@ -36,7 +46,7 @@ export function PriceChart({ data, compact }: Props) {
             </linearGradient>
           </defs>
           <CartesianGrid strokeDasharray="3 3" stroke="#ddd" />
-          <XAxis dataKey="date" tickLine={false} axisLine={{ stroke: '#ddd' }} dy={8} tick={{ fontSize: 10, fill: '#999' }} ticks={chartData.filter(d => d.isFirstOfMonth).map(d => d.date)} tickFormatter={(d: string) => `${parseInt(d.slice(5, 7), 10)}월`} />
+          <XAxis dataKey="date" tickLine={false} axisLine={{ stroke: '#ddd' }} dy={8} tick={{ fontSize: 10, fill: '#999' }} ticks={chartData.filter(d => d.isFirstOfMonth && visibleMonths.has(d.month)).map(d => d.date)} tickFormatter={(d: string) => `${parseInt(d.slice(5, 7), 10)}월`} />
           <YAxis tickLine={false} axisLine={{ stroke: '#ddd' }} tick={{ fontSize: 10, fill: '#999' }} tickFormatter={(val) => `${Math.round(val)}%`} domain={['dataMin', 'dataMax']} />
           <Tooltip
             content={({ active, payload }) => {
@@ -60,7 +70,7 @@ export function PriceChart({ data, compact }: Props) {
             baseValue="dataMin"
             fill="url(#miniColorValue)"
             dot={(props: any) => {
-              if (!props.payload.isFirstOfMonth) return <circle key={`dot-${props.index}`} cx={0} cy={0} r={0} fill="none" />;
+              if (!props.payload.isFirstOfMonth || !visibleMonths.has(props.payload.month)) return <circle key={`dot-${props.index}`} cx={0} cy={0} r={0} fill="none" />;
               return <circle key={`dot-${props.index}`} cx={props.cx} cy={props.cy} r={3} fill="#5b9bd5" stroke="#fff" strokeWidth={1.5} />;
             }}
             activeDot={{ r: 4, fill: '#5b9bd5', stroke: '#fff', strokeWidth: 2 }}

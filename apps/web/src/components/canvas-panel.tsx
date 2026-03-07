@@ -1,27 +1,53 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useCanvasStore } from '@/lib/store';
 import { Button } from '@/components/ui/button';
-import { X, Info, ArrowLeftRight, Loader2, Check } from 'lucide-react';
+import { ArrowLeftRight, Loader2, Check, Info, Trash2 } from 'lucide-react';
 import { EtfDetailModal } from '@/components/etf-detail-modal';
 import { SimilarEtfModal } from '@/components/similar-etf-modal';
 import type { ETFSummary } from '@etf-canvas/shared';
 
 export function CanvasPanel() {
-  const { selected, comparing, loadingCodes, removeFromCanvas, toggleCompare, clearCanvas } = useCanvasStore();
+  const { selected, comparing, loadingCodes, removeFromCanvas, toggleCompare, clearCanvas, addToCanvas, addLoadingCode, removeLoadingCode, updateEtfData } = useCanvasStore();
   const [detailTarget, setDetailTarget] = useState<ETFSummary | null>(null);
   const [replaceTarget, setReplaceTarget] = useState<ETFSummary | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    const raw = e.dataTransfer.getData('application/etf');
+    if (!raw) return;
+    try {
+      const etf: ETFSummary = JSON.parse(raw);
+      addToCanvas(etf);
+      if (etf.expenseRatio == null) {
+        addLoadingCode(etf.code);
+        try {
+          const detail = await api.getDetail(etf.code);
+          updateEtfData(etf.code, { expenseRatio: detail.expenseRatio });
+        } finally {
+          removeLoadingCode(etf.code);
+        }
+      }
+    } catch { /* ignore */ }
+  };
 
   return (
-    <div className="flex-1 overflow-auto p-6 space-y-5 bg-canvas-dot bg-[length:24px_24px]">
+    <div
+      className={`flex-1 overflow-auto p-6 space-y-5 bg-canvas-dot bg-[length:24px_24px] transition-colors ${dragOver ? 'bg-primary/5 ring-2 ring-primary/30 ring-inset' : ''}`}
+      onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={handleDrop}
+    >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <h2 className="text-xl font-bold tracking-tight">캔버스</h2>
           {selected.length > 0 && (
-            <span className="text-xs text-muted-foreground tabular-nums">{selected.length}/10</span>
+            <span className="text-xs text-muted-foreground tabular-nums">{selected.length}/20</span>
           )}
         </div>
         <div className="flex gap-2">
@@ -39,7 +65,7 @@ export function CanvasPanel() {
             etf={etf}
             isComparing={comparing.includes(etf.code)}
             isLoading={loadingCodes.includes(etf.code)}
-            comparingFull={comparing.length >= 3}
+            dimmed={comparing.length > 0 && !comparing.includes(etf.code)}
             onToggleCompare={() => toggleCompare(etf.code)}
             onRemove={() => removeFromCanvas(etf.code)}
             onDetail={() => setDetailTarget(etf)}
@@ -56,7 +82,7 @@ export function CanvasPanel() {
             </svg>
           </div>
           <h3 className="text-sm font-medium text-foreground/80 mb-1">캔버스가 비어있습니다</h3>
-          <p className="text-xs text-muted-foreground/70">좌측에서 ETF를 더블클릭하여 추가해 주세요</p>
+          <p className="text-xs text-muted-foreground/70">좌측에서 ETF를 더블클릭하거나 드래그하여 추가해 주세요</p>
         </div>
       )}
       {detailTarget && <EtfDetailModal etf={detailTarget} onClose={() => setDetailTarget(null)} />}
@@ -69,7 +95,7 @@ function EtfCard({
   etf,
   isComparing,
   isLoading,
-  comparingFull,
+  dimmed,
   onToggleCompare,
   onRemove,
   onDetail,
@@ -78,7 +104,7 @@ function EtfCard({
   etf: ETFSummary;
   isComparing: boolean;
   isLoading: boolean;
-  comparingFull: boolean;
+  dimmed: boolean;
   onToggleCompare: () => void;
   onRemove: () => void;
   onDetail: () => void;
@@ -91,104 +117,129 @@ function EtfCard({
   });
 
   const benchmark = detail?.benchmark;
+  const cat = etf.categories[0];
+  const colors = CATEGORY_COLORS[cat] || CATEGORY_COLORS._default;
+
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const rect = cardRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    setCtxMenu({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+  }, []);
+
+  useEffect(() => {
+    if (!ctxMenu) return;
+    const close = () => setCtxMenu(null);
+    window.addEventListener('click', close);
+    window.addEventListener('contextmenu', close);
+    window.addEventListener('scroll', close, true);
+    return () => {
+      window.removeEventListener('click', close);
+      window.removeEventListener('contextmenu', close);
+      window.removeEventListener('scroll', close, true);
+    };
+  }, [ctxMenu]);
 
   return (
     <div
-      className={`group relative rounded-xl border transition-all duration-200 cursor-pointer select-none overflow-hidden
+      ref={cardRef}
+      className={`group relative rounded-lg overflow-visible select-none cursor-pointer transition-all duration-200
         ${isComparing
-          ? 'bg-background shadow-md border-transparent ring-[1.5px] ring-blue-500/80'
-          : 'bg-background/80 hover:bg-background border-border/60 hover:border-border hover:shadow-sm'
-        }`}
+          ? 'shadow-md ring-1 ring-foreground/70'
+          : 'shadow-sm hover:shadow-md border border-border/50 hover:border-border'
+        }
+        ${dimmed ? 'opacity-65 hover:opacity-95' : ''}`}
       onClick={() => {
-        if (!isComparing && comparingFull) return;
         onToggleCompare();
       }}
+      onContextMenu={handleContextMenu}
     >
-      {isLoading && (
-        <div className="absolute inset-0 bg-background/70 backdrop-blur-[2px] flex items-center justify-center z-20 rounded-xl">
-          <div className="flex flex-col items-center gap-2">
-            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-            <span className="text-[10px] text-muted-foreground">데이터 로딩</span>
+      {/* Header */}
+      <div className={`flex items-center justify-between px-2.5 h-7 rounded-t-lg ${colors.headerBg}`}>
+        <span className={`text-[10px] font-semibold truncate ${colors.headerText}`}>
+          {cat || ''}
+        </span>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleCompare();
+          }}
+          className={`w-4 h-4 rounded-full border-[1.5px] flex items-center justify-center transition-colors shrink-0
+            ${isComparing
+              ? 'bg-foreground border-foreground text-background'
+              : 'border-muted-foreground/30 hover:border-muted-foreground/60 disabled:opacity-20'
+            }`}
+          title={isComparing ? '선택 해제' : '합성 대상 선택'}
+        >
+          {isComparing && <Check className="w-2.5 h-2.5" strokeWidth={3} />}
+        </button>
+      </div>
+
+      {/* Card body */}
+      <div className="bg-background relative rounded-b-lg overflow-hidden">
+        {isLoading && (
+          <div className="absolute inset-0 bg-background/80 backdrop-blur-[1px] flex items-center justify-center z-10">
+            <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Compare checkbox - top right */}
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          if (!isComparing && comparingFull) return;
-          onToggleCompare();
-        }}
-        disabled={!isComparing && comparingFull}
-        className={`absolute top-2.5 right-2.5 w-[18px] h-[18px] rounded-full border-[1.5px] flex items-center justify-center transition-colors z-10
-          ${isComparing
-            ? 'bg-blue-500 border-blue-500 text-white'
-            : 'border-muted-foreground/30 hover:border-muted-foreground/60 disabled:opacity-40'
-          }`}
-        title={isComparing ? '선택 해제' : '합성 대상 선택 (최대 3개)'}
-      >
-        {isComparing && <Check className="w-2.5 h-2.5" strokeWidth={3} />}
-      </button>
-
-      {/* Remove button - hover only */}
-      <button
-        onClick={(e) => { e.stopPropagation(); onRemove(); }}
-        className="absolute top-2.5 right-7 p-0.5 rounded text-muted-foreground/40 hover:text-destructive transition-all opacity-0 group-hover:opacity-100 z-10"
-        title="삭제"
-      >
-        <X className="w-3.5 h-3.5" />
-      </button>
-
-      <div className="px-3 py-2.5 pr-8 h-[100px] flex flex-col justify-between">
-        {/* Top: category chip + name */}
-        <div className="space-y-1">
-          {etf.categories[0] && (
-            <span className={`inline-block text-[9px] font-medium px-1.5 py-[1px] rounded-full leading-normal ${getCategoryChipStyle(etf.categories[0])}`}>{etf.categories[0]}</span>
-          )}
-          <h3 className="font-semibold text-[13px] leading-[1.3] line-clamp-2 h-[34px]" title={etf.name}>
+        <div className="px-2.5 pt-2.5 pb-2.5 flex flex-col gap-2">
+          <h3 className="font-bold text-sm leading-snug line-clamp-2 min-h-[2.6em]" title={etf.name}>
             {etf.name}
           </h3>
-        </div>
-
-        {/* Bottom: benchmark left, action icons right */}
-        <div className="flex items-center justify-between">
-          <span className="text-[10px] text-muted-foreground/50 truncate max-w-[60%]" title={benchmark || ''}>
-            {benchmark || ''}
+          <span className="text-[10px] text-muted-foreground/60 truncate" title={benchmark || ''}>
+            {benchmark || '\u00A0'}
           </span>
-          <div className="flex items-center gap-0.5">
-            <button
-              onClick={(e) => { e.stopPropagation(); onDetail(); }}
-              className="p-1 rounded text-muted-foreground/30 hover:text-foreground hover:bg-muted/80 transition-colors"
-              title="상세 정보"
-            >
-              <Info className="w-3.5 h-3.5" />
-            </button>
-            <button
-              onClick={(e) => { e.stopPropagation(); onReplace(); }}
-              className="p-1 rounded text-muted-foreground/30 hover:text-foreground hover:bg-muted/80 transition-colors"
-              title="유사 ETF로 교체"
-            >
-              <ArrowLeftRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
         </div>
       </div>
+
+      {/* Context menu */}
+      {ctxMenu && (
+        <div
+          className="absolute z-50 min-w-[140px] rounded-lg border bg-popover shadow-lg py-1 animate-in fade-in zoom-in-95 duration-100"
+          style={{ left: ctxMenu.x, top: ctxMenu.y }}
+        >
+          <button
+            className="flex items-center gap-2 w-full px-3 py-1.5 text-xs hover:bg-muted transition-colors text-left"
+            onClick={(e) => { e.stopPropagation(); setCtxMenu(null); onReplace(); }}
+          >
+            <ArrowLeftRight className="w-3.5 h-3.5 text-muted-foreground" />
+            유사한 ETF
+          </button>
+          <button
+            className="flex items-center gap-2 w-full px-3 py-1.5 text-xs hover:bg-muted transition-colors text-left"
+            onClick={(e) => { e.stopPropagation(); setCtxMenu(null); onDetail(); }}
+          >
+            <Info className="w-3.5 h-3.5 text-muted-foreground" />
+            상세보기
+          </button>
+          <div className="h-px bg-border my-1" />
+          <button
+            className="flex items-center gap-2 w-full px-3 py-1.5 text-xs hover:bg-destructive/10 text-destructive transition-colors text-left"
+            onClick={(e) => { e.stopPropagation(); setCtxMenu(null); onRemove(); }}
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            삭제
+          </button>
+        </div>
+      )}
     </div>
   );
 }
 
-const CATEGORY_CHIP_STYLES: Record<string, string> = {
-  '국내 대표지수': 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300',
-  '해외 대표지수': 'bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300',
-  '섹터/테마': 'bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300',
-  '액티브': 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300',
-  '채권': 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300',
-  '혼합': 'bg-teal-100 text-teal-700 dark:bg-teal-950 dark:text-teal-300',
-  '원자재': 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
-  '레버리지/인버스': 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300',
+const CATEGORY_COLORS: Record<string, { accent: string; headerBg: string; headerText: string }> = {
+  '국내 대표지수': { accent: 'bg-blue-500', headerBg: 'bg-blue-50 dark:bg-blue-950/40', headerText: 'text-blue-700/70 dark:text-blue-300/70' },
+  '해외 대표지수': { accent: 'bg-cyan-500', headerBg: 'bg-cyan-50 dark:bg-cyan-950/40', headerText: 'text-cyan-700/70 dark:text-cyan-300/70' },
+  '섹터/테마': { accent: 'bg-violet-500', headerBg: 'bg-violet-50 dark:bg-violet-950/40', headerText: 'text-violet-700/70 dark:text-violet-300/70' },
+  '액티브': { accent: 'bg-purple-500', headerBg: 'bg-purple-50 dark:bg-purple-950/40', headerText: 'text-purple-700/70 dark:text-purple-300/70' },
+  '채권': { accent: 'bg-emerald-500', headerBg: 'bg-emerald-50 dark:bg-emerald-950/40', headerText: 'text-emerald-700/70 dark:text-emerald-300/70' },
+  '혼합': { accent: 'bg-teal-500', headerBg: 'bg-teal-50 dark:bg-teal-950/40', headerText: 'text-teal-700/70 dark:text-teal-300/70' },
+  '원자재': { accent: 'bg-amber-500', headerBg: 'bg-amber-50 dark:bg-amber-950/40', headerText: 'text-amber-700/70 dark:text-amber-300/70' },
+  '레버리지/인버스': { accent: 'bg-red-500', headerBg: 'bg-red-50 dark:bg-red-950/40', headerText: 'text-red-700/70 dark:text-red-300/70' },
+  _default: { accent: 'bg-muted-foreground', headerBg: 'bg-muted/50', headerText: 'text-muted-foreground' },
 };
 
-function getCategoryChipStyle(category: string): string {
-  return CATEGORY_CHIP_STYLES[category] || 'bg-muted/60 text-muted-foreground';
-}

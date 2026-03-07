@@ -134,6 +134,33 @@ export class NaverService {
       await new Promise((r) => setTimeout(r, 200));
     }
 
+    // 상장일 채우기: NULL인 종목만 PC 페이지 크롤링
+    const missingListedDate = await this.prisma.etf.findMany({
+      where: { listedDate: null },
+      select: { code: true },
+    });
+    if (missingListedDate.length > 0) {
+      this.logger.log(`상장일 미등록 ${missingListedDate.length}건 크롤링 시작...`);
+      const codes = missingListedDate.map((e) => e.code);
+      const LISTED_BATCH = 5;
+      for (let i = 0; i < codes.length; i += LISTED_BATCH) {
+        const batch = codes.slice(i, i + LISTED_BATCH);
+        await Promise.allSettled(
+          batch.map(async (code: string) => {
+            const listedDate = await this.fetchListedDate(code);
+            if (listedDate) {
+              await this.prisma.etf.update({ where: { code }, data: { listedDate } });
+            }
+          }),
+        );
+        if (i % 100 === 0 && i > 0) {
+          this.logger.log(`상장일 진행: ${i}/${codes.length}`);
+        }
+        await new Promise((r) => setTimeout(r, 500));
+      }
+      this.logger.log(`상장일 크롤링 완료`);
+    }
+
     this.logger.log(`네이버 ETF ${items.length}종목 시딩 완료 (통합정보 ${updatedCount}건 업데이트)`);
     return items.length;
   }
@@ -261,6 +288,22 @@ export class NaverService {
       return holdings;
     } catch {
       return [];
+    }
+  }
+
+  async fetchListedDate(code: string): Promise<Date | null> {
+    try {
+      const url = `https://finance.naver.com/item/main.naver?code=${encodeURIComponent(code)}`;
+      const resp = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+      if (!resp.ok) return null;
+      const html = await resp.text();
+      const m = html.match(/상장일.*?(\d{4}[\/.]\d{2}[\/.]\d{2})/s);
+      if (!m) return null;
+      const dateStr = m[1].replace(/\//g, '-').replace(/\./g, '-');
+      const date = new Date(dateStr);
+      return isNaN(date.getTime()) ? null : date;
+    } catch {
+      return null;
     }
   }
 
