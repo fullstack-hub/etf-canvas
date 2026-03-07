@@ -77,4 +77,4 @@ export type ETFCategory =
   | '액티브'
   | 'New';
 
-export type ETFSortBy = 'returnRate' | 'aum';
+export type ETFSortBy = 'returnRate1y' | 'returnRate3m' | 'aum';

@@ -27,8 +27,8 @@ export class EtfService {
 
   // --- Public API ---
 
-  async search(query: string, category?: string, sort: ETFSortBy = 'aum', benchmark?: string): Promise<ETFSummary[]> {
-    const cacheKey = `etf:search:${query}:${category || 'all'}:${sort}:${benchmark || ''}`;
+  async search(query: string, category?: string, sort: ETFSortBy = 'aum', benchmark?: string, offset = 0, limit = 50): Promise<ETFSummary[]> {
+    const cacheKey = `etf:search:${query}:${category || 'all'}:${sort}:${benchmark || ''}:${offset}:${limit}`;
 
     // 1. Redis
     const cached = await this.redis.getJson<ETFSummary[]>(cacheKey);
@@ -42,10 +42,26 @@ export class EtfService {
 
     const where: Record<string, unknown> = {};
     if (query) {
-      where.OR = [
-        { name: { contains: query, mode: 'insensitive' } },
-        { code: { startsWith: query } },
-      ];
+      // 영문/숫자 ↔ 한글 경계 + 공백에서 토큰 분리
+      // e.g. "TIGER코리아" → ["TIGER", "코리아"], "KODEX 미국S&P500" → ["KODEX", "미국", "S&P500"]
+      const tokens = query
+        .split(/\s+/)
+        .flatMap((part) =>
+          part.split(/(?<=[a-zA-Z0-9&])(?=[가-힣])|(?<=[가-힣])(?=[a-zA-Z0-9&])/)
+        )
+        .filter(Boolean);
+
+      if (tokens.length > 1) {
+        where.OR = [
+          { AND: tokens.map((t) => ({ name: { contains: t, mode: 'insensitive' } })) },
+          { code: { startsWith: query.replace(/\s+/g, '') } },
+        ];
+      } else {
+        where.OR = [
+          { name: { contains: query, mode: 'insensitive' } },
+          { code: { startsWith: query } },
+        ];
+      }
     }
     if (benchmark) {
       where.benchmark = benchmark;
@@ -57,13 +73,15 @@ export class EtfService {
       where.categories = { has: category };
     }
 
-    const orderBy = sort === 'returnRate'
-      ? { oneYearEarnRate: 'desc' as const }
-      : { aum: 'desc' as const };
+    const sortField = sort === 'returnRate1y' ? 'oneYearEarnRate'
+      : sort === 'returnRate3m' ? 'threeMonthEarnRate'
+      : 'aum';
+    const orderBy = { [sortField]: { sort: 'desc' as const, nulls: 'last' as const } };
 
     const etfs = await this.prisma.etf.findMany({
       where,
-      take: 50,
+      skip: offset,
+      take: limit,
       orderBy,
     });
 
@@ -159,8 +177,8 @@ export class EtfService {
       aum: etf.aum ? Number(etf.aum) : null,
       expenseRatio: etf.expenseRatio ? Number(etf.expenseRatio) : null,
       nav: etf.nav ? Number(etf.nav) : null,
-      threeMonthEarnRate: etf.threeMonthEarnRate ? Number(etf.threeMonthEarnRate) : null,
-      oneYearEarnRate: etf.oneYearEarnRate ? Number(etf.oneYearEarnRate) : null,
+      threeMonthEarnRate: (etf as any).threeMonthEarnRate ? Number((etf as any).threeMonthEarnRate) : null,
+      oneYearEarnRate: (etf as any).oneYearEarnRate ? Number((etf as any).oneYearEarnRate) : null,
       holdings,
       returns: etf.returns.map((r: any) => ({
         period: r.period,
@@ -243,16 +261,30 @@ export class EtfService {
     const days = this.periodToDays(req.period);
     const weights = req.weights.map((w) => w / 100);
     const dailyValues: { date: string; value: number }[] = [];
-    const basePrices = allPricesRaw.map((prices) => prices[0]?.close || 1);
+
+    // 각 ETF 가격을 date→close 맵으로 변환
+    const priceMaps = allPricesRaw.map((prices) => {
+      const map = new Map<string, number>();
+      for (const p of prices) map.set(p.date, p.close);
+      return map;
+    });
+
+    // 모든 ETF가 데이터를 가진 날짜만 사용 (교집합)
+    const allDateSets = allPricesRaw.map((prices) => new Set(prices.map((p) => p.date)));
+    const commonDates = allPricesRaw[0]
+      ?.map((p) => p.date)
+      .filter((d) => allDateSets.every((s) => s.has(d))) || [];
+
+    // 교집합 첫 날 기준 basePrices
+    const basePrices = priceMaps.map((m) => m.get(commonDates[0]) || 1);
     const etfAmounts = weights.map((w) => req.amount * w);
 
-    const dates = allPricesRaw[0]?.map((p) => p.date) || [];
-    for (const date of dates) {
+    for (const date of commonDates) {
       let totalValue = 0;
       for (let i = 0; i < req.codes.length; i++) {
-        const price = allPricesRaw[i]?.find((p) => p.date === date);
-        if (price) {
-          totalValue += etfAmounts[i] * (price.close / basePrices[i]);
+        const close = priceMaps[i].get(date);
+        if (close) {
+          totalValue += etfAmounts[i] * (close / basePrices[i]);
         }
       }
       dailyValues.push({ date, value: Math.round(totalValue) });
@@ -269,7 +301,8 @@ export class EtfService {
       if (dd > maxDrawdown) maxDrawdown = dd;
     }
 
-    const annualizedReturn = totalReturn * (365 / days);
+    const actualDays = commonDates.length > 1 ? commonDates.length : days;
+    const annualizedReturn = (Math.pow(1 + totalReturn / 100, 365 / actualDays) - 1) * 100;
 
     const result: SimulateResult = {
       totalReturn: Math.round(totalReturn * 100) / 100,
@@ -278,8 +311,8 @@ export class EtfService {
       sharpeRatio: null,
       dailyValues,
       perEtf: req.codes.map((code, i) => {
-        const prices = allPricesRaw[i];
-        const lastPrice = prices?.[prices.length - 1]?.close || 0;
+        const lastDate = commonDates[commonDates.length - 1];
+        const lastPrice = priceMaps[i].get(lastDate) || 0;
         const basePrice = basePrices[i];
         return {
           code,
@@ -291,6 +324,27 @@ export class EtfService {
     };
 
     await this.redis.setJson(cacheKey, result, 600);
+    return result;
+  }
+
+  async count(category?: string): Promise<{ total: number; filtered: number }> {
+    const cacheKey = `etf:count:${category || 'all'}`;
+    const cached = await this.redis.getJson<{ total: number; filtered: number }>(cacheKey);
+    if (cached) return cached;
+
+    const total = await this.prisma.etf.count();
+
+    let filtered = total;
+    if (category === 'New') {
+      const twoMonthsAgo = new Date();
+      twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
+      filtered = await this.prisma.etf.count({ where: { listedDate: { gte: twoMonthsAgo } } });
+    } else if (category) {
+      filtered = await this.prisma.etf.count({ where: { categories: { has: category } } });
+    }
+
+    const result = { total, filtered };
+    await this.redis.setJson(cacheKey, result, 300);
     return result;
   }
 

@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useCanvasStore } from '@/lib/store';
 import { Input } from '@/components/ui/input';
@@ -26,15 +26,15 @@ const CATEGORY_STYLES: Record<string, { active: string; icon: string }> = {
 };
 
 const categories = [
-  { key: '국내 대표지수', label: '국내\n대표지수', icon: <BarChart3 className="w-4 h-4" /> },
-  { key: '해외 대표지수', label: '해외\n대표지수', icon: <Globe className="w-4 h-4" /> },
-  { key: '섹터/테마', label: '섹터/테마', icon: <Crosshair className="w-4 h-4" /> },
-  { key: '채권', label: '채권', icon: <FileText className="w-4 h-4" /> },
-  { key: '원자재', label: '원자재', icon: <Gem className="w-4 h-4" /> },
-  { key: '레버리지/인버스', label: '레버리지&\n인버스', icon: <ArrowUpDown className="w-4 h-4" /> },
-  { key: '혼합', label: '혼합', icon: <Blend className="w-4 h-4" /> },
-  { key: '액티브', label: '액티브', icon: <Zap className="w-4 h-4" /> },
-  { key: 'New', label: 'New', icon: <Sparkles className="w-4 h-4" /> },
+  { key: '국내 대표지수', label: '국내\n대표지수', icon: <BarChart3 className="w-4 h-4" />, tip: { desc: '국내 시장을 대표하는 지수를 추종해요', examples: 'KOSPI 200, KOSDAQ 150, KRX 300', risk: '중간', style: '장기 투자' } },
+  { key: '해외 대표지수', label: '해외\n대표지수', icon: <Globe className="w-4 h-4" />, tip: { desc: '글로벌 주요 지수를 원화로 투자해요', examples: 'S&P 500, 나스닥 100, 니케이 225', risk: '중간', style: '글로벌 분산' } },
+  { key: '섹터/테마', label: '섹터/테마', icon: <Crosshair className="w-4 h-4" />, tip: { desc: '특정 산업이나 투자 테마에 집중해요', examples: '반도체, AI, 2차전지, 바이오', risk: '높음', style: '성장 투자' } },
+  { key: '채권', label: '채권', icon: <FileText className="w-4 h-4" />, tip: { desc: '채권에 투자해 안정적인 이자 수익을 추구해요', examples: '국채, 회사채, 금융채, 물가채', risk: '낮음', style: '안정 수익' } },
+  { key: '원자재', label: '원자재', icon: <Gem className="w-4 h-4" />, tip: { desc: '실물 원자재 가격을 추종해요', examples: '금, 은, 원유, 구리', risk: '높음', style: '인플레이션 헤지' } },
+  { key: '레버리지/인버스', label: '레버리지&\n인버스', icon: <ArrowUpDown className="w-4 h-4" />, tip: { desc: '지수의 2배 또는 반대 방향 수익을 추구해요', examples: 'KODEX 레버리지, KODEX 인버스', risk: '매우 높음', style: '단기 트레이딩' } },
+  { key: '혼합', label: '혼합', icon: <Blend className="w-4 h-4" />, tip: { desc: '주식+채권 등 여러 자산을 하나에 담아요', examples: 'TDF, 자산배분형, 멀티에셋', risk: '중·낮음', style: '자동 분산' } },
+  { key: '액티브', label: '액티브', icon: <Zap className="w-4 h-4" />, tip: { desc: '펀드매니저가 종목을 적극 선별·운용해요', examples: '성장주 액티브, 배당 액티브, AI 액티브', risk: '중·높음', style: '초과 수익 추구' } },
+  { key: 'New', label: 'New', icon: <Sparkles className="w-4 h-4" />, tip: { desc: '최근 2개월 이내 신규 상장된 ETF예요', examples: '새로운 트렌드와 테마를 빠르게 확인해요', risk: '-', style: '신규 상장' } },
 ];
 
 export function LeftPanel() {
@@ -43,7 +43,13 @@ export function LeftPanel() {
   const [category, setCategory] = useState('국내 대표지수');
   const [sortBy, setSortBy] = useState<ETFSortBy>('aum');
   const [catOpen, setCatOpen] = useState(true);
-  const { selectedEtfCode, selectEtf, addToCanvas, addLoadingCode, removeLoadingCode, updateEtfData } = useCanvasStore();
+  const [hoveredCat, setHoveredCat] = useState<string | null>(null);
+  const { selectedEtfCode, selectEtf, selected: canvasEtfs, addToCanvas, addLoadingCode, removeLoadingCode, updateEtfData } = useCanvasStore();
+
+  const { data: countData } = useQuery({
+    queryKey: ['etf-count', category || undefined],
+    queryFn: () => api.count(category || undefined),
+  });
 
   const handleAddToCanvas = useCallback(async (etf: ETFSummary) => {
     addToCanvas(etf);
@@ -65,13 +71,43 @@ export function LeftPanel() {
     return () => clearTimeout(timer);
   }, []);
 
-  const { data: etfs } = useQuery({
+  const PAGE_SIZE = 30;
+  const {
+    data: etfPages,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
     queryKey: ['etf-search', debouncedQuery, category || undefined, sortBy],
-    queryFn: () =>
+    queryFn: ({ pageParam = 0 }) =>
       debouncedQuery
-        ? api.search(debouncedQuery, category || undefined, sortBy)
-        : api.list(category || undefined, sortBy),
+        ? api.search(debouncedQuery, category || undefined, sortBy, pageParam, PAGE_SIZE)
+        : api.list(category || undefined, sortBy, pageParam, PAGE_SIZE),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, allPages) =>
+      lastPage.length < PAGE_SIZE ? undefined : allPages.length * PAGE_SIZE,
   });
+
+  const etfs = (() => {
+    const all = etfPages?.pages.flat();
+    if (!all) return undefined;
+    const seen = new Set<string>();
+    return all.filter(e => { if (seen.has(e.code)) return false; seen.add(e.code); return true; });
+  })();
+
+  // 무한스크롤 감지
+  const listRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = listRef.current;
+    if (!el) return;
+    const onScroll = () => {
+      if (el.scrollTop + el.clientHeight >= el.scrollHeight - 100 && hasNextPage && !isFetchingNextPage) {
+        fetchNextPage();
+      }
+    };
+    el.addEventListener('scroll', onScroll);
+    return () => el.removeEventListener('scroll', onScroll);
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   // 첫 번째 종목 자동 선택
   useEffect(() => {
@@ -80,9 +116,13 @@ export function LeftPanel() {
     }
   }, [etfs, selectedEtfCode, selectEtf]);
 
+  const selectedEtf = etfs?.find(e => e.code === selectedEtfCode);
+  const chartPeriod = sortBy === 'returnRate3m' ? '3m'
+    : sortBy === 'returnRate1y' ? '1y'
+    : selectedEtf?.oneYearEarnRate != null ? '1y' : '3m';
   const { data: selectedPrices } = useQuery({
-    queryKey: ['etf-mini-prices', selectedEtfCode],
-    queryFn: () => api.getDailyPrices(selectedEtfCode!, '1y'),
+    queryKey: ['etf-mini-prices', selectedEtfCode, chartPeriod],
+    queryFn: () => api.getDailyPrices(selectedEtfCode!, chartPeriod),
     enabled: !!selectedEtfCode,
   });
 
@@ -96,7 +136,12 @@ export function LeftPanel() {
     <div className="w-80 border-r flex flex-col h-full shrink-0 bg-background">
       {/* Header */}
       <div className="px-3 pt-3 pb-2">
-        <h2 className="text-lg font-bold mb-2">ETF Canvas</h2>
+        <h2 className="text-lg font-bold mb-2">
+          ETF Canvas
+          {countData?.total != null && (
+            <span className="text-sm font-normal text-muted-foreground ml-1.5">({countData.total.toLocaleString()})</span>
+          )}
+        </h2>
         <Input
           placeholder="검색"
           value={query}
@@ -115,12 +160,13 @@ export function LeftPanel() {
           {catOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
         </button>
         {catOpen && (
-          <>
+          <div onMouseLeave={() => setHoveredCat(null)}>
             <div className="grid grid-cols-3 gap-1.5 mt-2">
               {categories.map((cat) => (
                 <button
                   key={cat.key}
                   onClick={() => setCategory(category === cat.key ? '' : cat.key)}
+                  onMouseEnter={() => setHoveredCat(cat.key)}
                   className={`flex items-center justify-between gap-1 px-2.5 h-[48px] rounded-lg border text-[11px] leading-tight transition-colors ${
                     category === cat.key
                       ? `${CATEGORY_STYLES[cat.key]?.active || 'border-blue-500 bg-blue-50 text-blue-900'} font-bold`
@@ -132,60 +178,102 @@ export function LeftPanel() {
                 </button>
               ))}
             </div>
-          </>
+            {(() => {
+              const cat = categories.find((c) => c.key === hoveredCat);
+              if (!cat) return null;
+              const riskColor =
+                cat.tip.risk === '매우 높음' ? 'text-red-400' :
+                cat.tip.risk === '높음' ? 'text-orange-400' :
+                cat.tip.risk === '중·높음' ? 'text-amber-400' :
+                cat.tip.risk === '중간' ? 'text-yellow-400' :
+                cat.tip.risk === '중·낮음' ? 'text-emerald-400' :
+                cat.tip.risk === '낮음' ? 'text-green-400' : '';
+              return (
+                <div className="mt-2 px-2.5 py-2 rounded-lg bg-muted/40 border border-border/50 text-[11px] animate-in fade-in-0 duration-150">
+                  <p className="font-bold text-xs mb-1">{cat.key}</p>
+                  <p className="text-muted-foreground leading-relaxed mb-1.5">{cat.tip.desc}</p>
+                  <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+                    <span className="opacity-60">대표</span><span>{cat.tip.examples}</span>
+                    {cat.tip.risk !== '-' && <span className="opacity-60">위험도</span>}
+                    {cat.tip.risk !== '-' && <span className={riskColor}>{cat.tip.risk}</span>}
+                    <span className="opacity-60">스타일</span><span>{cat.tip.style}</span>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
         )}
       </div>
 
       {/* ETF List */}
       <div className="px-3 py-2 flex items-center justify-between border-b">
-        <span className="text-sm font-bold text-foreground">ETF</span>
-        <div className="flex gap-1">
-          <button
-            onClick={() => setSortBy('returnRate')}
-            className={`text-[10px] px-1.5 py-0.5 rounded ${sortBy === 'returnRate' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent'}`}
-          >
-            수익률
-          </button>
-          <button
-            onClick={() => setSortBy('aum')}
-            className={`text-[10px] px-1.5 py-0.5 rounded ${sortBy === 'aum' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent'}`}
-          >
-            AUM
-          </button>
-        </div>
+        <span className="text-sm font-bold text-foreground">
+          ETF
+          {countData?.filtered != null && (
+            <span className="text-xs font-normal text-muted-foreground ml-1">({countData.filtered.toLocaleString()})</span>
+          )}
+        </span>
+        <SortDropdown value={sortBy} onChange={setSortBy} />
       </div>
-      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
+      <div ref={listRef} className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
         <TooltipProvider delayDuration={300}>
-          <div className="px-1">
+          <div className="px-1 pt-1">
             {etfs?.map((etf) => (
               <EtfListItem
                 key={etf.code}
                 etf={etf}
                 isSelected={selectedEtfCode === etf.code}
+                isOnCanvas={canvasEtfs.some((e) => e.code === etf.code)}
                 sortBy={sortBy}
                 onSelect={() => selectEtf(etf.code)}
                 onAdd={() => handleAddToCanvas(etf)}
               />
             ))}
+            {isFetchingNextPage && (
+              <p className="text-xs text-muted-foreground text-center py-3">불러오는 중...</p>
+            )}
             {etfs?.length === 0 && (
-              <p className="text-xs text-muted-foreground text-center py-4">
-                검색 결과 없음
-              </p>
+              <div className="text-center py-8 px-4">
+                <p className="text-sm text-muted-foreground">
+                  {debouncedQuery
+                    ? `'${debouncedQuery}'에 해당하는 ETF가 없어요`
+                    : category === 'New'
+                      ? '최근 2개월 내 신규 상장된 ETF가 없어요'
+                      : '조건에 맞는 ETF가 없어요'}
+                </p>
+                <p className="text-[11px] text-muted-foreground/60 mt-1">
+                  {debouncedQuery ? '다른 키워드로 검색해보세요' : '다른 카테고리를 선택해보세요'}
+                </p>
+              </div>
             )}
           </div>
         </TooltipProvider>
       </div>
 
       {/* Mini Chart / Return Rate */}
-      {selectedEtfCode && selectedDetail && (
-        <div className="border-t px-3 py-2">
-          <p className="text-xs font-bold text-foreground leading-tight">{selectedDetail.name}</p>
-          <p className="text-[10px] text-muted-foreground mb-1">1년 수익률</p>
-          <div className="h-28">
-            <PriceChart data={selectedPrices || []} compact />
+      {selectedEtfCode && selectedDetail && (() => {
+        const selEtf = selectedEtf;
+        const periodLabel = chartPeriod === '3m' ? '3M' : '1Y';
+        const rate = chartPeriod === '3m'
+          ? selEtf?.threeMonthEarnRate ?? null
+          : selEtf?.oneYearEarnRate ?? null;
+        return (
+          <div className="border-t px-3 py-2">
+            <p className="text-xs font-bold text-foreground leading-tight">{selectedDetail.name}</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">
+              {periodLabel} 수익률{' '}
+              {rate !== null ? (
+                <span className={`font-bold ${rate > 0 ? 'text-red-500' : rate < 0 ? 'text-blue-500' : ''}`}>
+                  {rate > 0 ? '+' : ''}{rate.toFixed(1)}%
+                </span>
+              ) : '-'}
+            </p>
+            <div className="h-28 mt-1.5">
+              <PriceChart data={selectedPrices || []} compact />
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
@@ -193,12 +281,14 @@ export function LeftPanel() {
 function EtfListItem({
   etf,
   isSelected,
+  isOnCanvas,
   sortBy,
   onSelect,
   onAdd,
 }: {
   etf: ETFSummary;
   isSelected: boolean;
+  isOnCanvas: boolean;
   sortBy: ETFSortBy;
   onSelect: () => void;
   onAdd: () => void;
@@ -221,39 +311,115 @@ function EtfListItem({
           onClick={onSelect}
           onDoubleClick={onAdd}
           onMouseEnter={() => setHovered(true)}
-          className={`w-full max-w-full flex items-center gap-1 px-2 py-1.5 rounded text-sm transition-colors overflow-hidden ${
-            isSelected
-              ? 'bg-primary/10 text-primary'
-              : 'hover:bg-accent'
+          draggable
+          onDragStart={(e) => {
+            e.dataTransfer.setData('application/etf', JSON.stringify(etf));
+            e.dataTransfer.effectAllowed = 'copy';
+            const ghost = document.createElement('div');
+            ghost.textContent = etf.name;
+            ghost.style.cssText = 'position:fixed;top:-999px;padding:6px 12px;border-radius:8px;background:#3b82f6;color:#fff;font-size:12px;font-weight:500;white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,0.15);';
+            document.body.appendChild(ghost);
+            e.dataTransfer.setDragImage(ghost, ghost.offsetWidth / 2, ghost.offsetHeight / 2);
+            requestAnimationFrame(() => document.body.removeChild(ghost));
+          }}
+          className={`w-full max-w-full flex items-center gap-1 px-2 py-1.5 rounded text-sm transition-colors overflow-hidden cursor-grab active:cursor-grabbing ${
+            isOnCanvas
+              ? 'text-blue-500 font-semibold'
+              : isSelected
+                ? 'bg-primary/10 text-primary'
+                : 'hover:bg-accent'
           }`}
         >
           <span className="flex-1 min-w-0 truncate text-left">{etf.name}</span>
-          {sortBy === 'returnRate' ? (
-            <span className={`text-xs shrink-0 text-right tabular-nums ${
-              etf.oneYearEarnRate != null && etf.oneYearEarnRate > 0 ? 'text-red-500'
-              : etf.oneYearEarnRate != null && etf.oneYearEarnRate < 0 ? 'text-blue-500'
-              : 'text-muted-foreground'
-            }`}>
-              {etf.oneYearEarnRate != null ? `${etf.oneYearEarnRate.toFixed(1)}%` : '-'}
-            </span>
-          ) : (
+          {sortBy === 'aum' ? (
             <span className="text-xs shrink-0 text-right tabular-nums text-muted-foreground">
               {etf.aum ? (etf.aum >= 10000 ? `${(etf.aum / 10000).toFixed(1)}조` : `${etf.aum.toLocaleString()}억`) : '-'}
             </span>
+          ) : (
+            <ReturnRateLabel rate={
+              sortBy === 'returnRate1y' ? etf.oneYearEarnRate
+              : etf.threeMonthEarnRate
+            } />
           )}
         </button>
       </TooltipTrigger>
       <TooltipContent side="right" className="text-xs space-y-1.5 p-3">
         <p className="font-medium text-sm">{etf.name}</p>
-        <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+        <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
           <span className="opacity-60">자산</span><span>{etf.categories[0] || '-'}</span>
-          <span className="opacity-60">국가</span><span>{etf.categories.some((c: string) => c === '국내 대표지수' || c === '섹터/테마') ? '한국' : '해외'}</span>
-          <span className="opacity-60">AUM</span><span>{etf.aum ? `${etf.aum.toLocaleString()}억` : '-'}</span>
-          <span className="opacity-60">1년 수익률</span><span className={etf.oneYearEarnRate != null && etf.oneYearEarnRate > 0 ? 'text-red-400' : etf.oneYearEarnRate != null && etf.oneYearEarnRate < 0 ? 'text-blue-400' : ''}>{etf.oneYearEarnRate != null ? `${etf.oneYearEarnRate > 0 ? '+' : ''}${etf.oneYearEarnRate.toFixed(2)}%` : '-'}</span>
+          <span className="opacity-60">AUM</span><span>{etf.aum ? (etf.aum >= 10000 ? `${(etf.aum / 10000).toFixed(1)}조원` : `${etf.aum.toLocaleString()}억원`) : '-'}</span>
+          <span className="opacity-60">{etf.oneYearEarnRate != null ? '1년 수익률' : etf.threeMonthEarnRate != null ? '3개월 수익률' : '수익률'}</span><span className={(() => { const r = etf.oneYearEarnRate ?? etf.threeMonthEarnRate; return r != null && r > 0 ? 'text-red-400' : r != null && r < 0 ? 'text-blue-400' : ''; })()}>{(() => { const r = etf.oneYearEarnRate ?? etf.threeMonthEarnRate; return r != null ? `${r > 0 ? '+' : ''}${r.toFixed(2)}%` : '-'; })()}</span>
+          <span className="opacity-60">운용사</span><span>{etf.issuer || '-'}</span>
           <span className="opacity-60">운용보수</span><span>{expenseRatio != null ? `${(expenseRatio * 100).toFixed(3)}%` : <span className="inline-block w-3 h-3 border-2 border-muted-foreground/40 border-t-muted-foreground rounded-full animate-spin" />}</span>
+          <span className="opacity-60">상장일</span><span>{etf.listedDate || '-'}</span>
         </div>
-        <p className="text-[10px] opacity-40 pt-1">더블클릭: 캔버스에 추가</p>
+        <div className="flex items-center gap-1 pt-1.5 mt-1 border-t border-background/10">
+          <kbd className="text-[9px] px-1.5 py-0.5 rounded bg-sky-500/80 text-white font-mono">더블클릭</kbd>
+          <span className="text-[10px] text-background/70">또는</span>
+          <kbd className="text-[9px] px-1.5 py-0.5 rounded bg-sky-500/80 text-white font-mono">드래그</kbd>
+          <span className="text-[10px] text-background/70">캔버스에 추가</span>
+        </div>
       </TooltipContent>
     </Tooltip>
+  );
+}
+
+function ReturnRateLabel({ rate }: { rate: number | null }) {
+  return (
+    <span className={`text-xs shrink-0 text-right tabular-nums ${
+      rate != null && rate > 0 ? 'text-red-500'
+      : rate != null && rate < 0 ? 'text-blue-500'
+      : 'text-muted-foreground'
+    }`}>
+      {rate != null ? `${rate.toFixed(1)}%` : '-'}
+    </span>
+  );
+}
+
+const SORT_OPTIONS: { key: ETFSortBy; label: string }[] = [
+  { key: 'aum', label: 'AUM 높은순' },
+  { key: 'returnRate1y', label: '1Y 수익률순' },
+  { key: 'returnRate3m', label: '3M 수익률순' },
+];
+
+function SortDropdown({ value, onChange }: { value: ETFSortBy; onChange: (v: ETFSortBy) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const current = SORT_OPTIONS.find(o => o.key === value)!;
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md border bg-background hover:bg-accent transition-colors"
+      >
+        <span className="font-medium">{current.label}</span>
+        <ChevronDown className={`w-3 h-3 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-1 z-50 flex flex-col rounded-lg border bg-popover shadow-lg py-1 animate-in fade-in zoom-in-95 duration-100 whitespace-nowrap">
+          {SORT_OPTIONS.map(o => (
+            <button
+              key={o.key}
+              onClick={() => { onChange(o.key); setOpen(false); }}
+              className={`w-full text-left px-3 py-1.5 text-[11px] transition-colors ${
+                o.key === value ? 'bg-primary/10 text-primary font-semibold' : 'hover:bg-muted text-foreground'
+              }`}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

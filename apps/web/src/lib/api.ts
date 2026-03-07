@@ -12,10 +12,10 @@ async function fetcher<T>(url: string, options?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  search: (q: string, category?: string, sort?: ETFSortBy) =>
-    fetcher<ETFSummary[]>(`/etf/search?q=${encodeURIComponent(q)}${category ? `&category=${category}` : ''}${sort ? `&sort=${sort}` : ''}`),
-  list: (category?: string, sort?: ETFSortBy) =>
-    fetcher<ETFSummary[]>(`/etf/list?${category ? `category=${category}&` : ''}${sort ? `sort=${sort}` : ''}`),
+  search: (q: string, category?: string, sort?: ETFSortBy, offset = 0, limit = 30) =>
+    fetcher<ETFSummary[]>(`/etf/search?q=${encodeURIComponent(q)}${category ? `&category=${category}` : ''}${sort ? `&sort=${sort}` : ''}&offset=${offset}&limit=${limit}`),
+  list: (category?: string, sort?: ETFSortBy, offset = 0, limit = 30) =>
+    fetcher<ETFSummary[]>(`/etf/list?${category ? `category=${category}&` : ''}${sort ? `sort=${sort}&` : ''}offset=${offset}&limit=${limit}`),
   listByBenchmark: (benchmark: string, sort?: ETFSortBy) =>
     fetcher<ETFSummary[]>(`/etf/list?benchmark=${encodeURIComponent(benchmark)}${sort ? `&sort=${sort}` : ''}`),
   getDetail: (code: string) =>
@@ -32,4 +32,6 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(req),
     }),
+  count: (category?: string) =>
+    fetcher<{ total: number; filtered: number }>(`/etf/count${category ? `?category=${category}` : ''}`),
 };
