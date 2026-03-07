@@ -59,7 +59,9 @@ function LandingPage() {
         </a>
       </header>
 
-      <main className="flex-1" />
+      <main className="flex-1 flex items-center justify-center">
+        <p className="text-muted-foreground">ETF Canvas — ETF 포트폴리오 분석 도구</p>
+      </main>
     </div>
   );
 }
