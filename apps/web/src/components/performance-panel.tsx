@@ -194,7 +194,7 @@ export function PerformancePanel() {
                     </div>
                     <div className="flex items-center gap-8 shrink-0">
                         <MetricCard title={`수익률 (${timeframe.label})`} value={synthReturn} suffix="%" tooltip={<><p className="font-medium mb-1">선택 기간의 포트폴리오 총 수익률</p><p className="text-muted-foreground">(최종값 − 초기값) / 초기값 × 100</p></>} />
-                        <MetricCard title="연환산 수익률" value={simData?.annualizedReturn ?? null} suffix="%" tooltip={<><p className="font-medium mb-1">복리(CAGR) 기준 1년 환산 수익률</p><p className="text-muted-foreground">(1 + R)<sup>365/일수</sup> − 1</p></>} />
+                        <MetricCard title="연환산 수익률" value={simData?.annualizedReturn ?? null} suffix="%" tooltip={<><p className="font-medium mb-1">복리(CAGR) 기준 1년 환산 수익률</p><p className="text-muted-foreground">(1 + R)<sup>365/기간일수</sup> − 1</p></>} />
                         <MetricCard title="최대낙폭(MDD)" value={synthMdd} suffix="%" tooltip={<><p className="font-medium mb-1">고점 대비 최대 하락 폭</p><p className="text-muted-foreground">(고점 − 저점) / 고점 × 100</p></>} />
                         <MetricCard title="평균 변동성" value={synthVolatility} suffix="%" tooltip={<><p className="font-medium mb-1">일별 수익률의 연환산 표준편차</p><p className="text-muted-foreground">σ<sub>daily</sub> × √252</p></>} />
                         <MetricCard title="종합 운용보수" value={synthExpense} suffix="%" formatter={(v) => v.toFixed(3)} tooltip={<><p className="font-medium mb-1">비중 가중 평균 운용보수</p><p className="text-muted-foreground">Σ(보수<sub>i</sub> × 비중<sub>i</sub>)</p></>} />
@@ -248,7 +248,7 @@ export function PerformancePanel() {
                     <div className="shrink-0 rounded-xl bg-muted/15 border border-border/40 p-4 flex flex-col justify-center gap-4">
                         <div className="grid grid-cols-2 gap-x-6 gap-y-4">
                             <MetricCard title={`수익률 (${timeframe.label})`} value={synthReturn} suffix="%" tooltip={<><p className="font-medium mb-1">선택 기간의 포트폴리오 총 수익률</p><p className="text-muted-foreground">(최종값 − 초기값) / 초기값 × 100</p></>} />
-                            <MetricCard title="연환산 수익률" value={simData?.annualizedReturn ?? null} suffix="%" tooltip={<><p className="font-medium mb-1">복리(CAGR) 기준 1년 환산 수익률</p><p className="text-muted-foreground">(1 + R)<sup>365/일수</sup> − 1</p></>} />
+                            <MetricCard title="연환산 수익률" value={simData?.annualizedReturn ?? null} suffix="%" tooltip={<><p className="font-medium mb-1">복리(CAGR) 기준 1년 환산 수익률</p><p className="text-muted-foreground">(1 + R)<sup>365/기간일수</sup> − 1</p></>} />
                             <MetricCard title="최대낙폭(MDD)" value={synthMdd} suffix="%" tooltip={<><p className="font-medium mb-1">고점 대비 최대 하락 폭</p><p className="text-muted-foreground">(고점 − 저점) / 고점 × 100</p></>} />
                             <MetricCard title="평균 변동성" value={synthVolatility} suffix="%" tooltip={<><p className="font-medium mb-1">일별 수익률의 연환산 표준편차</p><p className="text-muted-foreground">σ<sub>daily</sub> × √252</p></>} />
                         </div>

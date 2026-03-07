@@ -32,6 +32,26 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(req),
     }),
+  // Portfolio
+  savePortfolio: (token: string, name: string, items: { code: string; name: string; weight: number }[], returnRate?: number, mdd?: number) =>
+    fetcher<{ id: string }>('/portfolio', {
+      method: 'POST',
+      body: JSON.stringify({ name, items, returnRate, mdd }),
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  listPortfolios: (token: string, sort?: string) =>
+    fetcher<{ id: string; name: string; items: { code: string; name: string; weight: number }[]; returnRate: number | null; mdd: number | null; createdAt: string }[]>(`/portfolio${sort ? `?sort=${sort}` : ''}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  deletePortfolio: async (token: string, id: string) => {
+    const res = await fetch(`${API_BASE}/portfolio/${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) throw new Error(`API Error: ${res.status}`);
+    return res.json() as Promise<{ ok: boolean }>;
+  },
+
   count: (query?: string, category?: string) => {
     const params = new URLSearchParams();
     if (query) params.set('q', query);

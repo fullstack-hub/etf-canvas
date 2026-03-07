@@ -6,6 +6,7 @@ import { LeftPanel } from '@/components/left-panel';
 import { CanvasPanel } from '@/components/canvas-panel';
 import { AttributePanel } from '@/components/attribute-panel';
 import { PerformancePanel } from '@/components/performance-panel';
+import { PortfolioList } from '@/components/portfolio-list';
 import { useCanvasStore } from '@/lib/store';
 
 function useIsAuthed() {
@@ -17,7 +18,7 @@ function useIsAuthed() {
 }
 
 export default function HomePage() {
-  const { performanceExpanded, synthesized } = useCanvasStore();
+  const { performanceExpanded, synthesized, currentView } = useCanvasStore();
   const authed = useIsAuthed();
 
   if (!authed) return <LandingPage />;
@@ -27,13 +28,17 @@ export default function HomePage() {
       <div className="h-[calc(100vh-37px)] flex overflow-hidden">
         <IconSidebar />
         <LeftPanel />
-        <div className="flex-1 flex min-w-0 bg-background">
-          <div className="flex-1 flex flex-col min-w-0 min-h-0">
-            {!(performanceExpanded && synthesized) && <CanvasPanel />}
-            {synthesized && <PerformancePanel />}
+        {currentView === 'portfolio' ? (
+          <PortfolioList />
+        ) : (
+          <div className="flex-1 flex min-w-0 bg-background">
+            <div className="flex-1 flex flex-col min-w-0 min-h-0">
+              {!(performanceExpanded && synthesized) && <CanvasPanel />}
+              {synthesized && <PerformancePanel />}
+            </div>
+            <AttributePanel />
           </div>
-          <AttributePanel />
-        </div>
+        )}
       </div>
     </>
   );

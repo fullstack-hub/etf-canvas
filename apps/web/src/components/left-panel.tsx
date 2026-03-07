@@ -43,7 +43,7 @@ export function LeftPanel() {
   const [category, setCategory] = useState('국내 대표지수');
   const [sortBy, setSortBy] = useState<ETFSortBy>('aum');
   const [catOpen, setCatOpen] = useState(true);
-  const [hoveredCat, setHoveredCat] = useState<string | null>(null);
+  const [infoCat, setInfoCat] = useState<string | null>('국내 대표지수');
   const { selectedEtfCode, selectEtf, selected: canvasEtfs, addToCanvas, addLoadingCode, removeLoadingCode, updateEtfData } = useCanvasStore();
 
   const { data: countData } = useQuery({
@@ -161,13 +161,12 @@ export function LeftPanel() {
           {catOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
         </button>
         {catOpen && (
-          <div onMouseLeave={() => setHoveredCat(null)}>
+          <div>
             <div className="grid grid-cols-3 gap-1.5 mt-2">
               {categories.map((cat) => (
                 <button
                   key={cat.key}
-                  onClick={() => setCategory(category === cat.key ? '' : cat.key)}
-                  onMouseEnter={() => setHoveredCat(cat.key)}
+                  onClick={() => { setCategory(category === cat.key ? '' : cat.key); setInfoCat(cat.key); }}
                   className={`flex items-center justify-between gap-1 px-2.5 h-[48px] rounded-lg border text-[11px] leading-tight transition-colors ${
                     category === cat.key
                       ? `${CATEGORY_STYLES[cat.key]?.active || 'border-blue-500 bg-blue-50 text-blue-900'} font-bold`
@@ -180,7 +179,7 @@ export function LeftPanel() {
               ))}
             </div>
             {(() => {
-              const cat = categories.find((c) => c.key === hoveredCat);
+              const cat = categories.find((c) => c.key === infoCat);
               if (!cat) return null;
               const riskColor =
                 cat.tip.risk === '매우 높음' ? 'text-red-400' :

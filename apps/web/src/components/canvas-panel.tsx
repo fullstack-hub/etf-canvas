@@ -1,23 +1,32 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSession } from 'next-auth/react';
 import { api } from '@/lib/api';
 import { useCanvasStore } from '@/lib/store';
 import { Button } from '@/components/ui/button';
-import { ArrowLeftRight, Loader2, Check, Info, Trash2, Sparkles } from 'lucide-react';
+import { ArrowLeftRight, Loader2, Check, Info, Trash2, Sparkles, RotateCcw } from 'lucide-react';
 import { EtfDetailModal } from '@/components/etf-detail-modal';
 import { SimilarEtfModal } from '@/components/similar-etf-modal';
 import { LoginModal } from '@/components/login-modal';
+import { toast } from 'sonner';
 import type { ETFSummary } from '@etf-canvas/shared';
 
 export function CanvasPanel() {
-  const { selected, comparing, weights, loadingCodes, removeFromCanvas, toggleCompare, clearCanvas, addToCanvas, addLoadingCode, removeLoadingCode, updateEtfData, synthesize, synthesized } = useCanvasStore();
+  const { selected, comparing, weights, loadingCodes, removeFromCanvas, toggleCompare, clearCanvas, addToCanvas, addLoadingCode, removeLoadingCode, updateEtfData, synthesize, synthesized, pendingSynthesize, setPendingSynthesize } = useCanvasStore();
   const { data: session } = useSession();
+  const queryClient = useQueryClient();
   const [detailTarget, setDetailTarget] = useState<ETFSummary | null>(null);
   const [replaceTarget, setReplaceTarget] = useState<ETFSummary | null>(null);
   const [showLogin, setShowLogin] = useState(false);
+  const [showSave, setShowSave] = useState(false);
+
+  useEffect(() => {
+    if (session && pendingSynthesize) {
+      synthesize();
+    }
+  }, [session, pendingSynthesize, synthesize]);
   const [dragOver, setDragOver] = useState(false);
 
   const handleDrop = async (e: React.DragEvent) => {
@@ -48,19 +57,25 @@ export function CanvasPanel() {
       onDrop={handleDrop}
     >
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           <h2 className="text-xl font-bold tracking-tight">캔버스</h2>
           {selected.length > 0 && (
-            <span className="text-xs text-muted-foreground tabular-nums">{selected.length}/20</span>
+            <span className="inline-flex items-center h-5 px-2 rounded-full bg-muted text-[11px] font-medium text-muted-foreground tabular-nums">
+              {comparing.length}/{selected.length}
+            </span>
           )}
         </div>
         <div className="flex gap-2">
           {selected.length > 0 && (
             <>
-              <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={clearCanvas}>초기화</Button>
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={clearCanvas}>
+                <RotateCcw className="w-3.5 h-3.5" />
+                초기화
+              </Button>
               {comparing.length > 0 && !synthesized && (
                 <Button size="sm" onClick={() => {
                   if (!session) {
+                    setPendingSynthesize(true);
                     setShowLogin(true);
                   } else {
                     synthesize();
@@ -70,12 +85,16 @@ export function CanvasPanel() {
                   합성
                 </Button>
               )}
+              {synthesized && session && (
+                <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setShowSave(true)}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                  저장
+                </Button>
+              )}
             </>
           )}
         </div>
       </div>
-
-      {/* ETF Cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
         {selected.map((etf) => (
           <EtfCard
@@ -106,6 +125,77 @@ export function CanvasPanel() {
       {detailTarget && <EtfDetailModal etf={detailTarget} onClose={() => setDetailTarget(null)} />}
       {replaceTarget && <SimilarEtfModal etf={replaceTarget} onClose={() => setReplaceTarget(null)} />}
       {showLogin && <LoginModal onClose={() => setShowLogin(false)} />}
+      {showSave && (
+        <SaveModal
+          onClose={() => setShowSave(false)}
+          onSave={async (name) => {
+            const items = comparing.map((code) => {
+              const etf = selected.find((s) => s.code === code);
+              return { code, name: etf?.name || code, weight: weights[code] || 0, category: etf?.categories?.[0] || '' };
+            });
+            // 캐시에서 현재 시뮬레이션 결과 가져오기 (어떤 기간이든)
+            const simQueries = queryClient.getQueriesData<any>({ queryKey: ['etf-simulate'] });
+            const simData = simQueries.find(([key]) => {
+              const req = (key as any)[1];
+              return req?.codes?.join() === comparing.join();
+            })?.[1];
+            await api.savePortfolio(
+              (session as any).accessToken,
+              name,
+              items,
+              simData?.totalReturn ?? undefined,
+              simData?.maxDrawdown ?? undefined,
+            );
+            queryClient.invalidateQueries({ queryKey: ['portfolios'] });
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function SaveModal({ onClose, onSave }: { onClose: () => void; onSave: (name: string) => Promise<void> }) {
+  const [name, setName] = useState('');
+  const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
+
+  const handleSave = async () => {
+    if (savingRef.current) return;
+    savingRef.current = true;
+    setSaving(true);
+    try {
+      await onSave(name.trim() || '나의 포트폴리오');
+      toast.success('포트폴리오가 성공적으로 저장되었어요');
+      onClose();
+    } catch {
+      toast.error('저장에 실패했어요. 다시 시도해 주세요');
+      savingRef.current = false;
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
+      <div className="bg-background rounded-xl border shadow-lg p-5 w-[340px] space-y-4" onClick={(e) => e.stopPropagation()}>
+        <h3 className="font-bold text-base">포트폴리오 저장</h3>
+        <input
+          autoFocus
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="포트폴리오 이름을 입력하세요"
+          className="w-full h-10 rounded-lg border px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-[1px] focus-visible:ring-ring/30 transition-all"
+          maxLength={100}
+          onKeyDown={(e) => { if (e.key === 'Enter') handleSave(); }}
+        />
+        <div className="flex justify-end gap-2">
+          <Button size="sm" variant="outline" onClick={onClose}>취소</Button>
+          <Button size="sm" disabled={saving} onClick={handleSave}>
+            {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : '저장'}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

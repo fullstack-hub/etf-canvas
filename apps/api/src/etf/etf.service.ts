@@ -249,7 +249,7 @@ export class EtfService {
   }
 
   async simulate(req: SimulateRequest): Promise<SimulateResult> {
-    const cacheKey = `etf:simulate:v3:${JSON.stringify(req)}`;
+    const cacheKey = `etf:simulate:v4:${JSON.stringify(req)}`;
 
     const cached = await this.redis.getJson<SimulateResult>(cacheKey);
     if (cached) return cached;
@@ -301,8 +301,12 @@ export class EtfService {
       if (dd > maxDrawdown) maxDrawdown = dd;
     }
 
-    const actualDays = commonDates.length > 1 ? commonDates.length : days;
-    const annualizedReturn = (Math.pow(1 + totalReturn / 100, 365 / actualDays) - 1) * 100;
+    const calendarDays = commonDates.length > 1
+      ? (new Date(commonDates[commonDates.length - 1]).getTime() - new Date(commonDates[0]).getTime()) / (1000 * 60 * 60 * 24)
+      : days;
+    const annualizedReturn = calendarDays > 0
+      ? (Math.pow(1 + totalReturn / 100, 365 / calendarDays) - 1) * 100
+      : totalReturn;
 
     const result: SimulateResult = {
       totalReturn: Math.round(totalReturn * 100) / 100,

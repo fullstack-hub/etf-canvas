@@ -1,7 +1,13 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+import { toast } from 'sonner';
 import type { ETFSummary } from '@etf-canvas/shared';
 
 interface CanvasStore {
+  // View
+  currentView: 'canvas' | 'portfolio';
+  setCurrentView: (view: 'canvas' | 'portfolio') => void;
+
   // ETF selection (left panel)
   selectedEtfCode: string | null;
   selectEtf: (code: string) => void;
@@ -18,6 +24,10 @@ interface CanvasStore {
   clearCanvas: () => void;
   synthesized: boolean;
   synthesize: () => void;
+  pendingSynthesize: boolean;
+  setPendingSynthesize: (v: boolean) => void;
+  portfolioName: string;
+  setPortfolioName: (name: string) => void;
   performanceExpanded: boolean;
   togglePerformanceExpanded: () => void;
   addLoadingCode: (code: string) => void;
@@ -26,7 +36,10 @@ interface CanvasStore {
   replaceOnCanvas: (oldCode: string, newEtf: ETFSummary) => void;
 }
 
-export const useCanvasStore = create<CanvasStore>((set, get) => ({
+export const useCanvasStore = create<CanvasStore>()(persist((set, get) => ({
+  currentView: 'canvas',
+  setCurrentView: (view) => set({ currentView: view }),
+
   selectedEtfCode: null,
   selectEtf: (code) => set({ selectedEtfCode: code }),
 
@@ -36,7 +49,14 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
   loadingCodes: [],
   addToCanvas: (etf) => {
     const { selected, comparing, weights } = get();
-    if (selected.length >= 20 || selected.some((s) => s.code === etf.code)) return;
+    if (selected.some((s) => s.code === etf.code)) {
+      get().removeFromCanvas(etf.code);
+      return;
+    }
+    if (selected.length >= 20) {
+      toast('최대 20개까지 추가할 수 있어요', { icon: false });
+      return;
+    }
 
     const newSelected = [...selected, etf];
 
@@ -63,7 +83,7 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
         });
       }
 
-      return { selected: newSelected, comparing: newComparing, weights: newWeights };
+      return { selected: newSelected, comparing: newComparing, weights: newWeights, synthesized: false };
     }),
   toggleCompare: (code) => {
     const { comparing } = get();
@@ -76,17 +96,15 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
           newWeights[c] = idx === newComparing.length - 1 ? 100 - equal * (newComparing.length - 1) : equal;
         });
       }
-      set({ comparing: newComparing, weights: newWeights });
+      set({ comparing: newComparing, weights: newWeights, synthesized: false });
     } else {
-      // Default weight logic. If 1st element, 100%. If 2nd, 50% each. If 3rd, 33/33/34.
-      // For simplicity, just set to 0 initially and let user adjust, or split evenly.
       const newComparing = [...comparing, code];
       const newWeights: Record<string, number> = {};
       const equalWeight = Math.floor(100 / newComparing.length);
       newComparing.forEach((c, idx) => {
         newWeights[c] = idx === newComparing.length - 1 ? 100 - equalWeight * (newComparing.length - 1) : equalWeight;
       });
-      set({ comparing: newComparing, weights: newWeights });
+      set({ comparing: newComparing, weights: newWeights, synthesized: false });
     }
   },
   setWeight: (code, weight) => {
@@ -94,9 +112,13 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
       weights: { ...state.weights, [code]: weight },
     }));
   },
-  clearCanvas: () => set({ selected: [], comparing: [], weights: {}, loadingCodes: [], synthesized: false, performanceExpanded: false }),
+  clearCanvas: () => set({ selected: [], comparing: [], weights: {}, loadingCodes: [], synthesized: false, performanceExpanded: false, portfolioName: '' }),
   synthesized: false,
-  synthesize: () => set({ synthesized: true }),
+  synthesize: () => set({ synthesized: true, pendingSynthesize: false }),
+  pendingSynthesize: false,
+  setPendingSynthesize: (v) => set({ pendingSynthesize: v }),
+  portfolioName: '',
+  setPortfolioName: (name) => set({ portfolioName: name }),
   performanceExpanded: false,
   togglePerformanceExpanded: () => set((state) => ({ performanceExpanded: !state.performanceExpanded })),
   addLoadingCode: (code) =>
@@ -118,4 +140,4 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
         ),
       };
     }),
-}));
+}), { name: 'etf-canvas-store' }));

@@ -4,6 +4,7 @@ import "./globals.css";
 import { Providers } from "@/lib/providers";
 import { VersionCheck } from "@/components/version-check";
 import { Footer } from "@/components/footer";
+import { Toaster } from "sonner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,6 +35,7 @@ export default function RootLayout({
         <Providers>
           {children}
           <Footer />
+          <Toaster position="top-center" theme="dark" toastOptions={{ style: { width: 'fit-content', minWidth: 'unset' } }} />
         </Providers>
       </body>
     </html>

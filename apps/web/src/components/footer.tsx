@@ -6,7 +6,7 @@ export function Footer() {
         <div className="flex items-center gap-4">
           <a href="/terms" className="hover:text-foreground transition-colors">이용약관</a>
           <a href="/privacy" className="hover:text-foreground transition-colors">개인정보처리방침</a>
-          <a href="mailto:master@fullstackhub.net" className="hover:text-foreground transition-colors">문의</a>
+          <a href="mailto:master@fullstackhub.net" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">문의</a>
         </div>
       </div>
     </footer>
