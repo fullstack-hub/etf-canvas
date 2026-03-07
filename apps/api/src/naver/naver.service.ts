@@ -141,7 +141,7 @@ export class NaverService {
     });
     if (missingListedDate.length > 0) {
       this.logger.log(`상장일 미등록 ${missingListedDate.length}건 크롤링 시작...`);
-      const codes = missingListedDate.map((e) => e.code);
+      const codes = missingListedDate.map((e: { code: string }) => e.code);
       const LISTED_BATCH = 5;
       for (let i = 0; i < codes.length; i += LISTED_BATCH) {
         const batch = codes.slice(i, i + LISTED_BATCH);
