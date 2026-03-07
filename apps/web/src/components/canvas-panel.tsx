@@ -6,7 +6,7 @@ import { useSession } from 'next-auth/react';
 import { api } from '@/lib/api';
 import { useCanvasStore } from '@/lib/store';
 import { Button } from '@/components/ui/button';
-import { ArrowLeftRight, Loader2, Check, Info, Trash2, Sparkles, RotateCcw } from 'lucide-react';
+import { ArrowLeftRight, Loader2, Check, Info, Trash2, Sparkles, RotateCcw, EllipsisVertical } from 'lucide-react';
 import { EtfDetailModal } from '@/components/etf-detail-modal';
 import { SimilarEtfModal } from '@/components/similar-etf-modal';
 import { LoginModal } from '@/components/login-modal';
@@ -234,7 +234,6 @@ function EtfCard({
 
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
-    e.stopPropagation();
     const rect = cardRef.current?.getBoundingClientRect();
     if (!rect) return;
     setCtxMenu({ x: e.clientX - rect.left, y: e.clientY - rect.top });
@@ -243,10 +242,13 @@ function EtfCard({
   useEffect(() => {
     if (!ctxMenu) return;
     const close = () => setCtxMenu(null);
-    window.addEventListener('click', close);
-    window.addEventListener('contextmenu', close);
-    window.addEventListener('scroll', close, true);
+    const timer = setTimeout(() => {
+      window.addEventListener('click', close);
+      window.addEventListener('contextmenu', close);
+      window.addEventListener('scroll', close, true);
+    }, 0);
     return () => {
+      clearTimeout(timer);
       window.removeEventListener('click', close);
       window.removeEventListener('contextmenu', close);
       window.removeEventListener('scroll', close, true);
@@ -257,6 +259,7 @@ function EtfCard({
     <div
       ref={cardRef}
       className={`group relative rounded-lg overflow-visible select-none cursor-pointer transition-all duration-200
+        ${ctxMenu ? 'z-50' : ''}
         ${isComparing
           ? 'shadow-md ring-1 ring-foreground/70'
           : 'shadow-sm hover:shadow-md border border-border/50 hover:border-border'
@@ -300,9 +303,24 @@ function EtfCard({
           <h3 className="font-bold text-sm leading-snug line-clamp-2 min-h-[2.6em]" title={etf.name}>
             {etf.name}
           </h3>
-          <span className="text-[10px] text-muted-foreground/60 truncate" title={benchmark || ''}>
-            {benchmark || '\u00A0'}
-          </span>
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-muted-foreground/60 truncate" title={benchmark || ''}>
+              {benchmark || '\u00A0'}
+            </span>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                // 다른 열린 메뉴 닫기 위해 전역 click dispatch
+                window.dispatchEvent(new MouseEvent('click'));
+                const rect = cardRef.current?.getBoundingClientRect();
+                if (!rect) return;
+                setTimeout(() => setCtxMenu({ x: e.clientX - rect.left, y: e.clientY - rect.top }), 0);
+              }}
+              className="opacity-0 group-hover:opacity-100 p-0.5 -mr-1 rounded hover:bg-muted transition-all"
+            >
+              <EllipsisVertical className="w-3.5 h-3.5 text-muted-foreground" />
+            </button>
+          </div>
         </div>
       </div>
 
