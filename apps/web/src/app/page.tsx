@@ -9,10 +9,9 @@ import { PerformancePanel } from '@/components/performance-panel';
 import { useCanvasStore } from '@/lib/store';
 
 function useIsAuthed() {
-  const [authed, setAuthed] = useState<boolean | null>(null);
+  const [authed, setAuthed] = useState(false);
   useEffect(() => {
-    const hasGate = document.cookie.includes('etf-canvas-auth=');
-    setAuthed(hasGate);
+    setAuthed(document.cookie.includes('etf-canvas-auth='));
   }, []);
   return authed;
 }
@@ -20,8 +19,6 @@ function useIsAuthed() {
 export default function HomePage() {
   const { performanceExpanded, synthesized } = useCanvasStore();
   const authed = useIsAuthed();
-
-  if (authed === null) return null;
 
   if (!authed) return <LandingPage />;
 
