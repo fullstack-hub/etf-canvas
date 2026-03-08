@@ -1,7 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
-import { KiwoomService } from '../kiwoom/kiwoom.service';
 import { NaverService } from '../naver/naver.service';
 import type {
   ETFSummary,
@@ -21,7 +20,6 @@ export class EtfService {
   constructor(
     private prisma: PrismaService,
     private redis: RedisService,
-    private kiwoom: KiwoomService,
     private naver: NaverService,
   ) { }
 
@@ -119,14 +117,16 @@ export class EtfService {
     });
 
     if (!etf) {
-      await this.fetchAndStoreEtf(code);
-      etf = await this.prisma.etf.findUniqueOrThrow({
+      // 네이버에서 시딩 후 재조회
+      await this.naver.seedAllEtfs();
+      etf = await this.prisma.etf.findUnique({
         where: { code },
         include: {
           holdings: { orderBy: { weight: 'desc' }, take: 20 },
           returns: true,
         },
       });
+      if (!etf) throw new Error(`ETF ${code} not found`);
     }
 
     // 수익률은 네이버 일별시세 기반 simulate API로 계산하므로 키움 호출 생략
@@ -392,32 +392,7 @@ export class EtfService {
     return count;
   }
 
-  // --- Private: On-demand ---
-
-  private async fetchAndStoreEtf(code: string): Promise<void> {
-    this.logger.log(`ETF ${code} 기본정보 조회...`);
-    try {
-      const response = await this.kiwoom.etf.getETFStockInfo({ stk_cd: code });
-      await this.prisma.etf.upsert({
-        where: { code },
-        update: {
-          name: response.stk_nm,
-          benchmark: response.bnchmk_idx_nm || null,
-          updatedAt: new Date(),
-        },
-        create: {
-          code,
-          name: response.stk_nm,
-          categories: [],
-          benchmark: response.bnchmk_idx_nm || null,
-        },
-      });
-    } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : String(e);
-      this.logger.warn(`ETF ${code} 기본정보 조회 실패: ${message}`);
-      throw e;
-    }
-  }
+  // --- Private ---
 
   private async fetchAndStoreDailyPricesFromNaver(code: string, days: number): Promise<void> {
     this.logger.log(`ETF ${code} 네이버 일별시세 ${days}일치 조회...`);
@@ -446,80 +421,6 @@ export class EtfService {
       const message = e instanceof Error ? e.message : String(e);
       this.logger.warn(`ETF ${code} 네이버 일별시세 조회 실패: ${message}`);
     }
-  }
-
-  private async fetchAndStoreDailyPrices(code: string): Promise<void> {
-    this.logger.log(`ETF ${code} 일별 시세 조회...`);
-    try {
-      const response = await this.kiwoom.etf.getETFDailyTrend({ stk_cd: code });
-      const items = response.etf_dy_stst || [];
-
-      for (const item of items) {
-        const date = this.parseDate(item.dt);
-        if (!date) continue;
-
-        await this.prisma.etfDailyPrice.upsert({
-          where: { etfCode_date: { etfCode: code, date } },
-          update: {
-            close: Number(item.cls_prc),
-            open: Number(item.opn_prc),
-            high: Number(item.hgh_prc),
-            low: Number(item.low_prc),
-            volume: BigInt(item.trde_qty || '0'),
-          },
-          create: {
-            etfCode: code,
-            date,
-            close: Number(item.cls_prc),
-            open: Number(item.opn_prc),
-            high: Number(item.hgh_prc),
-            low: Number(item.low_prc),
-            volume: BigInt(item.trde_qty || '0'),
-          },
-        });
-      }
-      this.logger.log(`ETF ${code} 일별 시세 ${items.length}건 저장`);
-    } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : String(e);
-      this.logger.warn(`ETF ${code} 일별 시세 조회 실패: ${message}`);
-    }
-  }
-
-  private async fetchAndStoreReturns(code: string): Promise<void> {
-    this.logger.log(`ETF ${code} 수익률 조회...`);
-    try {
-      const response = await this.kiwoom.etf.getETFReturn({ stk_cd: code });
-      const items = response.etf_rtn || [];
-      if (items.length === 0) return;
-
-      const item = items[0];
-      const periods = [
-        { period: '1w', value: item.rt_1w },
-        { period: '1m', value: item.rt_1m },
-        { period: '3m', value: item.rt_3m },
-        { period: '6m', value: item.rt_6m },
-        { period: '1y', value: item.rt_1y },
-        { period: '3y', value: item.rt_3y },
-        { period: 'ytd', value: item.rt_ytd },
-      ];
-
-      for (const p of periods) {
-        if (!p.value) continue;
-        await this.prisma.etfReturn.upsert({
-          where: { etfCode_period: { etfCode: code, period: p.period } },
-          update: { returnRate: Number(p.value), updatedAt: new Date() },
-          create: { etfCode: code, period: p.period, returnRate: Number(p.value) },
-        });
-      }
-    } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : String(e);
-      this.logger.warn(`ETF ${code} 수익률 조회 실패: ${message}`);
-    }
-  }
-
-  private parseDate(dt: string): Date | null {
-    if (!dt || dt.length < 8) return null;
-    return new Date(`${dt.substring(0, 4)}-${dt.substring(4, 6)}-${dt.substring(6, 8)}`);
   }
 
   private periodToDays(period: string): number {

@@ -172,8 +172,8 @@ export class NaverService {
     const primary = ETF_TAB_CODE_TO_CATEGORY[item.etfTabCode];
     if (primary) cats.push(primary);
 
-    // 종목명에 "액티브" 포함 시 액티브 카테고리 추가
-    if (item.itemname.includes('액티브')) {
+    // 종목명에 "액티브" 포함 시 액티브 카테고리 추가 (단, 채권이면 채권만 유지)
+    if (item.itemname.includes('액티브') && primary !== '채권') {
       cats.push('액티브');
     }
 

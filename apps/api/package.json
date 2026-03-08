@@ -10,7 +10,6 @@
   },
   "dependencies": {
     "@etf-canvas/shared": "workspace:*",
-    "@fullstack-hub/kiwoom-restapi": "^1.1.0",
     "@nestjs/common": "^11.1.0",
     "@nestjs/core": "^11.1.0",
     "@nestjs/platform-fastify": "^11.1.0",
