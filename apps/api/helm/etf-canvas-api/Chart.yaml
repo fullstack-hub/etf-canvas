@@ -3,4 +3,4 @@ name: etf-canvas-api
 description: ETF Canvas API Server
 type: application
 version: 0.1.0
-appVersion: "0.5.12"
+appVersion: "0.5.13"

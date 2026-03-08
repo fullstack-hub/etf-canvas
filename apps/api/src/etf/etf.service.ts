@@ -40,12 +40,12 @@ export class EtfService {
 
     const where: Record<string, unknown> = {};
     if (query) {
-      // 영문/숫자 ↔ 한글 경계 + 공백에서 토큰 분리
-      // e.g. "TIGER코리아" → ["TIGER", "코리아"], "KODEX 미국S&P500" → ["KODEX", "미국", "S&P500"]
+      // 영문/숫자 ↔ 한글 경계 + 영문↔숫자 경계 + 공백에서 토큰 분리
+      // e.g. "TIGER코리아" → ["TIGER", "코리아"], "kodex200" → ["kodex", "200"]
       const tokens = query
         .split(/\s+/)
         .flatMap((part) =>
-          part.split(/(?<=[a-zA-Z0-9&])(?=[가-힣])|(?<=[가-힣])(?=[a-zA-Z0-9&])/)
+          part.split(/(?<=[a-zA-Z0-9&])(?=[가-힣])|(?<=[가-힣])(?=[a-zA-Z0-9&])|(?<=[a-zA-Z])(?=[0-9])|(?<=[0-9])(?=[a-zA-Z])/)
         )
         .filter(Boolean);
 
@@ -373,7 +373,7 @@ export class EtfService {
       const tokens = query
         .split(/\s+/)
         .flatMap((part) =>
-          part.split(/(?<=[a-zA-Z0-9&])(?=[가-힣])|(?<=[가-힣])(?=[a-zA-Z0-9&])/)
+          part.split(/(?<=[a-zA-Z0-9&])(?=[가-힣])|(?<=[가-힣])(?=[a-zA-Z0-9&])|(?<=[a-zA-Z])(?=[0-9])|(?<=[0-9])(?=[a-zA-Z])/)
         )
         .filter(Boolean);
       if (tokens.length > 1) {
