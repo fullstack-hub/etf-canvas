@@ -10,6 +10,7 @@ export interface ETFSummary {
   nav: number | null;
   threeMonthEarnRate: number | null;
   oneYearEarnRate: number | null;
+  dividendYield: number | null;
   listedDate: string | null;
 }
 

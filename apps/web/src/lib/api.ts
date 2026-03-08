@@ -1,4 +1,4 @@
-import type { ETFSummary, ETFDetail, ETFDailyPrice, SimulateRequest, SimulateResult, ETFSortBy } from '@etf-canvas/shared';
+import type { ETFSummary, ETFDetail, ETFDailyPrice, ETFDividend, SimulateRequest, SimulateResult, ETFSortBy } from '@etf-canvas/shared';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
@@ -37,6 +37,8 @@ export const api = {
     fetcher<ETFDetail>(`/etf/${code}`),
   getDailyPrices: (code: string, period = '1y') =>
     fetcher<ETFDailyPrice[]>(`/etf/${code}/prices?period=${period}`),
+  getDividends: (code: string) =>
+    fetcher<ETFDividend[]>(`/etf/${code}/dividends`),
   compare: (codes: string[]) =>
     fetcher<ETFDetail[]>('/etf/compare', {
       method: 'POST',

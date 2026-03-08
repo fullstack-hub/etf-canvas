@@ -23,14 +23,78 @@ const PIE_COLORS: Record<string, string> = {
   '레버리지/인버스': '#ef4444',
 };
 
-// Mock 분배금 데이터 (추후 실제 API 연동)
-const MOCK_DIVIDENDS = [
-  { quarter: '24.Q1', total: 1.0, perUnit: '1.0%' },
-  { quarter: '24.Q2', total: 1.0, perUnit: '1.0%' },
-  { quarter: '24.Q3', total: 2.0, perUnit: '2.0%' },
-  { quarter: '24.Q4', total: 3.0, perUnit: '3.0%' },
-  { quarter: '25.Q1', total: 4.0, perUnit: '4.0%' },
-];
+/** 각 종목 분배금을 비중 가중 후 월별/분기별 합산 */
+function usePortfolioDividends(
+  codes: string[],
+  weights: Record<string, number>,
+  selected: { code: string; dividendYield?: number | null }[],
+) {
+  const queries = useQuery({
+    queryKey: ['etf-dividends', codes.sort().join(',')],
+    queryFn: async () => {
+      const results = await Promise.all(codes.map(code => api.getDividends(code)));
+      return codes.map((code, i) => ({ code, dividends: results[i] }));
+    },
+    enabled: codes.length > 0,
+    staleTime: 86400000,
+  });
+
+  // 월별 합산
+  const monthlyData = (() => {
+    if (!queries.data) return [];
+    const monthMap: Record<string, number> = {};
+    for (const { code, dividends } of queries.data) {
+      const w = (weights[code] || 0) / 100;
+      for (const d of dividends) {
+        const month = d.date.slice(0, 7);
+        monthMap[month] = (monthMap[month] || 0) + d.amount * w;
+      }
+    }
+    return Object.entries(monthMap)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([month, amount]) => ({
+        month: month.slice(2).replace('-', '.'),
+        amount: Math.round(amount * 100) / 100,
+      }));
+  })();
+
+  // 분기별 합산
+  const quarterlyData = (() => {
+    if (!queries.data) return [];
+    const qMap: Record<string, number> = {};
+    for (const { code, dividends } of queries.data) {
+      const w = (weights[code] || 0) / 100;
+      for (const d of dividends) {
+        const y = d.date.slice(2, 4);
+        const m = Number(d.date.slice(5, 7));
+        const q = Math.ceil(m / 3);
+        const key = `${y}.Q${q}`;
+        qMap[key] = (qMap[key] || 0) + d.amount * w;
+      }
+    }
+    return Object.entries(qMap)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([quarter, amount]) => ({
+        month: quarter,
+        amount: Math.round(amount * 100) / 100,
+      }));
+  })();
+
+  // 연간분배율: dividendYieldTtm 가중평균
+  const annualYield = (() => {
+    let total = 0;
+    let hasAny = false;
+    for (const code of codes) {
+      const etf = selected.find(s => s.code === code);
+      const dy = etf?.dividendYield ?? 0;
+      if (dy > 0) hasAny = true;
+      total += dy * ((weights[code] || 0) / 100);
+    }
+    return hasAny ? Math.round(total * 100) / 100 : null;
+  })();
+
+  return { monthlyData, quarterlyData, annualYield, isLoading: queries.isLoading };
+}
 
 export function PerformancePanel() {
   const { comparing, selected, weights } = useCanvasStore();
@@ -134,6 +198,9 @@ export function PerformancePanel() {
     : !isValid
       ? '비중의 합을 100%로 맞춰주세요.'
       : null;
+
+  const { monthlyData, quarterlyData, annualYield } = usePortfolioDividends(comparing, weights, selected);
+  const dividendData = expanded ? monthlyData : quarterlyData;
 
   const showLoading = isLoading || (!simData && isFetching);
 
@@ -256,34 +323,9 @@ export function PerformancePanel() {
                 <div className="rounded-xl border border-border/40 bg-muted/5 p-3 flex flex-col min-h-0">
                   <div className="flex items-center justify-between mb-2 shrink-0">
                     <h3 className="text-[14px] font-extrabold text-foreground/80">분배금 내역 추이</h3>
-                    <span className="text-[10px] text-muted-foreground/50">(연간 분배율 4.00% 기준)</span>
+                    {annualYield != null && <span className="text-[10px] text-muted-foreground/50">(연간 {annualYield.toFixed(2)}%)</span>}
                   </div>
-                  <div className="flex-1 min-h-0">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={MOCK_DIVIDENDS} margin={{ top: 5, right: 5, left: -15, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="text-border/30" strokeOpacity={0.3} />
-                        <XAxis dataKey="quarter" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: 'currentColor', opacity: 0.4 }} dy={8} />
-                        <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: 'currentColor', opacity: 0.4 }} tickFormatter={(v) => `${v}%`} />
-                        <Tooltip
-                          content={({ active, payload }) => {
-                            if (!active || !payload?.length) return null;
-                            const d = payload[0].payload;
-                            return (
-                              <div className="rounded-lg border bg-popover/95 backdrop-blur-sm px-3 py-2 shadow-xl">
-                                <p className="text-[11px] text-muted-foreground mb-0.5">{d.quarter}</p>
-                                <p className="text-sm font-bold text-emerald-500">{d.perUnit}</p>
-                              </div>
-                            );
-                          }}
-                        />
-                        <Bar dataKey="total" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={32}>
-                          {MOCK_DIVIDENDS.map((_, i) => (
-                            <Cell key={i} fill={i === MOCK_DIVIDENDS.length - 1 ? '#10b981' : '#3b82f6'} />
-                          ))}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
+                  <DividendChart data={dividendData} />
                 </div>
               </div>
             </>
@@ -351,34 +393,9 @@ export function PerformancePanel() {
                 <div className="rounded-xl border border-border/40 bg-muted/5 p-3 flex flex-col min-h-0">
                   <div className="flex items-center justify-between mb-2 shrink-0">
                     <h3 className="text-[14px] font-extrabold text-foreground/80">분배금 내역 추이</h3>
-                    <span className="text-[10px] text-muted-foreground/50">(연간 분배율 4.00% 기준)</span>
+                    {annualYield != null && <span className="text-[10px] text-muted-foreground/50">(연간 {annualYield.toFixed(2)}%)</span>}
                   </div>
-                  <div className="flex-1 min-h-0">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={MOCK_DIVIDENDS} margin={{ top: 5, right: 5, left: -15, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="text-border/30" strokeOpacity={0.3} />
-                        <XAxis dataKey="quarter" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: 'currentColor', opacity: 0.4 }} dy={8} />
-                        <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: 'currentColor', opacity: 0.4 }} tickFormatter={(v) => `${v}%`} />
-                        <Tooltip
-                          content={({ active, payload }) => {
-                            if (!active || !payload?.length) return null;
-                            const d = payload[0].payload;
-                            return (
-                              <div className="rounded-lg border bg-popover/95 backdrop-blur-sm px-3 py-2 shadow-xl">
-                                <p className="text-[11px] text-muted-foreground mb-0.5">{d.quarter}</p>
-                                <p className="text-sm font-bold text-emerald-500">{d.perUnit}</p>
-                              </div>
-                            );
-                          }}
-                        />
-                        <Bar dataKey="total" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={32}>
-                          {MOCK_DIVIDENDS.map((_, i) => (
-                            <Cell key={i} fill={i === MOCK_DIVIDENDS.length - 1 ? '#10b981' : '#3b82f6'} />
-                          ))}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
+                  <DividendChart data={dividendData} />
                 </div>
               </div>
             </>
@@ -498,6 +515,44 @@ function CategoryPie({ comparingCodes, selected, weights }: {
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+function DividendChart({ data }: { data: { month: string; amount: number }[] }) {
+  if (data.length === 0) {
+    return (
+      <div className="flex-1 min-h-0 flex items-center justify-center text-muted-foreground/50 text-xs">
+        분배금 내역 없음
+      </div>
+    );
+  }
+  return (
+    <div className="flex-1 min-h-0">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={data} margin={{ top: 5, right: 5, left: -15, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="text-border/30" strokeOpacity={0.3} />
+          <XAxis dataKey="month" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: 'currentColor', opacity: 0.4 }} dy={8} minTickGap={20} />
+          <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: 'currentColor', opacity: 0.4 }} tickFormatter={(v) => `${v}원`} />
+          <Tooltip
+            content={({ active, payload }) => {
+              if (!active || !payload?.length) return null;
+              const d = payload[0].payload;
+              return (
+                <div className="rounded-lg border bg-popover/95 backdrop-blur-sm px-3 py-2 shadow-xl">
+                  <p className="text-[11px] text-muted-foreground mb-0.5">{d.month}</p>
+                  <p className="text-sm font-bold text-emerald-500">{d.amount.toLocaleString()}원</p>
+                </div>
+              );
+            }}
+          />
+          <Bar dataKey="amount" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={20}>
+            {data.map((_: { month: string; amount: number }, i: number) => (
+              <Cell key={i} fill={i === data.length - 1 ? '#10b981' : '#3b82f6'} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
     </div>
   );
 }

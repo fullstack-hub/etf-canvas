@@ -98,6 +98,7 @@ export class EtfService {
       nav: e.nav ? Number(e.nav) : null,
       threeMonthEarnRate: e.threeMonthEarnRate ? Number(e.threeMonthEarnRate) : null,
       oneYearEarnRate: e.oneYearEarnRate ? Number(e.oneYearEarnRate) : null,
+      dividendYield: e.dividendYield ? Number(e.dividendYield) : null,
       listedDate: e.listedDate?.toISOString().split('T')[0] || null,
     }));
 
@@ -182,6 +183,7 @@ export class EtfService {
       nav: etf.nav ? Number(etf.nav) : null,
       threeMonthEarnRate: (etf as any).threeMonthEarnRate ? Number((etf as any).threeMonthEarnRate) : null,
       oneYearEarnRate: (etf as any).oneYearEarnRate ? Number((etf as any).oneYearEarnRate) : null,
+      dividendYield: (etf as any).dividendYield ? Number((etf as any).dividendYield) : null,
       holdings,
       returns: etf.returns.map((r: any) => ({
         period: r.period,
