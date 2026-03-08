@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { PriceChart } from '@/components/price-chart';
@@ -23,6 +23,12 @@ interface Props {
 
 export function EtfDetailModal({ etf, onClose }: Props) {
   const [period, setPeriod] = useState<string>('1y');
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [onClose]);
 
   const { data: detail } = useQuery({
     queryKey: ['etf-detail', etf.code],
@@ -50,7 +56,8 @@ export function EtfDetailModal({ etf, onClose }: Props) {
 
       {/* Modal */}
       <div
-        className="relative bg-background rounded-xl shadow-2xl w-[560px] max-h-[85vh] overflow-y-auto border"
+        className="relative bg-background rounded-xl shadow-2xl w-[560px] max-h-[85vh] overflow-y-auto overscroll-none border [&::-webkit-scrollbar]:hidden"
+        style={{ scrollbarWidth: 'none' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close */}
