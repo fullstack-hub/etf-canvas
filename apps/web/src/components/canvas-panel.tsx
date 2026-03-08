@@ -8,7 +8,7 @@ import { useCanvasStore } from '@/lib/store';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
-import { ArrowLeftRight, Loader2, Check, Info, Trash2, Sparkles, RotateCcw, EllipsisVertical, AlertTriangle, Search, X, GripVertical } from 'lucide-react';
+import { ArrowLeftRight, Loader2, Check, Info, Trash2, Sparkles, RotateCcw, EllipsisVertical, AlertTriangle, CheckCircle2, Search, X, GripVertical } from 'lucide-react';
 import { EtfDetailModal } from '@/components/etf-detail-modal';
 import { SimilarEtfModal } from '@/components/similar-etf-modal';
 import { LoginModal } from '@/components/login-modal';
@@ -371,7 +371,7 @@ function EtfCard({
       {/* Weight controls (only when comparing) */}
       {isComparing && (
         <div
-          className="bg-muted/30 border-t px-2.5 py-2 rounded-b-lg"
+          className="bg-background border-t px-2.5 py-2 rounded-b-lg"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-center gap-2 mb-1.5">
@@ -524,9 +524,12 @@ export function FloatingFeedback({ loading, text, actions, onAction }: {
           <>
             {/* Scrollable feedback text */}
             <div className="max-h-[200px] overflow-y-auto px-3 pt-2">
-              <div className="rounded-lg border bg-amber-50 dark:bg-amber-950/20 p-2.5">
+              <div className={`rounded-lg border p-2.5 ${actions.length > 0 ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800/30' : 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/30'}`}>
                 <div className="flex gap-2 items-start">
-                  <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+                  {actions.length > 0
+                    ? <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+                    : <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                  }
                   <p className="text-xs text-foreground/80 leading-relaxed whitespace-pre-line">{text}</p>
                 </div>
               </div>

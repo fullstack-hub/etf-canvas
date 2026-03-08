@@ -6,7 +6,7 @@ import { api } from '@/lib/api';
 import { PriceChart } from '@/components/price-chart';
 import {
   ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis,
-  CartesianGrid, Tooltip, Cell, Legend,
+  CartesianGrid, Tooltip,
 } from 'recharts';
 import { X, TrendingUp, Globe, Building2, Percent, Target, DollarSign } from 'lucide-react';
 import type { ETFSummary } from '@etf-canvas/shared';
@@ -35,7 +35,7 @@ export function EtfDetailModal({ etf, onClose }: Props) {
   });
 
   const { data: dividends } = useQuery({
-    queryKey: ['etf-dividends', etf.code],
+    queryKey: ['etf-detail-dividends', etf.code],
     queryFn: () => api.getDividends(etf.code),
     staleTime: 86400000,
   });
@@ -193,7 +193,7 @@ function DividendDetailChart({ dividends, dividendYield }: {
   dividendYield: number | null | undefined;
 }) {
   // 월별 그룹핑 + 누적 분배율
-  const sorted = [...dividends].sort((a, b) => a.date.localeCompare(b.date));
+  const sorted = [...dividends].filter(d => d.date).sort((a, b) => a.date.localeCompare(b.date));
   let cumRate = 0;
   const monthMap: Record<string, { amount: number; rate: number; cumRate: number }> = {};
   for (const d of sorted) {
@@ -224,47 +224,45 @@ function DividendDetailChart({ dividends, dividendYield }: {
     <>
       <div className="flex items-center justify-between mb-2">
         <h3 className="text-sm font-bold">분배금 차트</h3>
-        {dividendYield != null && dividendYield > 0 && (
-          <span className="text-[11px] text-muted-foreground">연간 분배율 {dividendYield.toFixed(2)}%</span>
-        )}
+        <div className="flex flex-col items-end gap-0.5 text-[9px] text-muted-foreground">
+          <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-blue-500 inline-block" /> 분배율 (평균 {avgRate}%)</span>
+          <span className="flex items-center gap-1"><span className="w-3 h-[1.5px] bg-amber-500 inline-block rounded" /> 누적{dividendYield != null && dividendYield > 0 ? ` (연 ${dividendYield.toFixed(1)}%)` : ''}</span>
+        </div>
       </div>
       <div className="h-48 border rounded-lg p-2 bg-muted/10">
         <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={recent} margin={{ top: 5, right: 5, left: -15, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="text-border/30" strokeOpacity={0.3} />
-            <XAxis dataKey="month" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: 'currentColor', opacity: 0.4 }} dy={8} />
-            <YAxis yAxisId="left" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: 'currentColor', opacity: 0.4 }} tickFormatter={(v) => `${v}%`} />
-            <YAxis yAxisId="right" orientation="right" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: 'currentColor', opacity: 0.4 }} tickFormatter={(v) => `${v}%`} />
+          <ComposedChart data={recent} margin={{ top: 2, right: 0, left: -10, bottom: 0 }}>
+            <defs>
+              <linearGradient id="detailDivBarGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#3b82f6" stopOpacity={1} />
+                <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.85} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="text-border/20" strokeOpacity={0.2} />
+            <XAxis dataKey="month" tickLine={false} axisLine={false} tick={{ fontSize: 9, fill: 'currentColor', opacity: 0.35 }} dy={4} />
+            <YAxis yAxisId="left" tickLine={false} axisLine={false} tick={{ fontSize: 9, fill: 'currentColor', opacity: 0.4 }} tickFormatter={(v) => `${v}%`} width={40} />
+            <YAxis yAxisId="right" orientation="right" tickLine={false} axisLine={false} tick={false} width={0} />
             <Tooltip
+              cursor={{ fill: 'currentColor', opacity: 0.04 }}
               content={({ active, payload }) => {
                 if (!active || !payload?.length) return null;
                 const d = payload[0]?.payload;
                 return (
-                  <div className="rounded-lg border bg-popover/95 backdrop-blur-sm px-3 py-2 shadow-xl text-xs">
-                    <p className="text-muted-foreground mb-1">{d.monthFull}</p>
-                    <p>분배금 <span className="font-bold">{d.amount.toLocaleString()}원</span></p>
-                    <p>분배율 <span className="font-bold text-blue-500">{d.rate}%</span></p>
-                    <p>누적 <span className="font-bold text-amber-600">{d.cumRate}%</span></p>
+                  <div className="rounded-md border bg-popover/95 backdrop-blur-sm px-2.5 py-1.5 shadow-lg text-[10px]">
+                    <p className="text-muted-foreground/70 mb-0.5 font-medium">{d.monthFull}</p>
+                    <div className="space-y-0.5">
+                      <p>분배금 <span className="font-bold">{d.amount.toLocaleString()}원</span></p>
+                      <div className="flex items-center gap-3">
+                        <span>분배율 <span className="font-bold text-blue-500">{d.rate}%</span></span>
+                        <span>누적 <span className="font-bold text-amber-600">{d.cumRate}%</span></span>
+                      </div>
+                    </div>
                   </div>
                 );
               }}
             />
-            <Legend
-              verticalAlign="top"
-              height={24}
-              content={() => (
-                <div className="flex items-center gap-3 justify-end text-[10px] text-muted-foreground mb-1">
-                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 bg-blue-500 rounded-sm inline-block" /> 매월 분배율 ({avgRate}% 가정)</span>
-                  <span className="flex items-center gap-1"><span className="w-5 h-0.5 bg-amber-500 inline-block rounded" /> 누적 분배율{dividendYield ? ` (${dividendYield.toFixed(1)}% 목표)` : ''}</span>
-                </div>
-              )}
-            />
-            <Bar yAxisId="left" dataKey="rate" fill="#3b82f6" radius={[3, 3, 0, 0]} barSize={16}>
-              {recent.map((_, i) => (
-                <Cell key={i} fill="#3b82f6" fillOpacity={0.8} />
-              ))}
-            </Bar>
-            <Line yAxisId="right" type="monotone" dataKey="cumRate" stroke="#f59e0b" strokeWidth={2} dot={false} />
+            <Bar yAxisId="left" dataKey="rate" fill="url(#detailDivBarGrad)" radius={[2, 2, 0, 0]} barSize={recent.length > 8 ? 16 : 22} />
+            <Line yAxisId="right" type="monotone" dataKey="cumRate" stroke="#f59e0b" strokeWidth={1.5} dot={false} strokeOpacity={0.7} />
           </ComposedChart>
         </ResponsiveContainer>
       </div>

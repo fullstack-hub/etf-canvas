@@ -16,7 +16,7 @@ export class SeibroService {
    * 규칙: KR7 + 6자리코드 + 0 + 체크디짓(Luhn mod 10)
    */
   codeToIsin(code: string): string {
-    const base = `KR7${code}00`; // 12자리 중 마지막을 체크디짓으로 교체
+    const base = `KR7${code}00`; // 11자리 base + 체크디짓 1자리 = 12자리 ISIN
     // ISIN 체크디짓: 문자→숫자 변환 후 Luhn
     const digits = base
       .split('')
@@ -39,7 +39,7 @@ export class SeibroService {
       alt = !alt;
     }
     const check = (10 - (sum % 10)) % 10;
-    return base.slice(0, -1) + check;
+    return base + check;
   }
 
   /**

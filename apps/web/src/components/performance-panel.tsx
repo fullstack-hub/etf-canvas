@@ -6,8 +6,8 @@ import { api } from '@/lib/api';
 import { useCanvasStore } from '@/lib/store';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-  AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip,
-  ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell,
+  AreaChart, Area, ComposedChart, Bar, Line, XAxis, YAxis, Tooltip,
+  ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell, Legend,
 } from 'recharts';
 import { Maximize2, Minimize2, Sparkles, TrendingUp, Info } from 'lucide-react';
 import type { SimulateRequest } from '@etf-canvas/shared';
@@ -33,32 +33,41 @@ function usePortfolioDividends(
     queryKey: ['etf-dividends', codes.sort().join(',')],
     queryFn: async () => {
       const results = await Promise.all(codes.map(code => api.getDividends(code)));
-      return codes.map((code, i) => ({ code, dividends: results[i] }));
+      return codes.map((code, i) => ({ code, dividends: Array.isArray(results[i]) ? results[i] : [] }));
     },
     enabled: codes.length > 0,
     staleTime: 86400000,
   });
 
-  // 월별 합산
+  // 월별 합산 (분배율 % + 분배금 + 누적)
   const monthlyData = (() => {
     if (!queries.data) return [];
-    const monthMap: Record<string, number> = {};
+    const monthMap: Record<string, { rate: number; amount: number }> = {};
     for (const { code, dividends } of queries.data) {
       const w = (weights[code] || 0) / 100;
       for (const d of dividends) {
         const month = d.date.slice(0, 7);
-        monthMap[month] = (monthMap[month] || 0) + d.amount * w;
+        if (!monthMap[month]) monthMap[month] = { rate: 0, amount: 0 };
+        monthMap[month].rate += (d.rate || 0) * w;
+        monthMap[month].amount += (d.amount || 0) * w;
       }
     }
+    let cum = 0;
     return Object.entries(monthMap)
       .sort(([a], [b]) => a.localeCompare(b))
-      .map(([month, amount]) => ({
-        month: month.slice(2).replace('-', '.'),
-        amount: Math.round(amount * 100) / 100,
-      }));
+      .map(([month, v]) => {
+        cum += v.rate;
+        return {
+          month: month.slice(2).replace('-', '.'),
+          monthFull: month,
+          rate: Math.round(v.rate * 10000) / 10000,
+          amount: Math.round(v.amount),
+          cumRate: Math.round(cum * 100) / 100,
+        };
+      });
   })();
 
-  // 분기별 합산
+  // 분기별 합산 (분배율 % + 누적)
   const quarterlyData = (() => {
     if (!queries.data) return [];
     const qMap: Record<string, number> = {};
@@ -69,15 +78,20 @@ function usePortfolioDividends(
         const m = Number(d.date.slice(5, 7));
         const q = Math.ceil(m / 3);
         const key = `${y}.Q${q}`;
-        qMap[key] = (qMap[key] || 0) + d.amount * w;
+        qMap[key] = (qMap[key] || 0) + (d.rate || 0) * w;
       }
     }
+    let cum = 0;
     return Object.entries(qMap)
       .sort(([a], [b]) => a.localeCompare(b))
-      .map(([quarter, amount]) => ({
-        month: quarter,
-        amount: Math.round(amount * 100) / 100,
-      }));
+      .map(([quarter, rate]) => {
+        cum += rate;
+        return {
+          month: quarter,
+          rate: Math.round(rate * 10000) / 10000,
+          cumRate: Math.round(cum * 100) / 100,
+        };
+      });
   })();
 
   // 연간분배율: dividendYieldTtm 가중평균
@@ -200,7 +214,30 @@ export function PerformancePanel() {
       : null;
 
   const { monthlyData, quarterlyData, annualYield } = usePortfolioDividends(comparing, weights, selected);
-  const dividendData = expanded ? monthlyData : quarterlyData;
+  const filteredDividendData = (() => {
+    const src = monthlyData;
+    const now = new Date();
+    const cutoff = new Date();
+    const v = timeframe.value;
+    if (v === '1w') cutoff.setDate(now.getDate() - 7);
+    else if (v === '1m') cutoff.setMonth(now.getMonth() - 1);
+    else if (v === '3m') cutoff.setMonth(now.getMonth() - 3);
+    else if (v === '6m') cutoff.setMonth(now.getMonth() - 6);
+    else if (v === '1y') cutoff.setFullYear(now.getFullYear() - 1);
+    else if (v === 'ytd') { cutoff.setMonth(0); cutoff.setDate(1); }
+    else if (v === '3y') cutoff.setFullYear(now.getFullYear() - 3);
+    else if (v === '5y') cutoff.setFullYear(now.getFullYear() - 5);
+    else if (v === 'max') return src;
+    const threshold = `${String(cutoff.getFullYear()).slice(2)}.${String(cutoff.getMonth() + 1).padStart(2, '0')}`;
+    // 필터 후 cumRate 재계산
+    const filtered = src.filter(d => d.month >= threshold);
+    let cum = 0;
+    return filtered.map(d => {
+      cum += d.rate;
+      return { ...d, cumRate: Math.round(cum * 100) / 100 };
+    });
+  })();
+  const dividendData = filteredDividendData;
 
   const showLoading = isLoading || (!simData && isFetching);
 
@@ -254,7 +291,7 @@ export function PerformancePanel() {
           <div className="grid grid-cols-4 gap-3">
             {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-[72px] rounded-lg" />)}
           </div>
-          <div className="flex-1 grid grid-cols-[2fr_1fr_1.2fr] gap-3">
+          <div className="flex-1 grid grid-cols-[1.6fr_1fr_1.4fr] gap-3">
             {[1, 2, 3].map(i => <Skeleton key={i} className="h-full rounded-lg" />)}
           </div>
         </div>
@@ -322,8 +359,20 @@ export function PerformancePanel() {
                 </div>
                 <div className="rounded-xl border border-border/40 bg-muted/5 p-3 flex flex-col min-h-0">
                   <div className="flex items-center justify-between mb-2 shrink-0">
-                    <h3 className="text-[14px] font-extrabold text-foreground/80">분배금 내역 추이</h3>
-                    {annualYield != null && <span className="text-[10px] text-muted-foreground/50">(연간 {annualYield.toFixed(2)}%)</span>}
+                    <div className="flex items-center gap-1.5 group/divtip relative">
+                      <h3 className="text-[14px] font-extrabold text-foreground/80">분배금 내역 추이</h3>
+                      <span className="text-muted-foreground/40 cursor-help">
+                        <Info className="w-3 h-3" />
+                      </span>
+                      <div className="absolute top-full left-0 mt-1 z-50 px-3 py-2 rounded-lg border bg-popover shadow-lg text-[11px] text-left w-[220px] hidden group-hover/divtip:block animate-in fade-in zoom-in-95 duration-100">
+                        <p className="font-medium mb-1">주당 분배금 × 비중 가중 합산</p>
+                        <p className="text-muted-foreground">각 ETF의 월별 분배율(%)을 포트폴리오 비중으로 가중 합산한 값이에요. 누적 라인은 선택 기간 내 총 분배율이에요.</p>
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end gap-0.5 text-[9px] text-muted-foreground">
+                      <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-blue-500 inline-block" /> 분배율{dividendData.length > 0 ? ` (평균 ${(dividendData.reduce((s, d) => s + d.rate, 0) / dividendData.length).toFixed(2)}%)` : ''}</span>
+                      <span className="flex items-center gap-1"><span className="w-3 h-[1.5px] bg-amber-500 inline-block rounded" /> 누적{annualYield != null ? ` (연 ${annualYield.toFixed(1)}%)` : ''}</span>
+                    </div>
                   </div>
                   <DividendChart data={dividendData} />
                 </div>
@@ -358,7 +407,7 @@ export function PerformancePanel() {
                 />
               </div>
 
-              <div className="flex-1 min-h-0 grid grid-cols-[2fr_1fr_1.2fr] gap-3">
+              <div className="flex-1 min-h-0 grid grid-cols-[1.6fr_1fr_1.4fr] gap-3">
                 <div className="rounded-xl border border-border/40 bg-muted/5 p-3 flex flex-col min-h-0">
                   <h3 className="text-[14px] font-extrabold text-foreground/80 mb-2 shrink-0">포트폴리오 성장 추이</h3>
                   <div key={`${timeframe.value}-${chartData.length}-${expanded}`} className="flex-1 min-h-0">
@@ -392,8 +441,20 @@ export function PerformancePanel() {
 
                 <div className="rounded-xl border border-border/40 bg-muted/5 p-3 flex flex-col min-h-0">
                   <div className="flex items-center justify-between mb-2 shrink-0">
-                    <h3 className="text-[14px] font-extrabold text-foreground/80">분배금 내역 추이</h3>
-                    {annualYield != null && <span className="text-[10px] text-muted-foreground/50">(연간 {annualYield.toFixed(2)}%)</span>}
+                    <div className="flex items-center gap-1.5 group/divtip relative">
+                      <h3 className="text-[14px] font-extrabold text-foreground/80">분배금 내역 추이</h3>
+                      <span className="text-muted-foreground/40 cursor-help">
+                        <Info className="w-3 h-3" />
+                      </span>
+                      <div className="absolute top-full left-0 mt-1 z-50 px-3 py-2 rounded-lg border bg-popover shadow-lg text-[11px] text-left w-[220px] hidden group-hover/divtip:block animate-in fade-in zoom-in-95 duration-100">
+                        <p className="font-medium mb-1">주당 분배금 × 비중 가중 합산</p>
+                        <p className="text-muted-foreground">각 ETF의 월별 분배율(%)을 포트폴리오 비중으로 가중 합산한 값이에요. 누적 라인은 선택 기간 내 총 분배율이에요.</p>
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end gap-0.5 text-[9px] text-muted-foreground">
+                      <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-blue-500 inline-block" /> 분배율{dividendData.length > 0 ? ` (평균 ${(dividendData.reduce((s, d) => s + d.rate, 0) / dividendData.length).toFixed(2)}%)` : ''}</span>
+                      <span className="flex items-center gap-1"><span className="w-3 h-[1.5px] bg-amber-500 inline-block rounded" /> 누적{annualYield != null ? ` (연 ${annualYield.toFixed(1)}%)` : ''}</span>
+                    </div>
                   </div>
                   <DividendChart data={dividendData} />
                 </div>
@@ -519,7 +580,7 @@ function CategoryPie({ comparingCodes, selected, weights }: {
   );
 }
 
-function DividendChart({ data }: { data: { month: string; amount: number }[] }) {
+function DividendChart({ data }: { data: { month: string; rate: number; cumRate: number }[] }) {
   if (data.length === 0) {
     return (
       <div className="flex-1 min-h-0 flex items-center justify-center text-muted-foreground/50 text-xs">
@@ -529,30 +590,41 @@ function DividendChart({ data }: { data: { month: string; amount: number }[] }) 
   }
   return (
     <div className="flex-1 min-h-0">
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={{ top: 5, right: 5, left: -15, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="text-border/30" strokeOpacity={0.3} />
-          <XAxis dataKey="month" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: 'currentColor', opacity: 0.4 }} dy={8} minTickGap={20} />
-          <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: 'currentColor', opacity: 0.4 }} tickFormatter={(v) => `${v}원`} />
-          <Tooltip
-            content={({ active, payload }) => {
-              if (!active || !payload?.length) return null;
-              const d = payload[0].payload;
-              return (
-                <div className="rounded-lg border bg-popover/95 backdrop-blur-sm px-3 py-2 shadow-xl">
-                  <p className="text-[11px] text-muted-foreground mb-0.5">{d.month}</p>
-                  <p className="text-sm font-bold text-emerald-500">{d.amount.toLocaleString()}원</p>
-                </div>
-              );
-            }}
-          />
-          <Bar dataKey="amount" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={20}>
-            {data.map((_: { month: string; amount: number }, i: number) => (
-              <Cell key={i} fill={i === data.length - 1 ? '#10b981' : '#3b82f6'} />
-            ))}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
+        <ResponsiveContainer width="100%" height="100%">
+          <ComposedChart data={data} margin={{ top: 2, right: 0, left: -10, bottom: 0 }}>
+            <defs>
+              <linearGradient id="divBarGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#3b82f6" stopOpacity={1} />
+                <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.85} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="text-border/20" strokeOpacity={0.2} />
+            <XAxis dataKey="month" tickLine={false} axisLine={false} tick={{ fontSize: 9, fill: 'currentColor', opacity: 0.35 }} dy={4} minTickGap={16} />
+            <YAxis yAxisId="left" tickLine={false} axisLine={false} tick={{ fontSize: 9, fill: 'currentColor', opacity: 0.4 }} tickFormatter={(v) => `${v}%`} width={40} />
+            <YAxis yAxisId="right" orientation="right" tickLine={false} axisLine={false} tick={false} width={0} />
+            <Tooltip
+              cursor={{ fill: 'currentColor', opacity: 0.04 }}
+              content={({ active, payload }) => {
+                if (!active || !payload?.length) return null;
+                const d = payload[0]?.payload;
+                return (
+                  <div className="rounded-md border bg-popover/95 backdrop-blur-sm px-2.5 py-1.5 shadow-lg text-[10px]">
+                    <p className="text-muted-foreground/70 mb-0.5 font-medium">{d.monthFull}</p>
+                    <div className="space-y-0.5">
+                      <p>분배금 <span className="font-bold">{d.amount.toLocaleString()}원</span></p>
+                      <div className="flex items-center gap-3">
+                        <span>분배율 <span className="font-bold text-blue-500">{d.rate}%</span></span>
+                        <span>누적 <span className="font-bold text-amber-600">{d.cumRate}%</span></span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }}
+            />
+            <Bar yAxisId="left" dataKey="rate" fill="url(#divBarGrad)" radius={[2, 2, 0, 0]} barSize={data.length > 12 ? 10 : data.length > 6 ? 16 : 22} />
+            <Line yAxisId="right" type="monotone" dataKey="cumRate" stroke="#f59e0b" strokeWidth={1.5} dot={false} strokeOpacity={0.7} />
+          </ComposedChart>
+        </ResponsiveContainer>
     </div>
   );
 }
