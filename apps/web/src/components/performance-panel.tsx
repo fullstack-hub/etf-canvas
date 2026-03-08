@@ -170,7 +170,7 @@ export function PerformancePanel() {
             ) : expanded ? (
                 /* Expanded: chart top, metrics bottom row */
                 <div className={`flex-1 min-h-0 flex flex-col gap-4 transition-opacity duration-200 ${isFetching ? 'opacity-50' : 'opacity-100'}`}>
-                    <div className="flex-1 min-h-0" style={{ minWidth: 0 }}>
+                    <div key={`${timeframe.value}-${chartData.length}-${expanded}`} className="flex-1 min-h-0" style={{ minWidth: 0 }}>
                         <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={chartData} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
                                 <defs>
@@ -218,7 +218,7 @@ export function PerformancePanel() {
                 /* Collapsed: chart left + metrics grid right */
                 <div className={`flex-1 flex gap-4 min-h-0 transition-opacity duration-200 ${isFetching ? 'opacity-50' : 'opacity-100'}`}>
                     {/* 수익률 차트 카드 */}
-                    <div className="flex-1 min-w-0 h-full rounded-xl bg-muted/15 border border-border/40 p-3">
+                    <div key={`${timeframe.value}-${chartData.length}-${expanded}`} className="flex-1 min-w-0 h-full rounded-xl bg-muted/15 border border-border/40 p-3">
                         <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
                                 <defs>

@@ -166,10 +166,18 @@ export class NaverService {
   }
 
   private buildCategories(item: NaverETFItem): string[] {
-    const cats: string[] = [];
-
-    // 네이버 etfTabCode 기본 카테고리
     const primary = ETF_TAB_CODE_TO_CATEGORY[item.etfTabCode];
+
+    // 네이버 분류가 혼합이지만 실제 채권 성격인 종목 → 채권으로 재분류
+    // (예: KODEX 머니마켓액티브 — etfTabCode 7이지만 다른 운용사 동일 상품은 모두 채권)
+    const BOND_KEYWORDS = ['머니마켓', '국고채', '국공채', '통안채', 'CD금리', '단기채'];
+    const isBondLike = BOND_KEYWORDS.some((kw) => item.itemname.includes(kw));
+
+    if (isBondLike && primary !== '채권') {
+      return ['채권'];
+    }
+
+    const cats: string[] = [];
     if (primary) cats.push(primary);
 
     // 종목명에 "액티브" 포함 시 액티브 카테고리 추가 (단, 채권이면 채권만 유지)
