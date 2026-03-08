@@ -413,18 +413,41 @@ export class EtfService {
     const cached = await this.redis.getJson<ETFDividend[]>(cacheKey);
     if (cached) return cached;
 
-    const records = await this.seibro.fetchDividendHistory(code);
-    const result: ETFDividend[] = records.map((r) => ({
-      date: r.date,
-      payDate: r.payDate,
-      amount: r.amount,
-      rate: r.rate,
-    }));
-
-    if (result.length > 0) {
-      await this.redis.setJson(cacheKey, result, 86400); // 24h
+    // DB에 있으면 반환 + Redis 캐시
+    const existing = await this.prisma.etfDividend.findMany({
+      where: { etfCode: code },
+      orderBy: { date: 'desc' },
+    });
+    if (existing.length > 0) {
+      const result = existing.map((d: any) => ({
+        date: d.date.toISOString().split('T')[0],
+        payDate: d.payDate.toISOString().split('T')[0],
+        amount: d.amount,
+        rate: Number(d.rate),
+      }));
+      await this.redis.setJson(cacheKey, result, 86400);
+      return result;
     }
-    return result;
+
+    // DB에 없으면 세이브로에서 가져와서 영구 저장
+    const records = await this.seibro.fetchDividendHistory(code);
+    if (records.length > 0) {
+      await this.prisma.etfDividend.createMany({
+        data: records.map((r) => ({
+          etfCode: code,
+          date: new Date(r.date),
+          payDate: new Date(r.payDate),
+          amount: r.amount,
+          rate: r.rate,
+        })),
+        skipDuplicates: true,
+      });
+    }
+
+    if (records.length > 0) {
+      await this.redis.setJson(cacheKey, records, 86400);
+    }
+    return records;
   }
 
   async seed(): Promise<number> {

@@ -31,6 +31,7 @@ model Etf {
   holdings    EtfHolding[]
   dailyPrices EtfDailyPrice[]
   returns     EtfReturn[]
+  dividends   EtfDividend[]
 
   @@index([benchmark])
   @@index([aum(sort: Desc)])
@@ -82,6 +83,19 @@ model Portfolio {
 
   @@index([userId])
   @@map("portfolio")
+}
+
+model EtfDividend {
+  etfCode  String   @map("etf_code") @db.VarChar(10)
+  date     DateTime @db.Date
+  payDate  DateTime @map("pay_date") @db.Date
+  amount   Int
+  rate     Decimal  @db.Decimal(8, 5)
+
+  etf Etf @relation(fields: [etfCode], references: [code])
+
+  @@id([etfCode, date])
+  @@map("etf_dividend")
 }
 
 model EtfReturn {
