@@ -226,7 +226,7 @@ function DividendDetailChart({ dividends, dividendYield }: {
         <h3 className="text-sm font-bold">분배금 차트</h3>
         <div className="flex flex-col items-end gap-0.5 text-[9px] text-muted-foreground">
           <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-blue-500 inline-block" /> 분배율 (평균 {avgRate}%)</span>
-          <span className="flex items-center gap-1"><span className="w-3 h-[1.5px] bg-amber-500 inline-block rounded" /> 누적{dividendYield != null && dividendYield > 0 ? ` (연 ${dividendYield.toFixed(1)}%)` : ''}</span>
+          <span className="flex items-center gap-1"><span className="w-3 h-[1.5px] bg-amber-500 inline-block rounded" /> 누적{recent.length > 0 ? ` (${recent[recent.length - 1].cumRate}%)` : ''}</span>
         </div>
       </div>
       <div className="h-48 border rounded-lg p-2 bg-muted/10">

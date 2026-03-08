@@ -371,7 +371,7 @@ export function PerformancePanel() {
                     </div>
                     <div className="flex flex-col items-end gap-0.5 text-[9px] text-muted-foreground">
                       <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-blue-500 inline-block" /> 분배율{dividendData.length > 0 ? ` (평균 ${(dividendData.reduce((s, d) => s + d.rate, 0) / dividendData.length).toFixed(2)}%)` : ''}</span>
-                      <span className="flex items-center gap-1"><span className="w-3 h-[1.5px] bg-amber-500 inline-block rounded" /> 누적{annualYield != null ? ` (연 ${annualYield.toFixed(1)}%)` : ''}</span>
+                      <span className="flex items-center gap-1"><span className="w-3 h-[1.5px] bg-amber-500 inline-block rounded" /> 누적{dividendData.length > 0 ? ` (${dividendData[dividendData.length - 1].cumRate}%)` : ''}</span>
                     </div>
                   </div>
                   <DividendChart data={dividendData} />
@@ -453,7 +453,7 @@ export function PerformancePanel() {
                     </div>
                     <div className="flex flex-col items-end gap-0.5 text-[9px] text-muted-foreground">
                       <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-blue-500 inline-block" /> 분배율{dividendData.length > 0 ? ` (평균 ${(dividendData.reduce((s, d) => s + d.rate, 0) / dividendData.length).toFixed(2)}%)` : ''}</span>
-                      <span className="flex items-center gap-1"><span className="w-3 h-[1.5px] bg-amber-500 inline-block rounded" /> 누적{annualYield != null ? ` (연 ${annualYield.toFixed(1)}%)` : ''}</span>
+                      <span className="flex items-center gap-1"><span className="w-3 h-[1.5px] bg-amber-500 inline-block rounded" /> 누적{dividendData.length > 0 ? ` (${dividendData[dividendData.length - 1].cumRate}%)` : ''}</span>
                     </div>
                   </div>
                   <DividendChart data={dividendData} />
