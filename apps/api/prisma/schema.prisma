@@ -25,6 +25,7 @@ model Etf {
   volume              BigInt?
   aum                 BigInt?
   expenseRatio        Decimal? @map("expense_ratio") @db.Decimal(5, 4)
+  dividendYield       Decimal? @map("dividend_yield") @db.Decimal(6, 2)
   updatedAt           DateTime @default(now()) @map("updated_at") @updatedAt
 
   holdings    EtfHolding[]

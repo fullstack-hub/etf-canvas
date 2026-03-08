@@ -112,7 +112,7 @@ export class NaverService {
       const batch = allCodes.slice(i, i + BATCH);
       const results = await Promise.allSettled(
         batch.map(async (code: string) => {
-          const { benchmark, expenseRatio, issuer, oneMonthEarnRate, sixMonthEarnRate, oneYearEarnRate } = await this.fetchIntegrationData(code);
+          const { benchmark, expenseRatio, issuer, oneMonthEarnRate, sixMonthEarnRate, oneYearEarnRate, dividendYield } = await this.fetchIntegrationData(code);
           const update: Record<string, unknown> = {};
           if (benchmark) update.benchmark = benchmark;
           if (expenseRatio != null) update.expenseRatio = expenseRatio;
@@ -120,6 +120,7 @@ export class NaverService {
           if (oneMonthEarnRate != null) update.oneMonthEarnRate = oneMonthEarnRate;
           if (sixMonthEarnRate != null) update.sixMonthEarnRate = sixMonthEarnRate;
           if (oneYearEarnRate != null) update.oneYearEarnRate = oneYearEarnRate;
+          if (dividendYield != null) update.dividendYield = dividendYield;
           if (Object.keys(update).length > 0) {
             await this.prisma.etf.update({ where: { code }, data: update });
             return true;
@@ -222,8 +223,9 @@ export class NaverService {
     oneMonthEarnRate: number | null;
     sixMonthEarnRate: number | null;
     oneYearEarnRate: number | null;
+    dividendYield: number | null;
   }> {
-    const empty = { benchmark: null, expenseRatio: null, issuer: null, oneMonthEarnRate: null, sixMonthEarnRate: null, oneYearEarnRate: null };
+    const empty = { benchmark: null, expenseRatio: null, issuer: null, oneMonthEarnRate: null, sixMonthEarnRate: null, oneYearEarnRate: null, dividendYield: null };
     try {
       const data = await this.fetchIntegration(code);
       if (!data) return empty;
@@ -250,8 +252,9 @@ export class NaverService {
       const oneMonthEarnRate = indicator.returnRate1m ?? null;
       const sixMonthEarnRate = indicator.returnRate6m ?? null;
       const oneYearEarnRate = indicator.returnRate1y ?? null;
+      const dividendYield = indicator.dividendYieldTtm ?? null;
 
-      return { benchmark, expenseRatio, issuer, oneMonthEarnRate, sixMonthEarnRate, oneYearEarnRate };
+      return { benchmark, expenseRatio, issuer, oneMonthEarnRate, sixMonthEarnRate, oneYearEarnRate, dividendYield };
     } catch {
       return empty;
     }
@@ -266,6 +269,36 @@ export class NaverService {
   }
 
   async fetchHoldings(code: string): Promise<{ stockName: string; weight: number }[]> {
+    try {
+      // 네이버 검색 결과에서 보유비중 Top 파싱 (% 포함)
+      const etf = await this.prisma.etf.findUnique({ where: { code }, select: { name: true } });
+      if (!etf?.name) return this.fetchHoldingsFromPC(code);
+
+      const searchUrl = `https://search.naver.com/search.naver?where=nexearch&query=${encodeURIComponent(etf.name)}`;
+      const resp = await fetch(searchUrl, { headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36' } });
+      if (!resp.ok) return this.fetchHoldingsFromPC(code);
+      const html = await resp.text();
+
+      const idx = html.indexOf('보유비중 Top');
+      if (idx < 0) return this.fetchHoldingsFromPC(code);
+
+      const section = html.slice(idx, idx + 8000);
+      const pcts = [...section.matchAll(/(\d+\.\d+)%;background-color/g)].map(m => parseFloat(m[1]));
+      const names = [...section.matchAll(/class="name">(.*?)<\/span>/g)].map(m => m[1]);
+
+      if (names.length === 0 || pcts.length === 0) return this.fetchHoldingsFromPC(code);
+
+      const holdings: { stockName: string; weight: number }[] = [];
+      for (let i = 0; i < Math.min(names.length, pcts.length); i++) {
+        if (names[i]) holdings.push({ stockName: names[i], weight: pcts[i] });
+      }
+      return holdings;
+    } catch {
+      return this.fetchHoldingsFromPC(code);
+    }
+  }
+
+  private async fetchHoldingsFromPC(code: string): Promise<{ stockName: string; weight: number }[]> {
     try {
       const url = `https://finance.naver.com/item/main.naver?code=${encodeURIComponent(code)}`;
       const resp = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
@@ -287,12 +320,9 @@ export class NaverService {
         const pct = cells[i].match(/^(\d+\.?\d*)%$/);
         if (pct) {
           const name = cells[i - 2] || '';
-          if (name) {
-            holdings.push({ stockName: name, weight: parseFloat(pct[1]) });
-          }
+          if (name) holdings.push({ stockName: name, weight: parseFloat(pct[1]) });
         }
       }
-
       return holdings;
     } catch {
       return [];
