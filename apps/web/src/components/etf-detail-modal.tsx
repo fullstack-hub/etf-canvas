@@ -4,7 +4,11 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { PriceChart } from '@/components/price-chart';
-import { X, TrendingUp, Globe, Building2, Percent, Target } from 'lucide-react';
+import {
+  ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis,
+  CartesianGrid, Tooltip, Cell, Legend,
+} from 'recharts';
+import { X, TrendingUp, Globe, Building2, Percent, Target, DollarSign } from 'lucide-react';
 import type { ETFSummary } from '@etf-canvas/shared';
 
 const PERIODS = ['1m', '3m', '1y', 'ytd', '3y'] as const;
@@ -28,6 +32,12 @@ export function EtfDetailModal({ etf, onClose }: Props) {
   const { data: prices } = useQuery({
     queryKey: ['etf-prices', etf.code, period],
     queryFn: () => api.getDailyPrices(etf.code, period),
+  });
+
+  const { data: dividends } = useQuery({
+    queryKey: ['etf-dividends', etf.code],
+    queryFn: () => api.getDividends(etf.code),
+    staleTime: 86400000,
   });
 
   const country = etf.categories.some((c) => c === '해외 대표지수') ? '해외' : '한국';
@@ -91,6 +101,13 @@ export function EtfDetailModal({ etf, onClose }: Props) {
                 sublabel="운용사"
               />
             )}
+            {etf.dividendYield != null && etf.dividendYield > 0 && (
+              <InfoBadge
+                icon={<DollarSign className="w-3.5 h-3.5" />}
+                label={`${etf.dividendYield.toFixed(2)}%`}
+                sublabel="분배금"
+              />
+            )}
             {detail?.benchmark && (
               <InfoBadge
                 icon={<Target className="w-3.5 h-3.5" />}
@@ -132,7 +149,14 @@ export function EtfDetailModal({ etf, onClose }: Props) {
           </div>
         </div>
 
-        {/* (3) Top holdings */}
+        {/* (3) Dividend chart */}
+        {dividends && dividends.length > 0 && (
+          <div className="px-6 pb-4">
+            <DividendDetailChart dividends={dividends} dividendYield={etf.dividendYield} />
+          </div>
+        )}
+
+        {/* (4) Top holdings */}
         <div className="px-6 pb-6">
           <h3 className="text-sm font-bold mb-2">
             상위 {Math.min(detail?.holdings?.length || 0, 10)}개 종목 및 비중(%)
@@ -161,6 +185,90 @@ export function EtfDetailModal({ etf, onClose }: Props) {
         </div>
       </div>
     </div>
+  );
+}
+
+function DividendDetailChart({ dividends, dividendYield }: {
+  dividends: { date: string; payDate: string; amount: number; rate: number }[];
+  dividendYield: number | null | undefined;
+}) {
+  // 월별 그룹핑 + 누적 분배율
+  const sorted = [...dividends].sort((a, b) => a.date.localeCompare(b.date));
+  let cumRate = 0;
+  const monthMap: Record<string, { amount: number; rate: number; cumRate: number }> = {};
+  for (const d of sorted) {
+    const month = d.date.slice(0, 7);
+    if (!monthMap[month]) monthMap[month] = { amount: 0, rate: 0, cumRate: 0 };
+    monthMap[month].amount += d.amount;
+    monthMap[month].rate += d.rate;
+  }
+  const entries = Object.entries(monthMap).sort(([a], [b]) => a.localeCompare(b));
+  const data = entries.map(([month, v]) => {
+    cumRate += v.rate;
+    return {
+      month: `${Number(month.slice(5, 7))}월`,
+      monthFull: month,
+      rate: Math.round(v.rate * 100) / 100,
+      amount: v.amount,
+      cumRate: Math.round(cumRate * 100) / 100,
+    };
+  });
+
+  // 최근 12개월만
+  const recent = data.slice(-12);
+  const avgRate = recent.length > 0
+    ? Math.round((recent.reduce((s, d) => s + d.rate, 0) / recent.length) * 100) / 100
+    : 0;
+
+  return (
+    <>
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="text-sm font-bold">분배금 차트</h3>
+        {dividendYield != null && dividendYield > 0 && (
+          <span className="text-[11px] text-muted-foreground">연간 분배율 {dividendYield.toFixed(2)}%</span>
+        )}
+      </div>
+      <div className="h-48 border rounded-lg p-2 bg-muted/10">
+        <ResponsiveContainer width="100%" height="100%">
+          <ComposedChart data={recent} margin={{ top: 5, right: 5, left: -15, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="text-border/30" strokeOpacity={0.3} />
+            <XAxis dataKey="month" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: 'currentColor', opacity: 0.4 }} dy={8} />
+            <YAxis yAxisId="left" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: 'currentColor', opacity: 0.4 }} tickFormatter={(v) => `${v}%`} />
+            <YAxis yAxisId="right" orientation="right" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: 'currentColor', opacity: 0.4 }} tickFormatter={(v) => `${v}%`} />
+            <Tooltip
+              content={({ active, payload }) => {
+                if (!active || !payload?.length) return null;
+                const d = payload[0]?.payload;
+                return (
+                  <div className="rounded-lg border bg-popover/95 backdrop-blur-sm px-3 py-2 shadow-xl text-xs">
+                    <p className="text-muted-foreground mb-1">{d.monthFull}</p>
+                    <p>분배금 <span className="font-bold">{d.amount.toLocaleString()}원</span></p>
+                    <p>분배율 <span className="font-bold text-blue-500">{d.rate}%</span></p>
+                    <p>누적 <span className="font-bold text-amber-600">{d.cumRate}%</span></p>
+                  </div>
+                );
+              }}
+            />
+            <Legend
+              verticalAlign="top"
+              height={24}
+              content={() => (
+                <div className="flex items-center gap-3 justify-end text-[10px] text-muted-foreground mb-1">
+                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 bg-blue-500 rounded-sm inline-block" /> 매월 분배율 ({avgRate}% 가정)</span>
+                  <span className="flex items-center gap-1"><span className="w-5 h-0.5 bg-amber-500 inline-block rounded" /> 누적 분배율{dividendYield ? ` (${dividendYield.toFixed(1)}% 목표)` : ''}</span>
+                </div>
+              )}
+            />
+            <Bar yAxisId="left" dataKey="rate" fill="#3b82f6" radius={[3, 3, 0, 0]} barSize={16}>
+              {recent.map((_, i) => (
+                <Cell key={i} fill="#3b82f6" fillOpacity={0.8} />
+              ))}
+            </Bar>
+            <Line yAxisId="right" type="monotone" dataKey="cumRate" stroke="#f59e0b" strokeWidth={2} dot={false} />
+          </ComposedChart>
+        </ResponsiveContainer>
+      </div>
+    </>
   );
 }
 
