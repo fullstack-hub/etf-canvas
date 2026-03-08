@@ -48,6 +48,11 @@ export class EtfController {
     return this.etfService.getDetail(code);
   }
 
+  @Get(':code/dividends')
+  getDividends(@Param('code') code: string) {
+    return this.etfService.getDividends(code);
+  }
+
   @Get(':code/prices')
   getDailyPrices(
     @Param('code') code: string,

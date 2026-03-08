@@ -79,4 +79,11 @@ export type ETFCategory =
   | '액티브'
   | 'New';
 
+export interface ETFDividend {
+  date: string;
+  payDate: string;
+  amount: number;
+  rate: number;
+}
+
 export type ETFSortBy = 'returnRate1y' | 'returnRate3m' | 'aum';

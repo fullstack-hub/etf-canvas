@@ -2,10 +2,12 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { NaverService } from '../naver/naver.service';
+import { SeibroService } from '../seibro/seibro.service';
 import type {
   ETFSummary,
   ETFDetail,
   ETFDailyPrice,
+  ETFDividend,
   CompareRequest,
   SimulateRequest,
   SimulateResult,
@@ -21,6 +23,7 @@ export class EtfService {
     private prisma: PrismaService,
     private redis: RedisService,
     private naver: NaverService,
+    private seibro: SeibroService,
   ) { }
 
   // --- Public API ---
@@ -402,6 +405,25 @@ export class EtfService {
 
     const result = { total, filtered };
     await this.redis.setJson(cacheKey, result, 300);
+    return result;
+  }
+
+  async getDividends(code: string): Promise<ETFDividend[]> {
+    const cacheKey = `etf:dividends:${code}`;
+    const cached = await this.redis.getJson<ETFDividend[]>(cacheKey);
+    if (cached) return cached;
+
+    const records = await this.seibro.fetchDividendHistory(code);
+    const result: ETFDividend[] = records.map((r) => ({
+      date: r.date,
+      payDate: r.payDate,
+      amount: r.amount,
+      rate: r.rate,
+    }));
+
+    if (result.length > 0) {
+      await this.redis.setJson(cacheKey, result, 86400); // 24h
+    }
     return result;
   }
 
