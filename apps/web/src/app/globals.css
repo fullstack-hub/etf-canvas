@@ -131,3 +131,8 @@
     background-size: 24px 24px;
   }
 }
+
+@keyframes sparkle {
+  0%, 100% { opacity: 0.4; transform: scale(0.9) rotate(0deg); }
+  50% { opacity: 1; transform: scale(1.2) rotate(15deg); }
+}

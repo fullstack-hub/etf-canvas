@@ -7,5 +7,6 @@ import { EtfService } from './etf.service';
   imports: [NaverModule],
   controllers: [EtfController],
   providers: [EtfService],
+  exports: [EtfService],
 })
 export class EtfModule {}

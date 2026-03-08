@@ -34,6 +34,19 @@ interface CanvasStore {
   removeLoadingCode: (code: string) => void;
   updateEtfData: (code: string, data: Partial<ETFSummary>) => void;
   replaceOnCanvas: (oldCode: string, newEtf: ETFSummary) => void;
+  // Feedback
+  feedbackEnabled: boolean;
+  setFeedbackEnabled: (v: boolean) => void;
+  feedbackHash: string;
+  feedbackText: string;
+  feedbackActions: { category: string; label: string }[];
+  feedbackLoading: boolean;
+  setFeedback: (hash: string, text: string, actions: { category: string; label: string }[]) => void;
+  setFeedbackLoading: (v: boolean) => void;
+  feedbackMinimized: boolean;
+  setFeedbackMinimized: (v: boolean) => void;
+  browseCategory: string | null;
+  setBrowseCategory: (cat: string | null) => void;
 }
 
 export const useCanvasStore = create<CanvasStore>()(persist((set, get) => ({
@@ -67,7 +80,7 @@ export const useCanvasStore = create<CanvasStore>()(persist((set, get) => ({
     newComparing.forEach((c, idx) => {
       newWeights[c] = idx === newComparing.length - 1 ? 100 - equal * (newComparing.length - 1) : equal;
     });
-    set({ selected: newSelected, comparing: newComparing, weights: newWeights });
+    set({ selected: newSelected, comparing: newComparing, weights: newWeights, synthesized: false });
   },
   removeFromCanvas: (code) =>
     set((state) => {
@@ -110,11 +123,12 @@ export const useCanvasStore = create<CanvasStore>()(persist((set, get) => ({
   setWeight: (code, weight) => {
     set((state) => ({
       weights: { ...state.weights, [code]: weight },
+      synthesized: false,
     }));
   },
-  clearCanvas: () => set({ selected: [], comparing: [], weights: {}, loadingCodes: [], synthesized: false, performanceExpanded: false, portfolioName: '' }),
+  clearCanvas: () => set({ selected: [], comparing: [], weights: {}, loadingCodes: [], synthesized: false, performanceExpanded: false, portfolioName: '', feedbackHash: '', feedbackText: '', feedbackActions: [], feedbackLoading: false, browseCategory: null }),
   synthesized: false,
-  synthesize: () => set({ synthesized: true, pendingSynthesize: false }),
+  synthesize: () => set({ synthesized: true, pendingSynthesize: false, feedbackMinimized: false }),
   pendingSynthesize: false,
   setPendingSynthesize: (v) => set({ pendingSynthesize: v }),
   portfolioName: '',
@@ -129,6 +143,18 @@ export const useCanvasStore = create<CanvasStore>()(persist((set, get) => ({
     set((state) => ({
       selected: state.selected.map((s) => (s.code === code ? { ...s, ...data } : s)),
     })),
+  feedbackEnabled: true,
+  setFeedbackEnabled: (v) => set({ feedbackEnabled: v }),
+  feedbackHash: '',
+  feedbackText: '',
+  feedbackActions: [],
+  feedbackLoading: false,
+  setFeedback: (hash, text, actions) => set({ feedbackHash: hash, feedbackText: text, feedbackActions: actions, feedbackLoading: false, feedbackMinimized: false }),
+  setFeedbackLoading: (v) => set({ feedbackLoading: v, ...(v ? { feedbackMinimized: false } : {}) }),
+  feedbackMinimized: false,
+  setFeedbackMinimized: (v) => set({ feedbackMinimized: v }),
+  browseCategory: null,
+  setBrowseCategory: (cat) => set({ browseCategory: cat }),
   replaceOnCanvas: (oldCode, newEtf) =>
     set((state) => {
       if (state.selected.some((s) => s.code === newEtf.code)) return state;

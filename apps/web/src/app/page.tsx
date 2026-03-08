@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { IconSidebar } from '@/components/icon-sidebar';
 import { LeftPanel } from '@/components/left-panel';
-import { CanvasPanel } from '@/components/canvas-panel';
+import { CanvasPanel, FloatingFeedback } from '@/components/canvas-panel';
 import { AttributePanel } from '@/components/attribute-panel';
 import { PerformancePanel } from '@/components/performance-panel';
 import { PortfolioList } from '@/components/portfolio-list';
@@ -18,7 +18,7 @@ function useIsAuthed() {
 }
 
 export default function HomePage() {
-  const { performanceExpanded, synthesized, currentView } = useCanvasStore();
+  const { performanceExpanded, synthesized, currentView, feedbackEnabled, feedbackLoading, feedbackText, feedbackActions, setBrowseCategory } = useCanvasStore();
   const authed = useIsAuthed();
 
   if (!authed) return <LandingPage />;
@@ -28,18 +28,27 @@ export default function HomePage() {
       <div className="h-[calc(100vh-37px)] flex overflow-hidden">
         <IconSidebar />
         <LeftPanel />
-        {currentView === 'portfolio' ? (
-          <PortfolioList />
-        ) : (
-          <div className="flex-1 flex min-w-0 bg-background">
+        <div className="flex-1 flex min-w-0 bg-background">
+          {currentView === 'portfolio' ? (
+            <PortfolioList />
+          ) : (
             <div className="flex-1 flex flex-col min-w-0 min-h-0">
               {!(performanceExpanded && synthesized) && <CanvasPanel />}
               {synthesized && <PerformancePanel />}
             </div>
-            <AttributePanel />
-          </div>
-        )}
+          )}
+          <AttributePanel />
+        </div>
       </div>
+      {/* Floating feedback — loading + result */}
+      {feedbackEnabled && synthesized && (feedbackLoading || feedbackText) && (
+        <FloatingFeedback
+          loading={feedbackLoading}
+          text={feedbackText}
+          actions={feedbackActions}
+          onAction={setBrowseCategory}
+        />
+      )}
     </>
   );
 }

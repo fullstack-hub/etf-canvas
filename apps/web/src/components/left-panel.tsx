@@ -44,7 +44,15 @@ export function LeftPanel() {
   const [sortBy, setSortBy] = useState<ETFSortBy>('aum');
   const [catOpen, setCatOpen] = useState(true);
   const [infoCat, setInfoCat] = useState<string | null>('국내 대표지수');
-  const { selectedEtfCode, selectEtf, selected: canvasEtfs, addToCanvas, addLoadingCode, removeLoadingCode, updateEtfData } = useCanvasStore();
+  const { selectedEtfCode, selectEtf, selected: canvasEtfs, addToCanvas, addLoadingCode, removeLoadingCode, updateEtfData, browseCategory, setBrowseCategory } = useCanvasStore();
+
+  useEffect(() => {
+    if (browseCategory) {
+      setCategory(browseCategory);
+      setInfoCat(browseCategory);
+      setBrowseCategory(null);
+    }
+  }, [browseCategory, setBrowseCategory]);
 
   const { data: countData } = useQuery({
     queryKey: ['etf-count', debouncedQuery, category || undefined],

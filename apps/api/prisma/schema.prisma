@@ -31,6 +31,9 @@ model Etf {
   dailyPrices EtfDailyPrice[]
   returns     EtfReturn[]
 
+  @@index([benchmark])
+  @@index([aum(sort: Desc)])
+  @@index([name])
   @@map("etf")
 }
 
@@ -45,6 +48,7 @@ model EtfHolding {
 
   etf Etf @relation(fields: [etfCode], references: [code])
 
+  @@index([etfCode])
   @@map("etf_holding")
 }
 
@@ -69,6 +73,7 @@ model Portfolio {
   userId      String   @map("user_id")
   name        String   @db.VarChar(100)
   items       Json
+  snapshot    Json?
   returnRate  Decimal? @map("return_rate") @db.Decimal(8, 2)
   mdd         Decimal? @db.Decimal(8, 2)
   createdAt   DateTime @default(now()) @map("created_at")

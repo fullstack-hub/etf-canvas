@@ -1,8 +1,20 @@
 'use client';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { SessionProvider } from 'next-auth/react';
-import { useState, type ReactNode } from 'react';
+import { SessionProvider, useSession } from 'next-auth/react';
+import { useState, useEffect, type ReactNode } from 'react';
+import { setTokenRefresher } from './api';
+
+function TokenRefreshRegistrar({ children }: { children: ReactNode }) {
+  const { update } = useSession();
+  useEffect(() => {
+    setTokenRefresher(async () => {
+      const fresh = await update();
+      return (fresh as any)?.accessToken ?? null;
+    });
+  }, [update]);
+  return <>{children}</>;
+}
 
 export function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(
@@ -14,7 +26,9 @@ export function Providers({ children }: { children: ReactNode }) {
   );
   return (
     <SessionProvider>
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      <TokenRefreshRegistrar>
+        <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      </TokenRefreshRegistrar>
     </SessionProvider>
   );
 }

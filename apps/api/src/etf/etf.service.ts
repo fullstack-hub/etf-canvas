@@ -196,31 +196,40 @@ export class EtfService {
     const cached = await this.redis.getJson<ETFDailyPrice[]>(cacheKey);
     if (cached) return cached;
 
-    const greedyKey = `etf:greedy_fetched:${code}`;
-    const hasGreedyFetched = await this.redis.getJson<boolean>(greedyKey);
-
-    if (!hasGreedyFetched) {
-      if (!this.fetchLocks.has(code)) {
-        const fetchPromise = (async () => {
-          const PREFETCH_DAYS = 1095;
-          await this.fetchAndStoreDailyPricesFromNaver(code, PREFETCH_DAYS);
-          await this.redis.setJson(greedyKey, true, 86400); // cache flag for 24h
-        })().finally(() => {
-          this.fetchLocks.delete(code);
-        });
-        this.fetchLocks.set(code, fetchPromise);
-      }
-      await this.fetchLocks.get(code); // Wait until the fetch finishes
-    }
-
     const days = this.periodToDays(period);
     const since = new Date();
     since.setDate(since.getDate() - days);
 
+    // DB 먼저 조회
     let prices = await this.prisma.etfDailyPrice.findMany({
       where: { etfCode: code, date: { gte: since } },
       orderBy: { date: 'asc' },
     });
+
+    // DB에 데이터 없으면 네이버에서 가져온 뒤 재조회
+    if (prices.length === 0) {
+      const greedyKey = `etf:greedy_fetched:${code}`;
+      const hasGreedyFetched = await this.redis.getJson<boolean>(greedyKey);
+
+      if (!hasGreedyFetched) {
+        if (!this.fetchLocks.has(code)) {
+          const fetchPromise = (async () => {
+            const PREFETCH_DAYS = 1095;
+            await this.fetchAndStoreDailyPricesFromNaver(code, PREFETCH_DAYS);
+            await this.redis.setJson(greedyKey, true, 86400);
+          })().finally(() => {
+            this.fetchLocks.delete(code);
+          });
+          this.fetchLocks.set(code, fetchPromise);
+        }
+        await this.fetchLocks.get(code);
+      }
+
+      prices = await this.prisma.etfDailyPrice.findMany({
+        where: { etfCode: code, date: { gte: since } },
+        orderBy: { date: 'asc' },
+      });
+    }
 
     const result: ETFDailyPrice[] = prices.map((p: any) => ({
       date: p.date.toISOString().split('T')[0],
@@ -232,7 +241,7 @@ export class EtfService {
       nav: p.nav ? Number(p.nav) : null,
     }));
 
-    await this.redis.setJson(cacheKey, result, 300);
+    await this.redis.setJson(cacheKey, result, 86400);
     return result;
   }
 
@@ -376,7 +385,11 @@ export class EtfService {
   }
 
   async seed(): Promise<number> {
-    return this.naver.seedAllEtfs();
+    const count = await this.naver.seedAllEtfs();
+    // 시딩 후 가격 캐시 초기화
+    await this.redis.deletePattern('etf:prices:*');
+    await this.redis.deletePattern('etf:greedy_fetched:*');
+    return count;
   }
 
   // --- Private: On-demand ---

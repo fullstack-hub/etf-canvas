@@ -6,7 +6,7 @@ import { api } from '@/lib/api';
 import { useCanvasStore } from '@/lib/store';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell } from 'recharts';
-import { Maximize2, Minimize2 } from 'lucide-react';
+import { Maximize2, Minimize2, Sparkles } from 'lucide-react';
 import type { SimulateRequest } from '@etf-canvas/shared';
 
 const PIE_COLORS: Record<string, string> = {
@@ -33,7 +33,7 @@ export function PerformancePanel() {
         { label: '3Y', value: '3y' },
     ];
     const [timeframe, setTimeframe] = useState(timeframes[2]); // Default 3M
-    const { performanceExpanded: expanded, togglePerformanceExpanded: toggleExpanded } = useCanvasStore();
+    const { performanceExpanded: expanded, togglePerformanceExpanded: toggleExpanded, feedbackMinimized, setFeedbackMinimized, feedbackEnabled, feedbackText, feedbackLoading } = useCanvasStore();
 
     // comparing ETF 중 가장 최근 상장일 기준으로 선택 가능 기간 판단
     const latestListedDate = comparing.reduce<Date | null>((latest, code) => {
@@ -79,13 +79,15 @@ export function PerformancePanel() {
     const synthExpense = (() => {
         if (!isValid || comparing.length === 0) return null;
         let sum = 0;
+        let hasAny = false;
         for (const code of comparing) {
             const etf = selected.find(s => s.code === code);
-            if (!etf?.expenseRatio) return null; // Can't calculate accurately if any is missing
+            const ratio = etf?.expenseRatio ?? 0;
+            if (etf?.expenseRatio) hasAny = true;
             const w = (weights[code] || 0) / 100;
-            sum += etf.expenseRatio * w;
+            sum += ratio * w;
         }
-        return sum * 100;
+        return hasAny ? sum * 100 : null;
     })();
 
     const synthReturn = simData?.totalReturn ?? null;
@@ -126,6 +128,15 @@ export function PerformancePanel() {
                     >
                         {expanded ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
                     </button>
+                    {feedbackEnabled && !feedbackLoading && feedbackMinimized && feedbackText && (
+                        <button
+                            onClick={() => setFeedbackMinimized(false)}
+                            className="flex items-center gap-1 px-2 py-1 rounded-full bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 transition-colors text-xs font-medium ml-2"
+                        >
+                            <Sparkles className="w-3 h-3 text-amber-500 animate-[sparkle_1.5s_ease-in-out_infinite]" style={{ filter: 'drop-shadow(0 0 3px #f59e0b)' }} />
+                            피드백
+                        </button>
+                    )}
                 </div>
                 <div className="flex bg-muted/40 rounded-md p-0.5 border">
                     {timeframes.map(tf => (
@@ -199,7 +210,7 @@ export function PerformancePanel() {
                         <MetricCard title="평균 변동성" value={synthVolatility} suffix="%" tooltip={<><p className="font-medium mb-1">일별 수익률의 연환산 표준편차</p><p className="text-muted-foreground">σ<sub>daily</sub> × √252</p></>} />
                         <MetricCard title="종합 운용보수" value={synthExpense} suffix="%" formatter={(v) => v.toFixed(3)} tooltip={<><p className="font-medium mb-1">비중 가중 평균 운용보수</p><p className="text-muted-foreground">Σ(보수<sub>i</sub> × 비중<sub>i</sub>)</p></>} />
                         <div className="ml-auto">
-                            <CategoryPie comparingCodes={comparing} selected={selected} />
+                            <CategoryPie comparingCodes={comparing} selected={selected} weights={weights} />
                         </div>
                     </div>
                 </div>
@@ -207,7 +218,7 @@ export function PerformancePanel() {
                 /* Collapsed: chart left + metrics grid right */
                 <div className={`flex-1 flex gap-4 min-h-0 transition-opacity duration-200 ${isFetching ? 'opacity-50' : 'opacity-100'}`}>
                     {/* 수익률 차트 카드 */}
-                    <div className="flex-1 h-full rounded-xl bg-muted/15 border border-border/40 p-3" style={{ minWidth: 0 }}>
+                    <div className="flex-1 min-w-0 h-full rounded-xl bg-muted/15 border border-border/40 p-3">
                         <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
                                 <defs>
@@ -242,15 +253,15 @@ export function PerformancePanel() {
                     </div>
                     {/* 카테고리 분포 카드 */}
                     <div className="shrink-0 rounded-xl bg-muted/15 border border-border/40 p-3 flex items-center">
-                        <CategoryPie comparingCodes={comparing} selected={selected} />
+                        <CategoryPie comparingCodes={comparing} selected={selected} weights={weights} />
                     </div>
                     {/* 메트릭 카드 */}
-                    <div className="shrink-0 rounded-xl bg-muted/15 border border-border/40 p-4 flex flex-col justify-center gap-4">
-                        <div className="grid grid-cols-2 gap-x-6 gap-y-4">
-                            <MetricCard title={`수익률 (${timeframe.label})`} value={synthReturn} suffix="%" tooltip={<><p className="font-medium mb-1">선택 기간의 포트폴리오 총 수익률</p><p className="text-muted-foreground">(최종값 − 초기값) / 초기값 × 100</p></>} />
-                            <MetricCard title="연환산 수익률" value={simData?.annualizedReturn ?? null} suffix="%" tooltip={<><p className="font-medium mb-1">복리(CAGR) 기준 1년 환산 수익률</p><p className="text-muted-foreground">(1 + R)<sup>365/기간일수</sup> − 1</p></>} />
-                            <MetricCard title="최대낙폭(MDD)" value={synthMdd} suffix="%" tooltip={<><p className="font-medium mb-1">고점 대비 최대 하락 폭</p><p className="text-muted-foreground">(고점 − 저점) / 고점 × 100</p></>} />
-                            <MetricCard title="평균 변동성" value={synthVolatility} suffix="%" tooltip={<><p className="font-medium mb-1">일별 수익률의 연환산 표준편차</p><p className="text-muted-foreground">σ<sub>daily</sub> × √252</p></>} />
+                    <div className="shrink-0 rounded-xl bg-muted/15 border border-border/40 p-3 flex flex-col justify-center gap-3">
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                            <MetricCard compact title={`수익률 (${timeframe.label})`} value={synthReturn} suffix="%" tooltip={<><p className="font-medium mb-1">선택 기간의 포트폴리오 총 수익률</p><p className="text-muted-foreground">(최종값 − 초기값) / 초기값 × 100</p></>} />
+                            <MetricCard compact title="연환산 수익률" value={simData?.annualizedReturn ?? null} suffix="%" tooltip={<><p className="font-medium mb-1">복리(CAGR) 기준 1년 환산 수익률</p><p className="text-muted-foreground">(1 + R)<sup>365/기간일수</sup> − 1</p></>} />
+                            <MetricCard compact title="최대낙폭(MDD)" value={synthMdd} suffix="%" tooltip={<><p className="font-medium mb-1">고점 대비 최대 하락 폭</p><p className="text-muted-foreground">(고점 − 저점) / 고점 × 100</p></>} />
+                            <MetricCard compact title="평균 변동성" value={synthVolatility} suffix="%" tooltip={<><p className="font-medium mb-1">일별 수익률의 연환산 표준편차</p><p className="text-muted-foreground">σ<sub>daily</sub> × √252</p></>} />
                         </div>
                         {synthExpense !== null && (
                             <div className="text-xs text-muted-foreground text-right">
@@ -264,7 +275,7 @@ export function PerformancePanel() {
     );
 }
 
-function MetricCard({ title, value, suffix, formatter, tooltip }: { title: string, value: number | null, suffix: string, formatter?: (v: number) => string, tooltip?: React.ReactNode }) {
+function MetricCard({ title, value, suffix, formatter, tooltip, compact }: { title: string, value: number | null, suffix: string, formatter?: (v: number) => string, tooltip?: React.ReactNode, compact?: boolean }) {
     const [showTip, setShowTip] = useState(false);
     const displayValue = value === null ? '-' : (formatter ? formatter(value) : Math.abs(value).toFixed(2));
     const isPositive = value !== null && value > 0 && title.includes('수익률');
@@ -276,7 +287,7 @@ function MetricCard({ title, value, suffix, formatter, tooltip }: { title: strin
     return (
         <div className="flex flex-col justify-start text-right relative">
             <h3
-                className={`text-sm font-semibold text-muted-foreground mb-1 ${tooltip ? 'cursor-help border-b border-dashed border-muted-foreground/30 inline-block ml-auto' : ''}`}
+                className={`${compact ? 'text-xs' : 'text-sm'} font-semibold text-muted-foreground mb-1 ${tooltip ? 'cursor-help border-b border-dashed border-muted-foreground/30 inline-block ml-auto' : ''}`}
                 onMouseEnter={() => tooltip && setShowTip(true)}
                 onMouseLeave={() => setShowTip(false)}
             >
@@ -287,30 +298,30 @@ function MetricCard({ title, value, suffix, formatter, tooltip }: { title: strin
                     {tooltip}
                 </div>
             )}
-            <div className={`text-[2rem] leading-none font-bold tracking-tight ${valueColor}`}>
-                {value !== null ? `${prefix}${displayValue}` : '-'}{value !== null && <span className="text-lg opacity-80">{suffix}</span>}
+            <div className={`${compact ? 'text-2xl' : 'text-[2rem]'} leading-none font-bold tracking-tight ${valueColor}`}>
+                {value !== null ? `${prefix}${displayValue}` : '-'}{value !== null && <span className={`${compact ? 'text-base' : 'text-lg'} opacity-80`}>{suffix}</span>}
             </div>
         </div>
     );
 }
 
-function CategoryPie({ comparingCodes, selected, compact }: { comparingCodes: string[]; selected: { code: string; categories: string[] }[]; compact?: boolean }) {
+function CategoryPie({ comparingCodes, selected, weights, compact }: { comparingCodes: string[]; selected: { code: string; categories: string[] }[]; weights: Record<string, number>; compact?: boolean }) {
     const comparingEtfs = selected.filter((e) => comparingCodes.includes(e.code));
-    const catCounts: Record<string, number> = {};
+    const catWeights: Record<string, number> = {};
     for (const etf of comparingEtfs) {
         const cat = etf.categories[0] || '기타';
-        catCounts[cat] = (catCounts[cat] || 0) + 1;
+        catWeights[cat] = (catWeights[cat] || 0) + (weights[etf.code] || 0);
     }
-    const data = Object.entries(catCounts).map(([name, value]) => ({ name, value }));
+    const data = Object.entries(catWeights).map(([name, value]) => ({ name, value }));
 
     if (data.length === 0) return null;
 
-    const pieSize = compact ? 60 : 120;
-    const inner = compact ? 15 : 30;
-    const outer = compact ? 28 : 55;
+    const pieSize = compact ? 60 : 100;
+    const inner = compact ? 15 : 25;
+    const outer = compact ? 28 : 45;
 
     return (
-        <div className={`flex items-center shrink-0 ${compact ? 'gap-0' : 'gap-4 w-[240px]'}`}>
+        <div className={`flex items-center shrink-0 ${compact ? 'gap-0' : 'gap-3'}`}>
             <div className="shrink-0" style={{ width: pieSize, height: pieSize }}>
                 <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
@@ -337,7 +348,7 @@ function CategoryPie({ comparingCodes, selected, compact }: { comparingCodes: st
                         <div key={d.name} className="flex items-center gap-1.5 text-[11px]">
                             <div className="w-2 h-2 rounded-full shrink-0" style={{ background: PIE_COLORS[d.name] || '#94a3b8' }} />
                             <span className="text-muted-foreground truncate">{d.name}</span>
-                            <span className="font-semibold ml-auto tabular-nums">{d.value}</span>
+                            <span className="font-semibold ml-auto tabular-nums">{Math.round(d.value)}%</span>
                         </div>
                     ))}
                 </div>
