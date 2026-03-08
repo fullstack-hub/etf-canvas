@@ -74,7 +74,7 @@ JSON으로만 응답해:
     for (const model of [GEMINI_PRIMARY, GEMINI_FALLBACK_MODEL]) {
       try {
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 10000);
+        const timeout = setTimeout(() => controller.abort(), 30000);
 
         const res = await fetch(makeUrl(model), {
           method: 'POST',
