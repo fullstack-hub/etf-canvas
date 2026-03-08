@@ -282,15 +282,14 @@ export class NaverService {
       const idx = html.indexOf('보유비중 Top');
       if (idx < 0) return this.fetchHoldingsFromPC(code);
 
-      const section = html.slice(idx, idx + 8000);
-      const pcts = [...section.matchAll(/(\d+\.\d+)%;background-color/g)].map(m => parseFloat(m[1]));
-      const names = [...section.matchAll(/class="name">(.*?)<\/span>/g)].map(m => m[1]);
+      const section = html.slice(idx, idx + 10000);
+      const rows = [...section.matchAll(/class="graph_row"[^>]*>.*?class="name">(.*?)<\/span>.*?(\d+\.\d+)%/gs)];
 
-      if (names.length === 0 || pcts.length === 0) return this.fetchHoldingsFromPC(code);
+      if (rows.length === 0) return this.fetchHoldingsFromPC(code);
 
       const holdings: { stockName: string; weight: number }[] = [];
-      for (let i = 0; i < Math.min(names.length, pcts.length); i++) {
-        if (names[i]) holdings.push({ stockName: names[i], weight: pcts[i] });
+      for (const [, name, pct] of rows) {
+        if (name) holdings.push({ stockName: name, weight: parseFloat(pct) });
       }
       return holdings;
     } catch {

@@ -356,33 +356,13 @@ function EtfCard({
               <EllipsisVertical className="w-3.5 h-3.5 text-muted-foreground" />
             </button>
           </div>
-          {/* Returns */}
-          <div className="flex items-center gap-1.5">
-            {etf.threeMonthEarnRate != null ? (
-              <span className={`inline-flex items-center gap-0.5 h-[20px] px-1.5 rounded-md text-[10px] font-semibold ${etf.threeMonthEarnRate > 0 ? 'bg-red-500/10 text-red-500' : etf.threeMonthEarnRate < 0 ? 'bg-blue-500/10 text-blue-500' : 'bg-muted/50 text-muted-foreground'}`}>
-                <span className="text-[8px]">{etf.threeMonthEarnRate > 0 ? '▲' : etf.threeMonthEarnRate < 0 ? '▼' : ''}</span>
-                3M {etf.threeMonthEarnRate > 0 ? '+' : ''}{etf.threeMonthEarnRate.toFixed(1)}%
-              </span>
-            ) : etf.oneYearEarnRate == null ? (
-              <span className="inline-flex items-center h-[20px] px-1.5 rounded-md text-[10px] font-semibold bg-emerald-500/10 text-emerald-600">
-                NEW
-              </span>
-            ) : null}
-            {etf.oneYearEarnRate != null && (
-              <span className={`inline-flex items-center gap-0.5 h-[20px] px-1.5 rounded-md text-[10px] font-semibold ${etf.oneYearEarnRate > 0 ? 'bg-red-500/10 text-red-500' : etf.oneYearEarnRate < 0 ? 'bg-blue-500/10 text-blue-500' : 'bg-muted/50 text-muted-foreground'}`}>
-                <span className="text-[8px]">{etf.oneYearEarnRate > 0 ? '▲' : etf.oneYearEarnRate < 0 ? '▼' : ''}</span>
-                1Y {etf.oneYearEarnRate > 0 ? '+' : ''}{etf.oneYearEarnRate.toFixed(1)}%
-              </span>
-            )}
-          </div>
-          {/* Bottom: price/AUM + issuer */}
+          {/* Bottom: price + issuer */}
           <div className="mt-auto pt-1.5 border-t border-border/30">
             <div className="flex items-center justify-between">
               <span className="text-[10px] text-muted-foreground">
                 {etf.price?.toLocaleString()}원
-                {etf.aum != null && <span className="text-muted-foreground/50"> · {etf.aum >= 10000 ? `${(etf.aum / 10000).toFixed(1)}조` : `${etf.aum.toLocaleString()}억`}</span>}
               </span>
-              {etf.issuer && <IssuerBadge issuer={etf.issuer} size="lg" />}
+              {etf.issuer && <span className="text-[9px] text-muted-foreground/60">{etf.issuer}</span>}
             </div>
           </div>
         </div>
