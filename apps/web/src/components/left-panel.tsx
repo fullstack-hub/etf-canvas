@@ -189,21 +189,21 @@ export function LeftPanel() {
             {(() => {
               const cat = categories.find((c) => c.key === infoCat);
               if (!cat) return null;
-              const riskColor =
-                cat.tip.risk === '매우 높음' ? 'text-red-400' :
-                cat.tip.risk === '높음' ? 'text-orange-400' :
-                cat.tip.risk === '중·높음' ? 'text-amber-400' :
-                cat.tip.risk === '중간' ? 'text-yellow-400' :
-                cat.tip.risk === '중·낮음' ? 'text-emerald-400' :
-                cat.tip.risk === '낮음' ? 'text-green-400' : '';
+              const riskChip =
+                cat.tip.risk === '매우 높음' ? 'bg-red-500/15 text-red-400 border-red-500/30' :
+                cat.tip.risk === '높음' ? 'bg-orange-500/15 text-orange-400 border-orange-500/30' :
+                cat.tip.risk === '중·높음' ? 'bg-amber-500/15 text-amber-400 border-amber-500/30' :
+                cat.tip.risk === '중간' ? 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30' :
+                cat.tip.risk === '중·낮음' ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' :
+                cat.tip.risk === '낮음' ? 'bg-green-500/15 text-green-400 border-green-500/30' : '';
               return (
                 <div className="mt-2 px-2.5 py-2 rounded-lg bg-muted/40 border border-border/50 text-[11px] animate-in fade-in-0 duration-150">
                   <p className="font-bold text-xs mb-1">{cat.key}</p>
                   <p className="text-muted-foreground leading-relaxed mb-1.5">{cat.tip.desc}</p>
-                  <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+                  <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 items-center">
                     <span className="opacity-60">대표</span><span>{cat.tip.examples}</span>
                     {cat.tip.risk !== '-' && <span className="opacity-60">위험도</span>}
-                    {cat.tip.risk !== '-' && <span className={riskColor}>{cat.tip.risk}</span>}
+                    {cat.tip.risk !== '-' && <span className={`inline-block w-fit px-2 py-0.5 rounded-full border font-medium text-[10px] ${riskChip}`}>{cat.tip.risk}</span>}
                     <span className="opacity-60">스타일</span><span>{cat.tip.style}</span>
                   </div>
                 </div>

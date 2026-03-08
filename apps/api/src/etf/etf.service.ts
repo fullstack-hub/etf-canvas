@@ -280,9 +280,13 @@ export class EtfService {
 
     // 모든 ETF가 데이터를 가진 날짜만 사용 (교집합)
     const allDateSets = allPricesRaw.map((prices) => new Set(prices.map((p) => p.date)));
-    const commonDates = allPricesRaw[0]
+    let commonDates = allPricesRaw[0]
       ?.map((p) => p.date)
       .filter((d) => allDateSets.every((s) => s.has(d))) || [];
+
+    if (req.endDate) {
+      commonDates = commonDates.filter(d => new Date(d) <= new Date(req.endDate!));
+    }
 
     // 교집합 첫 날 기준 basePrices
     const basePrices = priceMaps.map((m) => m.get(commonDates[0]) || 1);
@@ -317,10 +321,27 @@ export class EtfService {
       ? (Math.pow(1 + totalReturn / 100, 365 / calendarDays) - 1) * 100
       : totalReturn;
 
+    // 평균 변동성 (일별 수익률 표준편차 * sqrt(252))
+    let volatility = 0;
+    if (dailyValues.length > 1) {
+      const dailyReturns: number[] = [];
+      for (let i = 1; i < dailyValues.length; i++) {
+        const prev = dailyValues[i - 1].value;
+        const curr = dailyValues[i].value;
+        if (prev > 0) dailyReturns.push((curr - prev) / prev);
+      }
+      if (dailyReturns.length > 1) {
+        const mean = dailyReturns.reduce((a, b) => a + b, 0) / dailyReturns.length;
+        const variance = dailyReturns.reduce((sum, r) => sum + (r - mean) ** 2, 0) / (dailyReturns.length - 1);
+        volatility = Math.round(Math.sqrt(variance) * Math.sqrt(252) * 10000) / 100;
+      }
+    }
+
     const result: SimulateResult = {
       totalReturn: Math.round(totalReturn * 100) / 100,
       annualizedReturn: Math.round(annualizedReturn * 100) / 100,
       maxDrawdown: Math.round(maxDrawdown * 100) / 100,
+      volatility,
       sharpeRatio: null,
       dailyValues,
       perEtf: req.codes.map((code, i) => {

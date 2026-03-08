@@ -3,4 +3,4 @@ name: etf-canvas-web
 description: ETF Canvas Web Frontend
 type: application
 version: 0.1.0
-appVersion: "0.5.1"
+appVersion: "0.5.2"

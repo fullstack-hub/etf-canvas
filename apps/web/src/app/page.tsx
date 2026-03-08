@@ -27,7 +27,7 @@ export default function HomePage() {
     <>
       <div className="h-[calc(100vh-37px)] flex overflow-hidden">
         <IconSidebar />
-        <LeftPanel />
+        {currentView !== 'portfolio' && <LeftPanel />}
         <div className="flex-1 flex min-w-0 bg-background">
           {currentView === 'portfolio' ? (
             <PortfolioList />
@@ -71,7 +71,10 @@ function LandingPage() {
       </header>
 
       <main className="flex-1 flex items-center justify-center">
-        <p className="text-muted-foreground">ETF Canvas — ETF 포트폴리오 분석 도구</p>
+        <div className="text-center space-y-3">
+          <h2 className="text-3xl font-bold tracking-tight">나만의 ETF 포트폴리오를 그리다</h2>
+          <p className="text-muted-foreground">ETF를 골라 담고, 비중을 조절하고, 성과를 시뮬레이션하세요</p>
+        </div>
       </main>
     </div>
   );

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { PriceChart } from '@/components/price-chart';
-import { X, TrendingUp, Globe, Building2, Percent } from 'lucide-react';
+import { X, TrendingUp, Globe, Building2, Percent, Target } from 'lucide-react';
 import type { ETFSummary } from '@etf-canvas/shared';
 
 const PERIODS = ['1m', '3m', '1y', 'ytd', '3y'] as const;
@@ -84,6 +84,20 @@ export function EtfDetailModal({ etf, onClose }: Props) {
               label={expenseRatio != null ? `${(expenseRatio * 100).toFixed(3)}%` : '-'}
               sublabel="운용보수"
             />
+            {etf.issuer && (
+              <InfoBadge
+                icon={<Building2 className="w-3.5 h-3.5" />}
+                label={etf.issuer}
+                sublabel="운용사"
+              />
+            )}
+            {detail?.benchmark && (
+              <InfoBadge
+                icon={<Target className="w-3.5 h-3.5" />}
+                label={detail.benchmark}
+                sublabel="벤치마크"
+              />
+            )}
           </div>
         </div>
 

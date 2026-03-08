@@ -50,12 +50,14 @@ export interface SimulateRequest {
   weights: number[];
   amount: number;
   period: string;
+  endDate?: string;
 }
 
 export interface SimulateResult {
   totalReturn: number;
   annualizedReturn: number;
   maxDrawdown: number;
+  volatility: number;
   sharpeRatio: number | null;
   dailyValues: { date: string; value: number }[];
   perEtf: {

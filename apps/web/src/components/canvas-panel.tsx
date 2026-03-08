@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { useSession } from 'next-auth/react';
 import { api } from '@/lib/api';
 import { useCanvasStore } from '@/lib/store';
@@ -13,6 +13,7 @@ import { EtfDetailModal } from '@/components/etf-detail-modal';
 import { SimilarEtfModal } from '@/components/similar-etf-modal';
 import { LoginModal } from '@/components/login-modal';
 import { toast } from 'sonner';
+import { IssuerBadge } from '@/components/issuer-badge';
 import type { ETFSummary } from '@etf-canvas/shared';
 
 export function CanvasPanel() {
@@ -39,6 +40,7 @@ export function CanvasPanel() {
     if (!raw) return;
     try {
       const etf: ETFSummary = JSON.parse(raw);
+      if (selected.some((s) => s.code === etf.code)) return;
       addToCanvas(etf);
       if (etf.expenseRatio == null) {
         addLoadingCode(etf.code);
@@ -56,7 +58,7 @@ export function CanvasPanel() {
 
   return (
     <div
-      className={`flex-1 overflow-auto p-6 space-y-5 bg-canvas-dot bg-[length:24px_24px] transition-colors relative ${dragOver ? 'bg-primary/5 ring-2 ring-primary/30 ring-inset' : ''}`}
+      className={`flex-1 overflow-auto p-6 space-y-5 bg-canvas-dot bg-[length:24px_24px] transition-all duration-200 relative border-2 ${dragOver ? 'border-dashed border-primary/30 bg-primary/[0.03]' : 'border-transparent'}`}
       onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
       onDragLeave={() => setDragOver(false)}
       onDrop={handleDrop}
@@ -69,8 +71,8 @@ export function CanvasPanel() {
               {selected.length}/20
             </span>
           )}
-          {/* Feedback toggle */}
-          {comparing.length > 0 && (
+          {/* Feedback toggle — dev only, always on in prod */}
+          {comparing.length > 0 && process.env.NODE_ENV === 'development' && (
             <button
               onClick={() => setFeedbackEnabled(!feedbackEnabled)}
               className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors ml-1"
@@ -95,6 +97,9 @@ export function CanvasPanel() {
               <span className={`text-xs font-bold tabular-nums ${totalWeight === 100 ? 'text-emerald-600' : 'text-destructive'}`}>
                 {totalWeight}%
               </span>
+              {totalWeight !== 100 && (
+                <span className="text-[11px] text-muted-foreground">비중 합계를 100%로 맞춰주세요</span>
+              )}
             </div>
           )}
           {selected.length > 0 && (
@@ -111,7 +116,7 @@ export function CanvasPanel() {
                     setShowLogin(true);
                   } else {
                     synthesize();
-                    if (feedbackEnabled) {
+                    if (feedbackEnabled || process.env.NODE_ENV === 'production') {
                       const hash = [...comparing].sort().map((c) => `${c}:${weights[c] || 0}`).join(',');
                       if (hash !== feedbackHash) {
                         setFeedbackLoading(true);
@@ -259,13 +264,6 @@ function EtfCard({
   onDetail: () => void;
   onReplace: () => void;
 }) {
-  const { data: detail } = useQuery({
-    queryKey: ['etf-detail', etf.code],
-    queryFn: () => api.getDetail(etf.code),
-    staleTime: 1000 * 60 * 10,
-  });
-
-  const benchmark = detail?.benchmark;
   const cat = etf.categories[0];
   const colors = CATEGORY_COLORS[cat] || CATEGORY_COLORS._default;
 
@@ -339,14 +337,12 @@ function EtfCard({
           </div>
         )}
 
-        <div className="px-2.5 pt-2.5 pb-2.5 flex flex-col gap-2">
-          <h3 className="font-bold text-sm leading-snug line-clamp-2 min-h-[2.6em]" title={etf.name}>
-            {etf.name}
-          </h3>
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] text-muted-foreground/60 truncate" title={benchmark || ''}>
-              {benchmark || '\u00A0'}
-            </span>
+        <div className="px-2.5 pt-2 pb-2 flex flex-col flex-1 gap-1">
+          {/* Title + menu */}
+          <div className="flex items-start gap-1">
+            <h3 className="font-bold text-[13px] leading-snug line-clamp-2 min-h-[2.5em] flex-1" title={etf.name}>
+              {etf.name}
+            </h3>
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -355,10 +351,39 @@ function EtfCard({
                 if (!rect) return;
                 setTimeout(() => setCtxMenu({ x: e.clientX - rect.left, y: e.clientY - rect.top }), 0);
               }}
-              className="opacity-0 group-hover:opacity-100 p-0.5 -mr-1 rounded hover:bg-muted transition-all"
+              className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-muted transition-all shrink-0"
             >
               <EllipsisVertical className="w-3.5 h-3.5 text-muted-foreground" />
             </button>
+          </div>
+          {/* Returns */}
+          <div className="flex items-center gap-1.5">
+            {etf.threeMonthEarnRate != null ? (
+              <span className={`inline-flex items-center gap-0.5 h-[20px] px-1.5 rounded-md text-[10px] font-semibold ${etf.threeMonthEarnRate > 0 ? 'bg-red-500/10 text-red-500' : etf.threeMonthEarnRate < 0 ? 'bg-blue-500/10 text-blue-500' : 'bg-muted/50 text-muted-foreground'}`}>
+                <span className="text-[8px]">{etf.threeMonthEarnRate > 0 ? '▲' : etf.threeMonthEarnRate < 0 ? '▼' : ''}</span>
+                3M {etf.threeMonthEarnRate > 0 ? '+' : ''}{etf.threeMonthEarnRate.toFixed(1)}%
+              </span>
+            ) : etf.oneYearEarnRate == null ? (
+              <span className="inline-flex items-center h-[20px] px-1.5 rounded-md text-[10px] font-semibold bg-emerald-500/10 text-emerald-600">
+                NEW
+              </span>
+            ) : null}
+            {etf.oneYearEarnRate != null && (
+              <span className={`inline-flex items-center gap-0.5 h-[20px] px-1.5 rounded-md text-[10px] font-semibold ${etf.oneYearEarnRate > 0 ? 'bg-red-500/10 text-red-500' : etf.oneYearEarnRate < 0 ? 'bg-blue-500/10 text-blue-500' : 'bg-muted/50 text-muted-foreground'}`}>
+                <span className="text-[8px]">{etf.oneYearEarnRate > 0 ? '▲' : etf.oneYearEarnRate < 0 ? '▼' : ''}</span>
+                1Y {etf.oneYearEarnRate > 0 ? '+' : ''}{etf.oneYearEarnRate.toFixed(1)}%
+              </span>
+            )}
+          </div>
+          {/* Bottom: price/AUM + issuer */}
+          <div className="mt-auto pt-1.5 border-t border-border/30">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] text-muted-foreground">
+                {etf.price?.toLocaleString()}원
+                {etf.aum != null && <span className="text-muted-foreground/50"> · {etf.aum >= 10000 ? `${(etf.aum / 10000).toFixed(1)}조` : `${etf.aum.toLocaleString()}억`}</span>}
+              </span>
+              {etf.issuer && <IssuerBadge issuer={etf.issuer} size="lg" />}
+            </div>
           </div>
         </div>
       </div>
@@ -396,7 +421,7 @@ function EtfCard({
       {ctxMenu && (
         <div
           className="absolute z-50 min-w-[140px] rounded-lg border bg-popover shadow-lg py-1 animate-in fade-in zoom-in-95 duration-100"
-          style={{ left: ctxMenu.x, top: ctxMenu.y }}
+          style={{ right: 4, top: ctxMenu.y }}
         >
           <button
             className="flex items-center gap-2 w-full px-3 py-1.5 text-xs hover:bg-muted transition-colors text-left"
@@ -500,59 +525,62 @@ export function FloatingFeedback({ loading, text, actions, onAction }: {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M5 12h14" /></svg>
         </button>
       </div>
-      <div className="flex">
-        {/* Left: feedback content */}
-        <div className="flex-1 flex flex-col border-r">
-          {loading ? (
-            <div className="flex-1 flex flex-col items-center justify-center gap-3 py-8 px-3">
-              <div className="relative">
-                <div className="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center">
-                  <Sparkles className="w-5 h-5 text-amber-500 animate-[sparkle_1.5s_ease-in-out_infinite]" style={{ filter: 'drop-shadow(0 0 3px #f59e0b)' }} />
-                </div>
-                <div className="absolute inset-0 rounded-full border-2 border-amber-500/20 animate-[spin_3s_linear_infinite]" style={{ borderTopColor: '#f59e0b' }} />
+      {/* Feedback content */}
+      <div className="flex flex-col">
+        {loading ? (
+          <div className="flex flex-col items-center justify-center gap-3 py-8 px-3">
+            <div className="relative">
+              <div className="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center">
+                <Sparkles className="w-5 h-5 text-amber-500 animate-[sparkle_1.5s_ease-in-out_infinite]" style={{ filter: 'drop-shadow(0 0 3px #f59e0b)' }} />
               </div>
-              <div className="text-center space-y-1">
-                <p className="text-xs font-medium text-foreground/80">포트폴리오를 분석중이에요</p>
-                <p className="text-[10px] text-muted-foreground/60">잠시만 기다려 주세요</p>
+              <div className="absolute inset-0 rounded-full border-2 border-amber-500/20 animate-[spin_3s_linear_infinite]" style={{ borderTopColor: '#f59e0b' }} />
+            </div>
+            <div className="text-center space-y-1">
+              <p className="text-xs font-medium text-foreground/80">포트폴리오를 분석중이에요</p>
+              <p className="text-[10px] text-muted-foreground/60">잠시만 기다려 주세요</p>
+            </div>
+          </div>
+        ) : text ? (
+          <>
+            {/* Scrollable feedback text */}
+            <div className="max-h-[200px] overflow-y-auto px-3 pt-2">
+              <div className="rounded-lg border bg-amber-50 dark:bg-amber-950/20 p-2.5">
+                <div className="flex gap-2 items-start">
+                  <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+                  <p className="text-xs text-foreground/80 leading-relaxed whitespace-pre-line">{text}</p>
+                </div>
               </div>
             </div>
-          ) : text ? (
-            <>
-              {/* Scrollable feedback text */}
-              <div className="max-h-[300px] overflow-y-auto px-3 pt-2">
-                <div className="rounded-lg border bg-amber-50 dark:bg-amber-950/20 p-2.5">
-                  <div className="flex gap-2 items-start">
-                    <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
-                    <p className="text-xs text-foreground/80 leading-relaxed">{text}</p>
-                  </div>
-                </div>
+            {/* Action buttons */}
+            {actions.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 px-3 pt-2">
+                {actions.map((action) => (
+                  <button
+                    key={action.category}
+                    onClick={() => onAction(action.category)}
+                    className="flex items-center gap-1 px-2 py-1 rounded-md border border-border bg-muted/50 text-foreground/80 text-[11px] hover:bg-muted transition-colors"
+                  >
+                    <Search className="w-2.5 h-2.5 text-muted-foreground" />
+                    {action.label}
+                  </button>
+                ))}
               </div>
-              {/* Fixed: action buttons */}
-              {actions.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 px-3 pt-2">
-                  {actions.map((action) => (
-                    <button
-                      key={action.category}
-                      onClick={() => onAction(action.category)}
-                      className="flex items-center gap-1 px-2 py-1 rounded-md border border-border bg-muted/50 text-foreground/80 text-[11px] hover:bg-muted transition-colors"
-                    >
-                      <Search className="w-2.5 h-2.5 text-muted-foreground" />
-                      {action.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-              {/* Fixed: disclaimer */}
-              <p className="text-[9px] text-muted-foreground/50 leading-relaxed px-3 pt-2 pb-3">
-                본 정보는 공시 자료 기반의 일반적인 분석이며 투자 자문이 아닙니다. 투자 판단은 본인의 책임하에 이루어져야 합니다.
-              </p>
-            </>
-          ) : null}
-        </div>
-        {/* Right: video ad area (300x250 Medium Rectangle) */}
-        <div className="w-[300px] shrink-0 flex items-center justify-center p-3">
-          <div className="w-[300px] h-[250px] rounded-lg border border-dashed border-border/40 bg-muted/10 flex items-center justify-center">
-            <span className="text-xs text-muted-foreground/40">AD</span>
+            )}
+            {/* Disclaimer */}
+            <p className="text-[9px] text-muted-foreground/50 leading-relaxed px-3 pt-2 pb-2">
+              본 정보는 공시 자료 기반의 일반적인 분석이며 투자 자문이 아닙니다. 투자 판단은 본인의 책임하에 이루어져야 합니다.
+            </p>
+          </>
+        ) : null}
+        {/* Bottom: 16:9 ad area */}
+        <div className="px-3 pb-3">
+          <div className="w-full aspect-video rounded-lg overflow-hidden bg-black">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/ads/etf-canvas-hero.jpg"
+              alt="ETF Canvas"
+              className="w-full h-full object-cover"
+            />
           </div>
         </div>
       </div>

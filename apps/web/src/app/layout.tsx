@@ -17,8 +17,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ETF Canvas",
-  description: "ETF 비교 분석 플랫폼",
+  title: "ETF Canvas - 나만의 ETF 포트폴리오를 그리다",
+  description: "나만의 ETF 포트폴리오를 그리다",
+  icons: {
+    icon: "/favicon.svg",
+  },
 };
 
 export default function RootLayout({

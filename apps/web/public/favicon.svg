@@ -1,0 +1,10 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="32" height="32" rx="6" fill="#1a1a1a"/>
+  <!-- Paint palette -->
+  <path d="M16 5C10.2 5 5.5 9.7 5.5 15.5C5.5 21.3 10.2 26 16 26C17.1 26 17.8 25.3 17.8 24.3C17.8 23.8 17.6 23.4 17.3 23.1C17 22.8 16.9 22.4 16.9 21.9C16.9 20.9 17.6 20.1 18.6 20.1H20.5C23.8 20.1 26.5 17.4 26.5 14.1C26.5 9.1 21.8 5 16 5Z" fill="white"/>
+  <!-- Paint dots -->
+  <circle cx="11" cy="13" r="1.8" fill="#FF6B6B"/>
+  <circle cx="14.5" cy="10" r="1.8" fill="#FFD93D"/>
+  <circle cx="18.5" cy="10" r="1.8" fill="#6BCB77"/>
+  <circle cx="22" cy="13.5" r="1.8" fill="#4D96FF"/>
+</svg>
