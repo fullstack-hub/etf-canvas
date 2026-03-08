@@ -36,6 +36,11 @@ seedCronJob:
   schedule: "0 18 * * 1-5"
   discordWebhook: "https://discord.com/api/webhooks/1479675781142806528/RgcDhBAfN9gGe_Ya2UQqLSOjnmYfD7RcRPeiBakScossOzIFYy0W8gVVO1SC7Uvwu0jN"
 
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 4
+  targetCPUUtilizationPercentage: 70
+
 nodeSelector: {}
 tolerations: []
-affinity: {}

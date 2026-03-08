@@ -39,6 +39,11 @@ resources:
 
 env: []
 
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 4
+  targetCPUUtilizationPercentage: 70
+
 nodeSelector: {}
 tolerations: []
-affinity: {}

@@ -1,5 +1,7 @@
-import { Controller, Get, Post, Param, Query, Body } from '@nestjs/common';
+import { Controller, Get, Post, Param, Query, Body, UseGuards } from '@nestjs/common';
+import { ApiSecurity } from '@nestjs/swagger';
 import { EtfService } from './etf.service';
+import { AdminGuard } from '../auth/admin.guard';
 import type { CompareRequest, SimulateRequest, ETFSortBy } from '@etf-canvas/shared';
 
 @Controller('etf')
@@ -35,6 +37,8 @@ export class EtfController {
   }
 
   @Post('seed')
+  @UseGuards(AdminGuard)
+  @ApiSecurity('api-key')
   seed() {
     return this.etfService.seed();
   }

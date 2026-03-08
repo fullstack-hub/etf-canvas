@@ -24,11 +24,17 @@ spec:
               env:
                 - name: DISCORD_WEBHOOK
                   value: {{ .Values.seedCronJob.discordWebhook | quote }}
+                - name: ADMIN_API_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: etf-canvas-admin-secret
+                      key: api-key
               command:
                 - sh
                 - -c
                 - |
                   RESULT=$(curl -sf -X POST \
+                    -H "X-API-Key: $ADMIN_API_KEY" \
                     "http://{{ include "etf-canvas-api.fullname" . }}:{{ .Values.service.port }}/etf/seed" \
                     --max-time 300 2>&1)
                   EXIT_CODE=$?
