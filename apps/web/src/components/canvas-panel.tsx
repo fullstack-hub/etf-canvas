@@ -121,7 +121,7 @@ export function CanvasPanel() {
                         });
                         api.getPortfolioFeedback(items)
                           .then((res) => setFeedback(hash, res.feedback, res.actions))
-                          .catch(() => setFeedback(hash, '피드백을 생성할 수 없어요.', []));
+                          .catch(() => setFeedback('', '피드백을 생성할 수 없어요.', []));
                       }
                     }
                   }

@@ -20,6 +20,9 @@ export class PortfolioController {
   feedback(
     @Body() body: { items: { code: string; name: string; weight: number; category: string }[] },
   ) {
+    if (!Array.isArray(body?.items) || body.items.length === 0) {
+      return { feedback: '피드백을 생성할 수 없어요.', actions: [] };
+    }
     return this.svc.feedback(body.items);
   }
 
