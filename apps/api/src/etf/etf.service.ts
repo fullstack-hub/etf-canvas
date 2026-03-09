@@ -46,7 +46,7 @@ export class EtfService {
       // 공백 제거 + 소문자 비교 (e.g. "acekrx 금현물" → "ACE KRX금현물" 매칭)
       const normalized = query.replace(/\s+/g, '').toLowerCase();
       const matchingCodes: { code: string }[] = await this.prisma.$queryRawUnsafe(
-        `SELECT code FROM "Etf" WHERE LOWER(REPLACE(name, ' ', '')) LIKE $1 OR code LIKE $2`,
+        `SELECT code FROM "etf" WHERE LOWER(REPLACE(name, ' ', '')) LIKE $1 OR code LIKE $2`,
         `%${normalized}%`,
         `${normalized}%`,
       );
