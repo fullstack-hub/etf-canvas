@@ -76,7 +76,7 @@ export function LeftPanel() {
   const handleQueryChange = useCallback((value: string) => {
     setQuery(value);
     if (value) setCategory('');
-    const timer = setTimeout(() => setDebouncedQuery(value), 300);
+    const timer = setTimeout(() => setDebouncedQuery(value.replace(/\s+/g, '')), 300);
     return () => clearTimeout(timer);
   }, []);
 
