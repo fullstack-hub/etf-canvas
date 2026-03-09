@@ -9,7 +9,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { PriceChart } from '@/components/price-chart';
 import {
   ChevronUp, ChevronDown, BarChart3, Globe, Crosshair,
-  FileText, Gem, ArrowUpDown, Blend, Zap, Sparkles,
+  FileText, Gem, ArrowUpDown, Blend, Zap, Sparkles, X,
 } from 'lucide-react';
 import type { ETFSummary, ETFSortBy } from '@etf-canvas/shared';
 
@@ -151,12 +151,22 @@ export function LeftPanel() {
             <span className="text-sm font-normal text-muted-foreground ml-1.5">({countData.total.toLocaleString()})</span>
           )}
         </h2>
-        <Input
-          placeholder="검색"
-          value={query}
-          onChange={(e) => handleQueryChange(e.target.value)}
-          className="h-8 text-sm"
-        />
+        <div className="relative">
+          <Input
+            placeholder="검색"
+            value={query}
+            onChange={(e) => handleQueryChange(e.target.value)}
+            className="h-8 text-sm pr-7"
+          />
+          {query && (
+            <button
+              onClick={() => handleQueryChange('')}
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-muted text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Categories */}

@@ -43,25 +43,17 @@ export class EtfService {
 
     const where: Record<string, unknown> = {};
     if (query) {
-      // 영문/숫자 ↔ 한글 경계 + 영문↔숫자 경계 + 공백에서 토큰 분리
-      // e.g. "TIGER코리아" → ["TIGER", "코리아"], "kodex200" → ["kodex", "200"]
-      const tokens = query
-        .split(/\s+/)
-        .flatMap((part) =>
-          part.split(/(?<=[a-zA-Z0-9&])(?=[가-힣])|(?<=[가-힣])(?=[a-zA-Z0-9&])|(?<=[a-zA-Z])(?=[0-9])|(?<=[0-9])(?=[a-zA-Z])/)
-        )
-        .filter(Boolean);
-
-      if (tokens.length > 1) {
-        where.OR = [
-          { AND: tokens.map((t) => ({ name: { contains: t, mode: 'insensitive' } })) },
-          { code: { startsWith: query.replace(/\s+/g, '') } },
-        ];
+      // 공백 제거 + 소문자 비교 (e.g. "acekrx 금현물" → "ACE KRX금현물" 매칭)
+      const normalized = query.replace(/\s+/g, '').toLowerCase();
+      const matchingCodes: { code: string }[] = await this.prisma.$queryRawUnsafe(
+        `SELECT code FROM "Etf" WHERE LOWER(REPLACE(name, ' ', '')) LIKE $1 OR code LIKE $2`,
+        `%${normalized}%`,
+        `${normalized}%`,
+      );
+      if (matchingCodes.length > 0) {
+        where.code = { in: matchingCodes.map((r) => r.code) };
       } else {
-        where.OR = [
-          { name: { contains: query, mode: 'insensitive' } },
-          { code: { startsWith: query } },
-        ];
+        where.code = { in: [] }; // 결과 없음
       }
     }
     if (benchmark) {
@@ -110,7 +102,7 @@ export class EtfService {
     const cacheKey = `etf:detail:${code}`;
 
     const cached = await this.redis.getJson<ETFDetail>(cacheKey);
-    if (cached && cached.benchmark) return cached;
+    if (cached) return cached;
 
     let etf = await this.prisma.etf.findUnique({
       where: { code },
@@ -349,6 +341,7 @@ export class EtfService {
       volatility,
       sharpeRatio: null,
       dailyValues,
+      startPrices: Object.fromEntries(req.codes.map((code, i) => [code, basePrices[i]])),
       perEtf: req.codes.map((code, i) => {
         const lastDate = commonDates[commonDates.length - 1];
         const lastPrice = priceMaps[i].get(lastDate) || 0;

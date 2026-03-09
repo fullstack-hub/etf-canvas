@@ -6,7 +6,6 @@ import { useSession } from 'next-auth/react';
 import { api } from '@/lib/api';
 import { useCanvasStore } from '@/lib/store';
 import { Button } from '@/components/ui/button';
-import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
 import { ArrowLeftRight, Loader2, Check, Info, Trash2, Sparkles, RotateCcw, EllipsisVertical, AlertTriangle, CheckCircle2, Search, X, GripVertical } from 'lucide-react';
 import { EtfDetailModal } from '@/components/etf-detail-modal';
@@ -17,7 +16,7 @@ import { IssuerBadge } from '@/components/issuer-badge';
 import type { ETFSummary } from '@etf-canvas/shared';
 
 export function CanvasPanel() {
-  const { selected, comparing, weights, setWeight, loadingCodes, removeFromCanvas, toggleCompare, clearCanvas, addToCanvas, addLoadingCode, removeLoadingCode, updateEtfData, synthesize, synthesized, pendingSynthesize, setPendingSynthesize, feedbackEnabled, setFeedbackEnabled, feedbackHash, feedbackText, feedbackActions, feedbackLoading, setFeedback, setFeedbackLoading, setBrowseCategory } = useCanvasStore();
+  const { selected, comparing, weights, amounts, setAmount, loadingCodes, removeFromCanvas, toggleCompare, clearCanvas, addToCanvas, addLoadingCode, removeLoadingCode, updateEtfData, synthesize, synthesized, pendingSynthesize, setPendingSynthesize, feedbackEnabled, setFeedbackEnabled, feedbackHash, feedbackText, feedbackActions, feedbackLoading, setFeedback, setFeedbackLoading, setBrowseCategory } = useCanvasStore();
   const { data: session } = useSession();
   const queryClient = useQueryClient();
   const [detailTarget, setDetailTarget] = useState<ETFSummary | null>(null);
@@ -54,7 +53,7 @@ export function CanvasPanel() {
     } catch { /* ignore */ }
   };
 
-  const totalWeight = comparing.reduce((sum, code) => sum + (weights[code] || 0), 0);
+  const totalAmount = comparing.reduce((sum, code) => sum + (amounts[code] || 0), 0);
 
   return (
     <div
@@ -85,21 +84,15 @@ export function CanvasPanel() {
           )}
         </div>
         <div className="flex items-center gap-2">
-          {/* Total weight gauge */}
-          {comparing.length > 0 && !synthesized && (
-            <div className="flex items-center gap-2">
-              <div className="w-24 h-1.5 rounded-full bg-muted overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all duration-300 ${totalWeight === 100 ? 'bg-emerald-500' : totalWeight > 100 ? 'bg-destructive' : 'bg-primary'}`}
-                  style={{ width: `${Math.min(totalWeight, 100)}%` }}
-                />
-              </div>
-              <span className={`text-xs font-bold tabular-nums ${totalWeight === 100 ? 'text-emerald-600' : 'text-destructive'}`}>
-                {totalWeight}%
+          {/* Total investment amount */}
+          {comparing.length > 0 && (
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] text-muted-foreground">총 투자금</span>
+              <span className="text-xs font-bold tabular-nums text-foreground">
+                {totalAmount >= 100_000_000
+                  ? `${(totalAmount / 100_000_000).toFixed(1)}억원`
+                  : `${(totalAmount / 10_000).toLocaleString()}만원`}
               </span>
-              {totalWeight !== 100 && (
-                <span className="text-[11px] text-muted-foreground">비중 합계를 100%로 맞춰주세요</span>
-              )}
             </div>
           )}
           {selected.length > 0 && (
@@ -109,8 +102,8 @@ export function CanvasPanel() {
                 초기화
               </Button>
               {comparing.length > 0 && !synthesized && (
-                <Button size="sm" disabled={totalWeight !== 100} onClick={() => {
-                  if (totalWeight !== 100) return;
+                <Button size="sm" disabled={totalAmount === 0} onClick={() => {
+                  if (totalAmount === 0) return;
                   if (!session) {
                     setPendingSynthesize(true);
                     setShowLogin(true);
@@ -154,7 +147,8 @@ export function CanvasPanel() {
             isLoading={loadingCodes.includes(etf.code)}
             dimmed={comparing.length > 0 && !comparing.includes(etf.code)}
             weight={weights[etf.code] || 0}
-            onWeightChange={(w) => setWeight(etf.code, w)}
+            amount={amounts[etf.code] || 0}
+            onAmountChange={(a) => setAmount(etf.code, a)}
             onToggleCompare={() => toggleCompare(etf.code)}
             onRemove={() => removeFromCanvas(etf.code)}
             onDetail={() => setDetailTarget(etf)}
@@ -241,13 +235,42 @@ function SaveModal({ onClose, onSave }: { onClose: () => void; onSave: (name: st
   );
 }
 
+function AmountInput({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const [text, setText] = useState(value > 0 ? String(value) : '');
+
+  useEffect(() => {
+    setText(value > 0 ? String(value) : '');
+  }, [value]);
+
+  return (
+    <Input
+      type="text"
+      inputMode="numeric"
+      value={text}
+      onChange={(e) => {
+        const raw = e.target.value.replace(/[^0-9]/g, '');
+        setText(raw);
+        onChange(Math.max(0, Number(raw) || 0));
+      }}
+      onBlur={() => {
+        const n = Math.max(0, Number(text) || 0);
+        setText(n > 0 ? String(n) : '');
+        onChange(n);
+      }}
+      className="h-6 flex-1 px-1.5 text-right text-xs tabular-nums"
+      placeholder="0"
+    />
+  );
+}
+
 function EtfCard({
   etf,
   isComparing,
   isLoading,
   dimmed,
   weight,
-  onWeightChange,
+  amount,
+  onAmountChange,
   onToggleCompare,
   onRemove,
   onDetail,
@@ -258,7 +281,8 @@ function EtfCard({
   isLoading: boolean;
   dimmed: boolean;
   weight: number;
-  onWeightChange: (w: number) => void;
+  amount: number;
+  onAmountChange: (a: number) => void;
   onToggleCompare: () => void;
   onRemove: () => void;
   onDetail: () => void;
@@ -368,31 +392,18 @@ function EtfCard({
         </div>
       </div>
 
-      {/* Weight controls (only when comparing) */}
+      {/* Amount controls (only when comparing) */}
       {isComparing && (
         <div
-          className="bg-background border-t px-2.5 py-2 rounded-b-lg"
+          className="bg-background border-t px-2.5 py-2 rounded-b-lg space-y-1"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="flex items-center gap-2 mb-1.5">
-            <Slider
-              value={[weight]}
-              max={100}
-              step={1}
-              onValueChange={([val]) => onWeightChange(val)}
-              className="flex-1"
-            />
-            <div className="flex items-center gap-0.5 shrink-0">
-              <Input
-                type="number"
-                value={weight}
-                onChange={(e) => onWeightChange(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
-                className="h-6 w-12 px-1 text-right text-xs"
-                min={0}
-                max={100}
-              />
-              <span className="text-xs text-muted-foreground">%</span>
-            </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] font-medium text-muted-foreground/70 shrink-0 tabular-nums w-[40px]">
+              {weight.toFixed(1)}%
+            </span>
+            <AmountInput value={amount / 10000} onChange={(v) => onAmountChange(v * 10000)} />
+            <span className="text-[10px] text-muted-foreground shrink-0">만원</span>
           </div>
         </div>
       )}

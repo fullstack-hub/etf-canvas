@@ -67,6 +67,8 @@ export interface SimulateResult {
     weight: number;
     returnRate: number;
   }[];
+  /** 기간 시작일 종가 (code → price) */
+  startPrices?: Record<string, number>;
 }
 
 export type ETFCategory =

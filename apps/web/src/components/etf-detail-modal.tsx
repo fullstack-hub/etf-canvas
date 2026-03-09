@@ -159,7 +159,7 @@ export function EtfDetailModal({ etf, onClose }: Props) {
         {/* (3) Dividend chart */}
         {dividends && dividends.length > 0 && (
           <div className="px-6 pb-4">
-            <DividendDetailChart dividends={dividends} dividendYield={etf.dividendYield} />
+            <DividendDetailChart dividends={dividends} period={period} />
           </div>
         )}
 
@@ -195,22 +195,35 @@ export function EtfDetailModal({ etf, onClose }: Props) {
   );
 }
 
-function DividendDetailChart({ dividends, dividendYield }: {
+function DividendDetailChart({ dividends, period }: {
   dividends: { date: string; payDate: string; amount: number; rate: number }[];
-  dividendYield: number | null | undefined;
+  period: string;
 }) {
-  // 월별 그룹핑 + 누적 분배율
+  // 월별 그룹핑
   const sorted = [...dividends].filter(d => d.date).sort((a, b) => a.date.localeCompare(b.date));
-  let cumRate = 0;
-  const monthMap: Record<string, { amount: number; rate: number; cumRate: number }> = {};
+  const monthMap: Record<string, { amount: number; rate: number }> = {};
   for (const d of sorted) {
     const month = d.date.slice(0, 7);
-    if (!monthMap[month]) monthMap[month] = { amount: 0, rate: 0, cumRate: 0 };
+    if (!monthMap[month]) monthMap[month] = { amount: 0, rate: 0 };
     monthMap[month].amount += d.amount;
     monthMap[month].rate += d.rate;
   }
-  const entries = Object.entries(monthMap).sort(([a], [b]) => a.localeCompare(b));
-  const data = entries.map(([month, v]) => {
+  const allEntries = Object.entries(monthMap).sort(([a], [b]) => a.localeCompare(b));
+
+  // period에 따라 cutoff 계산
+  const cutoff = new Date();
+  const now = new Date();
+  if (period === '1m') cutoff.setMonth(now.getMonth() - 1);
+  else if (period === '3m') cutoff.setMonth(now.getMonth() - 3);
+  else if (period === '1y') cutoff.setFullYear(now.getFullYear() - 1);
+  else if (period === 'ytd') { cutoff.setMonth(0); cutoff.setDate(1); }
+  else if (period === '3y') cutoff.setFullYear(now.getFullYear() - 3);
+  const cutoffMonth = `${cutoff.getFullYear()}-${String(cutoff.getMonth() + 1).padStart(2, '0')}`;
+
+  // 필터 후 cumRate를 0부터 재계산
+  const filtered = allEntries.filter(([month]) => month >= cutoffMonth);
+  let cumRate = 0;
+  const recent = filtered.map(([month, v]) => {
     cumRate += v.rate;
     return {
       month: `${Number(month.slice(5, 7))}월`,
@@ -221,8 +234,6 @@ function DividendDetailChart({ dividends, dividendYield }: {
     };
   });
 
-  // 최근 12개월만
-  const recent = data.slice(-12);
   const avgRate = recent.length > 0
     ? Math.round((recent.reduce((s, d) => s + d.rate, 0) / recent.length) * 100) / 100
     : 0;
