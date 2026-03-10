@@ -89,4 +89,4 @@ export interface ETFDividend {
   rate: number;
 }
 
-export type ETFSortBy = 'returnRate1y' | 'returnRate3m' | 'aum';
+export type ETFSortBy = 'returnRate1y' | 'returnRate3m' | 'aum' | 'expenseRatio';

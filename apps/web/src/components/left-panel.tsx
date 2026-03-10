@@ -354,6 +354,10 @@ function EtfListItem({
             <span className="text-xs shrink-0 text-right tabular-nums text-muted-foreground">
               {etf.aum ? (etf.aum >= 10000 ? `${(etf.aum / 10000).toFixed(1)}조` : `${etf.aum.toLocaleString()}억`) : '-'}
             </span>
+          ) : sortBy === 'expenseRatio' ? (
+            <span className="text-xs shrink-0 text-right tabular-nums text-muted-foreground">
+              {expenseRatio != null ? `${(expenseRatio * 100).toFixed(3)}%` : '-'}
+            </span>
           ) : (
             <ReturnRateLabel rate={
               sortBy === 'returnRate1y' ? etf.oneYearEarnRate
@@ -399,6 +403,7 @@ const SORT_OPTIONS: { key: ETFSortBy; label: string }[] = [
   { key: 'aum', label: 'AUM 높은순' },
   { key: 'returnRate1y', label: '1Y 수익률순' },
   { key: 'returnRate3m', label: '3M 수익률순' },
+  { key: 'expenseRatio', label: '운용보수 낮은순' },
 ];
 
 function SortDropdown({ value, onChange }: { value: ETFSortBy; onChange: (v: ETFSortBy) => void }) {

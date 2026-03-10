@@ -13,14 +13,14 @@ import { Maximize2, Minimize2, Sparkles, TrendingUp, Info } from 'lucide-react';
 import type { SimulateRequest } from '@etf-canvas/shared';
 
 const PIE_COLORS: Record<string, string> = {
-  '국내 대표지수': '#3b82f6',
-  '해외 대표지수': '#06b6d4',
-  '섹터/테마': '#8b5cf6',
-  '액티브': '#a855f7',
-  '채권': '#10b981',
-  '혼합': '#14b8a6',
-  '원자재': '#f59e0b',
-  '레버리지/인버스': '#ef4444',
+  '국내 대표지수': '#6b9bd2',
+  '해외 대표지수': '#7ec4cf',
+  '섹터/테마': '#9b8ec4',
+  '액티브': '#b89cc8',
+  '채권': '#7bc4a5',
+  '혼합': '#85c5b8',
+  '원자재': '#dbb97a',
+  '레버리지/인버스': '#d98b8b',
 };
 
 /** 각 종목 분배금을 비중 가중 후 월별/분기별 합산 */
@@ -206,6 +206,18 @@ export function PerformancePanel() {
     };
   }) || [];
 
+  const yTicks = (() => {
+    if (chartData.length === 0) return [];
+    const vals = chartData.map(d => d.value);
+    const min = Math.floor(Math.min(...vals) / 10) * 10;
+    const max = Math.ceil(Math.max(...vals) / 10) * 10;
+    const step = Math.max(10, Math.ceil((max - min) / 4 / 10) * 10);
+    const ticks: number[] = [];
+    for (let v = min; v <= max; v += step) ticks.push(v);
+    if (ticks[ticks.length - 1] < max) ticks.push(ticks[ticks.length - 1] + step);
+    return ticks;
+  })();
+
   const emptyState = comparing.length === 0
     ? '합성할 ETF를 선택해 주세요.'
     : !isValid
@@ -334,7 +346,7 @@ export function PerformancePanel() {
           {expanded ? (
             <>
               {/* 확장: 성장추이 전체 가로 → 지표카드 → 자산구성+분배금 2열 */}
-              <div className="rounded-xl border border-border/40 bg-muted/5 p-3 flex flex-col min-h-0 flex-1">
+              <div className="rounded-xl border border-border/70 bg-muted/5 p-3 flex flex-col min-h-0 flex-1">
                 <h3 className="text-[14px] font-extrabold text-foreground/80 mb-2 shrink-0">포트폴리오 성장 추이</h3>
                 <div key={`${timeframe.value}-${chartData.length}-${expanded}`} className="flex-1 min-h-0">
                   <ResponsiveContainer width="100%" height="100%">
@@ -347,7 +359,7 @@ export function PerformancePanel() {
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="text-border/30" strokeOpacity={0.3} />
                       <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: 'currentColor', opacity: 0.4 }} dy={8} minTickGap={50} />
-                      <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: 'currentColor', opacity: 0.4 }} tickFormatter={(v) => `${v}%`} />
+                      <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: 'currentColor', opacity: 0.4 }} tickFormatter={(v) => `${Math.round(v)}%`} ticks={yTicks} domain={[yTicks[0] ?? 0, yTicks[yTicks.length - 1] ?? 0]} />
                       <Tooltip content={<ChartTooltip />} />
                       <Area type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} fillOpacity={1} fill="url(#growthGrad)" />
                     </AreaChart>
@@ -391,7 +403,7 @@ export function PerformancePanel() {
                 />
               </div>
               <div className="grid grid-cols-2 gap-3 shrink-0 h-[200px]">
-                <div className="rounded-xl border border-border/40 bg-muted/5 p-3 flex flex-col items-center min-h-0">
+                <div className="rounded-xl border border-border/70 bg-muted/5 p-3 flex flex-col items-center min-h-0">
                   <div className="flex items-center justify-between w-full mb-2 shrink-0">
                     <h3 className="text-[14px] font-extrabold text-foreground/80">자산 구성</h3>
                     {synthExpense != null && (
@@ -406,7 +418,7 @@ export function PerformancePanel() {
                   </div>
                   <CategoryPie comparingCodes={comparing} selected={selected} weights={weights} />
                 </div>
-                <div className="rounded-xl border border-border/40 bg-muted/5 p-3 flex flex-col min-h-0">
+                <div className="rounded-xl border border-border/70 bg-muted/5 p-3 flex flex-col min-h-0">
                   <div className="flex items-center justify-between mb-2 shrink-0">
                     <div className="flex items-center gap-1.5 group/divtip relative">
                       <h3 className="text-[14px] font-extrabold text-foreground/80">분배금 내역 추이</h3>
@@ -456,7 +468,7 @@ export function PerformancePanel() {
                 />
               </div>
               <div className="flex-1 min-h-0 grid grid-cols-[1.6fr_1fr_1.4fr] gap-3">
-                <div className="rounded-xl border border-border/40 bg-muted/5 p-3 flex flex-col min-h-0">
+                <div className="rounded-xl border border-border/70 bg-muted/5 p-3 flex flex-col min-h-0">
                   <h3 className="text-[14px] font-extrabold text-foreground/80 mb-2 shrink-0">포트폴리오 성장 추이</h3>
                   <div key={`${timeframe.value}-${chartData.length}-${expanded}`} className="flex-1 min-h-0">
                     <ResponsiveContainer width="100%" height="100%">
@@ -469,7 +481,7 @@ export function PerformancePanel() {
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="text-border/30" strokeOpacity={0.3} />
                         <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: 'currentColor', opacity: 0.4 }} dy={8} minTickGap={50} />
-                        <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: 'currentColor', opacity: 0.4 }} tickFormatter={(v) => `${v}%`} />
+                        <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: 'currentColor', opacity: 0.4 }} tickFormatter={(v) => `${Math.round(v)}%`} ticks={yTicks} domain={[yTicks[0] ?? 0, yTicks[yTicks.length - 1] ?? 0]} />
                         <Tooltip content={<ChartTooltip />} />
                         <Area type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} fillOpacity={1} fill="url(#growthGrad)" />
                       </AreaChart>
@@ -477,12 +489,12 @@ export function PerformancePanel() {
                   </div>
                 </div>
 
-                <div className="rounded-xl border border-border/40 bg-muted/5 p-3 flex flex-col items-center min-h-0">
+                <div className="rounded-xl border border-border/70 bg-muted/5 p-3 flex flex-col items-center min-h-0">
                   <h3 className="text-[14px] font-extrabold text-foreground/80 mb-2 shrink-0 self-start">자산 구성</h3>
                   <CategoryPie comparingCodes={comparing} selected={selected} weights={weights} />
                 </div>
 
-                <div className="rounded-xl border border-border/40 bg-muted/5 p-3 flex flex-col min-h-0">
+                <div className="rounded-xl border border-border/70 bg-muted/5 p-3 flex flex-col min-h-0">
                   <div className="flex items-center justify-between mb-2 shrink-0">
                     <div className="flex items-center gap-1.5 group/divtip relative">
                       <h3 className="text-[14px] font-extrabold text-foreground/80">분배금 내역 추이</h3>
@@ -581,7 +593,7 @@ function MetricCard({ title, value, icon, neutral, tooltip, customDisplay, compa
   }
 
   return (
-    <div className="rounded-xl border border-border/40 bg-muted/5 px-4 py-3 flex items-center justify-between gap-3 relative">
+    <div className="rounded-xl border border-border/70 bg-muted/5 px-4 py-3 flex items-center justify-between gap-3 relative">
       <div className="flex items-center gap-1.5 shrink-0">
         <span className="text-[13px] font-bold text-muted-foreground">{title}</span>
         {tooltip && (
@@ -687,15 +699,15 @@ function SimulationCard({ baseAmount, currentValue, profit, synthReturn, periodD
     }`}>
       {/* 제목 */}
       <div className="shrink-0 mr-4">
-        <span className="text-[10px] font-semibold text-muted-foreground/70 uppercase tracking-wider">투자 시뮬레이션</span>
-        <span className="text-[10px] text-muted-foreground/50 ml-1">({timeframeLabel})</span>
+        <span className="text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">투자 시뮬레이션</span>
+        <span className="text-xs text-muted-foreground/50 ml-1">({timeframeLabel})</span>
       </div>
 
       <div className="flex-1 flex items-center justify-evenly gap-3">
         {/* 투자원금 */}
         <div className="flex flex-col items-center">
-          <span className="text-[9px] text-muted-foreground/60">투자원금</span>
-          <span className="text-[15px] font-bold tabular-nums text-foreground">{fmt(baseAmount)}<span className="text-[10px] font-medium text-muted-foreground ml-0.5">원</span></span>
+          <span className="text-[11px] text-muted-foreground/60">투자원금</span>
+          <span className="text-base font-bold tabular-nums text-foreground">{fmt(baseAmount)}<span className="text-xs font-medium text-muted-foreground ml-0.5">원</span></span>
         </div>
 
         {/* 화살표 + 평가금액 + 수익률 */}
@@ -706,9 +718,9 @@ function SimulationCard({ baseAmount, currentValue, profit, synthReturn, periodD
             </svg>
 
             <div className="flex flex-col items-center">
-              <span className="text-[9px] text-muted-foreground/60">평가금액</span>
-              <span className={`text-[15px] font-bold tabular-nums ${isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
-                {fmt(currentValue)}<span className="text-[10px] font-medium ml-0.5">원</span>
+              <span className="text-[11px] text-muted-foreground/60">평가금액</span>
+              <span className={`text-base font-bold tabular-nums ${isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                {fmt(currentValue)}<span className="text-xs font-medium ml-0.5">원</span>
               </span>
             </div>
 
@@ -716,10 +728,10 @@ function SimulationCard({ baseAmount, currentValue, profit, synthReturn, periodD
               <div className={`flex flex-col items-center px-2.5 py-1 rounded-lg ${
                 isPositive ? 'bg-emerald-500/10' : 'bg-red-500/10'
               }`}>
-                <span className={`text-[13px] font-extrabold tabular-nums ${isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                <span className={`text-sm font-extrabold tabular-nums ${isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
                   {isPositive ? '+' : ''}{synthReturn.toFixed(2)}%
                 </span>
-                <span className={`text-[10px] font-semibold tabular-nums ${isPositive ? 'text-emerald-500/70' : 'text-red-500/70'}`}>
+                <span className={`text-xs font-semibold tabular-nums ${isPositive ? 'text-emerald-500/70' : 'text-red-500/70'}`}>
                   {isPositive ? '+' : ''}{fmt(Math.abs(profit))}원
                 </span>
               </div>
@@ -730,17 +742,17 @@ function SimulationCard({ baseAmount, currentValue, profit, synthReturn, periodD
         {/* 분배금 */}
         {periodDividendIncome != null && (
           <div className="flex flex-col items-center border-l border-border/30 pl-3">
-            <span className="text-[9px] text-muted-foreground/60">분배금 수령</span>
-            <span className="text-[13px] font-bold tabular-nums text-foreground">{periodDividendIncome.toLocaleString()}<span className="text-[10px] font-medium text-muted-foreground ml-0.5">원</span></span>
+            <span className="text-[11px] text-muted-foreground/60">분배금 수령</span>
+            <span className="text-sm font-bold tabular-nums text-foreground">{periodDividendIncome.toLocaleString()}<span className="text-xs font-medium text-muted-foreground ml-0.5">원</span></span>
           </div>
         )}
 
         {/* 운용보수 (연간, 현재 평가금액 기준) */}
         {synthExpense != null && currentValue != null && (
           <div className="flex flex-col items-center border-l border-border/30 pl-3">
-            <span className="text-[9px] text-muted-foreground/60">연간 운용보수</span>
-            <span className="text-[13px] font-bold tabular-nums text-muted-foreground">{Math.round(currentValue * synthExpense / 10000).toLocaleString()}<span className="text-[10px] font-medium text-muted-foreground ml-0.5">원</span></span>
-            <span className="text-[9px] text-muted-foreground/40">{synthExpense.toFixed(3)}%</span>
+            <span className="text-[11px] text-muted-foreground/60">연간 운용보수</span>
+            <span className="text-sm font-bold tabular-nums text-muted-foreground">{Math.round(currentValue * synthExpense / 10000).toLocaleString()}<span className="text-xs font-medium text-muted-foreground ml-0.5">원</span></span>
+            <span className="text-[11px] text-muted-foreground/40">{synthExpense.toFixed(3)}%</span>
           </div>
         )}
       </div>

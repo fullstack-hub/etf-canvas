@@ -36,18 +36,24 @@ export function PriceChart({ data, compact }: Props) {
     const interval = totalMonths <= 6 ? 1 : totalMonths <= 13 ? 2 : 3;
     const visibleMonths = new Set(monthList.filter((_, i) => i % interval === 0));
 
+    // Y축 균등 틱 계산
+    const yTicks = (() => {
+      const vals = chartData.map(d => d.value);
+      const min = Math.floor(Math.min(...vals) / 10) * 10;
+      const max = Math.ceil(Math.max(...vals) / 10) * 10;
+      const step = Math.max(10, Math.ceil((max - min) / 4 / 10) * 10);
+      const ticks: number[] = [];
+      for (let v = min; v <= max; v += step) ticks.push(v);
+      if (ticks[ticks.length - 1] < max) ticks.push(ticks[ticks.length - 1] + step);
+      return ticks;
+    })();
+
     return (
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={chartData} margin={{ top: 4, right: 0, left: -20, bottom: 0 }}>
-          <defs>
-            <linearGradient id="miniColorValue" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#5b9bd5" stopOpacity={0.5} />
-              <stop offset="100%" stopColor="#5b9bd5" stopOpacity={0.05} />
-            </linearGradient>
-          </defs>
+        <AreaChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#ddd" />
           <XAxis dataKey="date" tickLine={false} axisLine={{ stroke: '#ddd' }} dy={8} tick={{ fontSize: 10, fill: '#999' }} ticks={chartData.filter(d => d.isFirstOfMonth && visibleMonths.has(d.month)).map(d => d.date)} tickFormatter={(d: string) => `${parseInt(d.slice(5, 7), 10)}월`} />
-          <YAxis tickLine={false} axisLine={{ stroke: '#ddd' }} tick={{ fontSize: 10, fill: '#999' }} tickFormatter={(val) => `${Math.round(val)}%`} domain={['dataMin', 'dataMax']} />
+          <YAxis tickLine={false} axisLine={{ stroke: '#ddd' }} tick={{ fontSize: 10, fill: '#999' }} tickFormatter={(val) => `${Math.round(val)}%`} ticks={yTicks} domain={[yTicks[0] ?? 0, yTicks[yTicks.length - 1] ?? 0]} width={45} />
           <Tooltip
             content={({ active, payload }) => {
               if (!active || !payload?.length) return null;
@@ -66,9 +72,8 @@ export function PriceChart({ data, compact }: Props) {
             dataKey="value"
             stroke="#5b9bd5"
             strokeWidth={1.5}
-            fillOpacity={1}
-            baseValue="dataMin"
-            fill="url(#miniColorValue)"
+            fillOpacity={0}
+            fill="none"
             dot={(props: any) => {
               if (!props.payload.isFirstOfMonth || !visibleMonths.has(props.payload.month)) return <circle key={`dot-${props.index}`} cx={0} cy={0} r={0} fill="none" />;
               return <circle key={`dot-${props.index}`} cx={props.cx} cy={props.cy} r={3} fill="#5b9bd5" stroke="#fff" strokeWidth={1.5} />;

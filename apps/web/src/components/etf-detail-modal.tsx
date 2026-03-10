@@ -8,12 +8,24 @@ import {
   ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis,
   CartesianGrid, Tooltip,
 } from 'recharts';
-import { X, TrendingUp, Globe, Building2, Percent, Target, DollarSign } from 'lucide-react';
+import { X, TrendingUp, Globe, Building2, Percent, Target, DollarSign, Calendar, BarChart3 } from 'lucide-react';
 import type { ETFSummary } from '@etf-canvas/shared';
 
 const PERIODS = ['1m', '3m', '1y', 'ytd', '3y'] as const;
 const PERIOD_LABELS: Record<string, string> = {
   '1m': '1M', '3m': '3M', '1y': '1Y', 'ytd': 'YTD', '3y': '3Y',
+};
+
+const CATEGORY_STYLES: Record<string, string> = {
+  '국내 대표지수': 'border-blue-400 bg-blue-50 text-blue-800 dark:bg-blue-950/40 dark:text-blue-200',
+  '해외 대표지수': 'border-sky-400 bg-sky-50 text-sky-800 dark:bg-sky-950/40 dark:text-sky-200',
+  '섹터/테마': 'border-violet-400 bg-violet-50 text-violet-800 dark:bg-violet-950/40 dark:text-violet-200',
+  '채권': 'border-emerald-400 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200',
+  '원자재': 'border-amber-400 bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200',
+  '레버리지/인버스': 'border-red-400 bg-red-50 text-red-800 dark:bg-red-950/40 dark:text-red-200',
+  '혼합': 'border-teal-400 bg-teal-50 text-teal-800 dark:bg-teal-950/40 dark:text-teal-200',
+  '액티브': 'border-purple-400 bg-purple-50 text-purple-800 dark:bg-purple-950/40 dark:text-purple-200',
+  'New': 'border-pink-400 bg-pink-50 text-pink-800 dark:bg-pink-950/40 dark:text-pink-200',
 };
 
 interface Props {
@@ -56,7 +68,7 @@ export function EtfDetailModal({ etf, onClose }: Props) {
 
       {/* Modal */}
       <div
-        className="relative bg-background rounded-xl shadow-2xl w-[560px] max-h-[85vh] overflow-y-auto overscroll-none border [&::-webkit-scrollbar]:hidden"
+        className="relative bg-background rounded-xl shadow-2xl w-fit max-w-[95vw] max-h-[85vh] overflow-y-auto overscroll-none border [&::-webkit-scrollbar]:hidden"
         style={{ scrollbarWidth: 'none' }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -71,57 +83,49 @@ export function EtfDetailModal({ etf, onClose }: Props) {
         {/* Title */}
         <div className="px-6 pt-6 pb-4">
           <h2 className="text-xl font-bold pr-8">{etf.name}</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">{etf.code}</p>
+          <div className="flex items-center gap-1.5 mt-1">
+            <InfoBadge
+              label={etf.categories[0] || '-'}
+              className={CATEGORY_STYLES[etf.categories[0]] || 'bg-muted/30 border-border'}
+            />
+            <InfoBadge icon={<span className="text-sm leading-none">{country === '한국' ? '🇰🇷' : '🌍'}</span>} label={country} />
+            <InfoBadge label={etf.code} />
+          </div>
         </div>
 
         {/* (1) Info badges */}
         <div className="px-6 pb-4">
-          <div className="flex gap-2 flex-wrap">
-            <InfoBadge
-              icon={<TrendingUp className="w-3.5 h-3.5" />}
-              label={etf.categories[0] || '-'}
-              highlight
-            />
-            <InfoBadge
-              icon={<Globe className="w-3.5 h-3.5" />}
-              label={country}
-            />
-            <InfoBadge
-              icon={<Building2 className="w-3.5 h-3.5" />}
-              label={etf.aum ? (etf.aum >= 10000 ? `AUM ${(etf.aum / 10000).toFixed(1)}조` : `AUM ${etf.aum.toLocaleString()}억`) : 'AUM -'}
-            />
+          <div className="flex gap-2 items-center">
+            <InfoBadge icon={<Building2 className="w-3.5 h-3.5" />} label={etf.issuer || '-'} sublabel="운용사" />
+            <InfoBadge icon={<Target className="w-3.5 h-3.5" />} label={detail?.benchmark || '-'} sublabel="벤치마크" />
+            <InfoBadge icon={<Building2 className="w-3.5 h-3.5" />} label={etf.aum ? (etf.aum >= 10000 ? `${(etf.aum / 10000).toFixed(1)}조` : `${etf.aum.toLocaleString()}억`) : '-'} sublabel="AUM" />
+            <InfoBadge icon={<Calendar className="w-3.5 h-3.5" />} label={detail?.listedDate || etf.listedDate || '-'} sublabel="설정일" />
             <InfoBadge
               icon={<TrendingUp className="w-3.5 h-3.5" />}
               label={etf.oneYearEarnRate != null ? `${etf.oneYearEarnRate > 0 ? '+' : ''}${etf.oneYearEarnRate.toFixed(1)}%` : '-'}
               valueColor={etf.oneYearEarnRate != null && etf.oneYearEarnRate > 0 ? 'text-red-500' : etf.oneYearEarnRate != null && etf.oneYearEarnRate < 0 ? 'text-blue-500' : undefined}
               sublabel="1Y 수익률"
             />
+            <InfoBadge icon={<Percent className="w-3.5 h-3.5" />} label={expenseRatio != null ? `${(expenseRatio * 100).toFixed(3)}%` : '-'} sublabel="운용보수" />
+            <InfoBadge icon={<DollarSign className="w-3.5 h-3.5" />} label={etf.dividendYield != null && etf.dividendYield > 0 ? `${etf.dividendYield.toFixed(2)}%` : '-'} sublabel="분배금" />
             <InfoBadge
-              icon={<Percent className="w-3.5 h-3.5" />}
-              label={expenseRatio != null ? `${(expenseRatio * 100).toFixed(3)}%` : '-'}
-              sublabel="운용보수"
+              icon={<BarChart3 className="w-3.5 h-3.5" />}
+              label={(() => {
+                if (etf.price && etf.nav) {
+                  const rate = ((etf.price - etf.nav) / etf.nav) * 100;
+                  return `${rate > 0 ? '+' : ''}${rate.toFixed(2)}%`;
+                }
+                return '-';
+              })()}
+              sublabel="괴리율"
+              valueColor={(() => {
+                if (etf.price && etf.nav) {
+                  const rate = ((etf.price - etf.nav) / etf.nav) * 100;
+                  return Math.abs(rate) > 1 ? 'text-amber-500' : undefined;
+                }
+                return undefined;
+              })()}
             />
-            {etf.issuer && (
-              <InfoBadge
-                icon={<Building2 className="w-3.5 h-3.5" />}
-                label={etf.issuer}
-                sublabel="운용사"
-              />
-            )}
-            {etf.dividendYield != null && etf.dividendYield > 0 && (
-              <InfoBadge
-                icon={<DollarSign className="w-3.5 h-3.5" />}
-                label={`${etf.dividendYield.toFixed(2)}%`}
-                sublabel="분배금"
-              />
-            )}
-            {detail?.benchmark && (
-              <InfoBadge
-                icon={<Target className="w-3.5 h-3.5" />}
-                label={detail.benchmark}
-                sublabel="벤치마크"
-              />
-            )}
           </div>
         </div>
 
@@ -145,7 +149,7 @@ export function EtfDetailModal({ etf, onClose }: Props) {
               ))}
             </div>
           </div>
-          <div className="h-52 border rounded-lg p-2 bg-muted/10">
+          <div className="h-52">
             {prices && prices.length > 0 ? (
               <PriceChart data={prices} compact />
             ) : (
@@ -247,18 +251,12 @@ function DividendDetailChart({ dividends, period }: {
           <span className="flex items-center gap-1"><span className="w-3 h-[1.5px] bg-amber-500 inline-block rounded" /> 누적{recent.length > 0 ? ` (${recent[recent.length - 1].cumRate}%)` : ''}</span>
         </div>
       </div>
-      <div className="h-48 border rounded-lg p-2 bg-muted/10">
+      <div className="h-48">
         <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={recent} margin={{ top: 2, right: 0, left: -10, bottom: 0 }}>
-            <defs>
-              <linearGradient id="detailDivBarGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#3b82f6" stopOpacity={1} />
-                <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.85} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="text-border/20" strokeOpacity={0.2} />
-            <XAxis dataKey="month" tickLine={false} axisLine={false} tick={{ fontSize: 9, fill: 'currentColor', opacity: 0.35 }} dy={4} />
-            <YAxis yAxisId="left" tickLine={false} axisLine={false} tick={{ fontSize: 9, fill: 'currentColor', opacity: 0.4 }} tickFormatter={(v) => `${v}%`} width={40} />
+          <ComposedChart data={recent} margin={{ top: 2, right: 0, left: 0, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#ddd" />
+            <XAxis dataKey="month" tickLine={false} axisLine={{ stroke: '#ddd' }} tick={{ fontSize: 9, fill: '#999' }} dy={4} />
+            <YAxis yAxisId="left" tickLine={false} axisLine={false} tick={{ fontSize: 9, fill: '#999' }} tickFormatter={(v: number) => `${v.toFixed(v % 1 === 0 ? 0 : 2)}%`} width={50} tickCount={4} />
             <YAxis yAxisId="right" orientation="right" tickLine={false} axisLine={false} tick={false} width={0} />
             <Tooltip
               cursor={{ fill: 'currentColor', opacity: 0.04 }}
@@ -279,8 +277,8 @@ function DividendDetailChart({ dividends, period }: {
                 );
               }}
             />
-            <Bar yAxisId="left" dataKey="rate" fill="url(#detailDivBarGrad)" radius={[2, 2, 0, 0]} barSize={recent.length > 8 ? 16 : 22} />
-            <Line yAxisId="right" type="monotone" dataKey="cumRate" stroke="#f59e0b" strokeWidth={1.5} dot={false} strokeOpacity={0.7} />
+            <Bar yAxisId="left" dataKey="rate" fill="#5b9bd5" radius={[3, 3, 0, 0]} barSize={recent.length > 12 ? 20 : recent.length > 6 ? 28 : 36} />
+            <Line yAxisId="right" type="monotone" dataKey="cumRate" stroke="#f59e0b" strokeWidth={1.5} dot={{ r: 2.5, fill: '#f59e0b', stroke: '#fff', strokeWidth: 1.5 }} strokeOpacity={0.8} />
           </ComposedChart>
         </ResponsiveContainer>
       </div>
@@ -294,19 +292,23 @@ function InfoBadge({
   sublabel,
   highlight,
   valueColor,
+  className: extraClass,
 }: {
-  icon: React.ReactNode;
+  icon?: React.ReactNode;
   label: string;
   sublabel?: string;
   highlight?: boolean;
   valueColor?: string;
+  className?: string;
 }) {
   return (
     <div
       className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs ${
-        highlight
-          ? 'bg-primary text-primary-foreground border-primary'
-          : 'bg-muted/30 border-border'
+        extraClass
+          ? extraClass
+          : highlight
+            ? 'bg-primary text-primary-foreground border-primary'
+            : 'bg-muted/30 border-border'
       }`}
     >
       {icon}

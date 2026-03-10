@@ -68,8 +68,10 @@ export class EtfService {
 
     const sortField = sort === 'returnRate1y' ? 'oneYearEarnRate'
       : sort === 'returnRate3m' ? 'threeMonthEarnRate'
+      : sort === 'expenseRatio' ? 'expenseRatio'
       : 'aum';
-    const orderBy = { [sortField]: { sort: 'desc' as const, nulls: 'last' as const } };
+    const sortDir = sort === 'expenseRatio' ? 'asc' as const : 'desc' as const;
+    const orderBy = { [sortField]: { sort: sortDir, nulls: 'last' as const } };
 
     const etfs = await this.prisma.etf.findMany({
       where,
