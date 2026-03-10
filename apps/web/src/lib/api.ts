@@ -51,7 +51,7 @@ export const api = {
     }),
   // Portfolio
   savePortfolio: (token: string, name: string, items: { code: string; name: string; weight: number; category?: string }[]) =>
-    fetcher<{ id: string }>('/portfolio', {
+    fetcher<{ id: string; slug: string }>('/portfolio', {
       method: 'POST',
       body: JSON.stringify({ name, items }),
       headers: { Authorization: `Bearer ${token}` },
@@ -92,6 +92,24 @@ export const api = {
     if (!res.ok) throw new Error(`API Error: ${res.status}`);
     return res.json() as Promise<{ ok: boolean }>;
   },
+
+  getPublicPortfolio: (slug: string) =>
+    fetcher<{
+      name: string;
+      slug: string;
+      items: { code: string; name: string; weight: number; category?: string }[];
+      snapshot: {
+        periods: Record<string, { totalReturn: number; annualizedReturn: number; maxDrawdown: number }>;
+        avgVolatility: number;
+      } | null;
+      returnRate: number | null;
+      mdd: number | null;
+      feedbackText: string | null;
+      feedbackActions: { category: string; label: string }[] | null;
+      feedbackSnippet: string | null;
+      tags: string[];
+      createdAt: string;
+    }>(`/portfolio/public/${slug}`),
 
   count: (query?: string, category?: string) => {
     const params = new URLSearchParams();
