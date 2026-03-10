@@ -6,20 +6,35 @@ const SITE_URL = 'https://etfcanva.com';
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const entries: MetadataRoute.Sitemap = [
     { url: SITE_URL, lastModified: new Date(), changeFrequency: 'daily', priority: 1 },
+    { url: `${SITE_URL}/gallery`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.9 },
   ];
 
   try {
-    const res = await fetch(`${API_BASE}/portfolio/public/slugs`, {
-      next: { revalidate: 3600 },
-    });
-    if (res.ok) {
-      const slugs: { slug: string; updatedAt: string }[] = await res.json();
+    const [slugsRes, tagsRes] = await Promise.all([
+      fetch(`${API_BASE}/portfolio/public/slugs`, { next: { revalidate: 3600 } }),
+      fetch(`${API_BASE}/portfolio/public/tags`, { next: { revalidate: 3600 } }),
+    ]);
+
+    if (slugsRes.ok) {
+      const slugs: { slug: string; updatedAt: string }[] = await slugsRes.json();
       for (const { slug, updatedAt } of slugs) {
         entries.push({
           url: `${SITE_URL}/portfolio/${slug}`,
           lastModified: new Date(updatedAt),
           changeFrequency: 'monthly',
           priority: 0.7,
+        });
+      }
+    }
+
+    if (tagsRes.ok) {
+      const tags: { tag: string }[] = await tagsRes.json();
+      for (const { tag } of tags) {
+        entries.push({
+          url: `${SITE_URL}/gallery/${encodeURIComponent(tag)}`,
+          lastModified: new Date(),
+          changeFrequency: 'weekly',
+          priority: 0.8,
         });
       }
     }

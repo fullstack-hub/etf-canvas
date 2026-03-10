@@ -329,6 +329,55 @@ export class PortfolioService {
     };
   }
 
+  async getTop(limit: number) {
+    return this.prisma.portfolio.findMany({
+      select: {
+        name: true,
+        slug: true,
+        items: true,
+        returnRate: true,
+        mdd: true,
+        feedbackSnippet: true,
+        tags: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+      take: Math.min(limit, 50),
+    });
+  }
+
+  async listTags() {
+    const portfolios = await this.prisma.portfolio.findMany({
+      select: { tags: true },
+    });
+    const tagCount = new Map<string, number>();
+    for (const p of portfolios) {
+      for (const tag of p.tags) {
+        tagCount.set(tag, (tagCount.get(tag) || 0) + 1);
+      }
+    }
+    return [...tagCount.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([tag, count]) => ({ tag, count }));
+  }
+
+  async getByTag(tag: string) {
+    return this.prisma.portfolio.findMany({
+      where: { tags: { has: tag } },
+      select: {
+        name: true,
+        slug: true,
+        items: true,
+        returnRate: true,
+        feedbackSnippet: true,
+        tags: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+  }
+
   async listSlugs() {
     return this.prisma.portfolio.findMany({
       select: { slug: true, updatedAt: true },

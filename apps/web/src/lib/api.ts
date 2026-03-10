@@ -93,6 +93,32 @@ export const api = {
     return res.json() as Promise<{ ok: boolean }>;
   },
 
+  getTopPortfolios: (limit = 20) =>
+    fetcher<{
+      name: string;
+      slug: string;
+      items: { code: string; name: string; weight: number }[];
+      returnRate: number | null;
+      mdd: number | null;
+      feedbackSnippet: string | null;
+      tags: string[];
+      createdAt: string;
+    }[]>(`/portfolio/public/top?limit=${limit}`),
+
+  getPortfolioTags: () =>
+    fetcher<{ tag: string; count: number }[]>('/portfolio/public/tags'),
+
+  getPortfoliosByTag: (tag: string) =>
+    fetcher<{
+      name: string;
+      slug: string;
+      items: { code: string; name: string; weight: number }[];
+      returnRate: number | null;
+      feedbackSnippet: string | null;
+      tags: string[];
+      createdAt: string;
+    }[]>(`/portfolio/public/by-tag/${encodeURIComponent(tag)}`),
+
   getPublicPortfolio: (slug: string) =>
     fetcher<{
       name: string;

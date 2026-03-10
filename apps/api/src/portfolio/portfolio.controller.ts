@@ -32,6 +32,21 @@ export class PortfolioController {
     return this.svc.listSlugs();
   }
 
+  @Get('public/top')
+  getTop(@Query('limit') limit?: string) {
+    return this.svc.getTop(Number(limit) || 20);
+  }
+
+  @Get('public/tags')
+  listTags() {
+    return this.svc.listTags();
+  }
+
+  @Get('public/by-tag/:tag')
+  getByTag(@Param('tag') tag: string) {
+    return this.svc.getByTag(tag);
+  }
+
   @Get('public/:slug')
   getPublic(@Param('slug') slug: string) {
     return this.svc.getPublic(slug);
