@@ -2,6 +2,7 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SessionProvider, useSession, signOut } from 'next-auth/react';
+import { ThemeProvider } from 'next-themes';
 import { useState, useEffect, type ReactNode } from 'react';
 import { setTokenProvider, setTokenRefresher } from './api';
 
@@ -40,10 +41,12 @@ export function Providers({ children }: { children: ReactNode }) {
     }),
   );
   return (
-    <SessionProvider>
-      <TokenRegistrar>
-        <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-      </TokenRegistrar>
-    </SessionProvider>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+      <SessionProvider>
+        <TokenRegistrar>
+          <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+        </TokenRegistrar>
+      </SessionProvider>
+    </ThemeProvider>
   );
 }

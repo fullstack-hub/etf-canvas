@@ -8,6 +8,7 @@ import { AttributePanel } from '@/components/attribute-panel';
 import { PerformancePanel } from '@/components/performance-panel';
 import { PortfolioList } from '@/components/portfolio-list';
 import { GalleryView } from '@/components/gallery-view';
+import { SettingsView } from '@/components/settings-view';
 import { useCanvasStore } from '@/lib/store';
 
 function useIsAuthed() {
@@ -41,6 +42,8 @@ export default function HomePage() {
             <PortfolioList />
           ) : currentView === 'gallery' ? (
             <GalleryView />
+          ) : currentView === 'settings' ? (
+            <SettingsView />
           ) : (
             <div className="flex-1 flex flex-col min-w-0 min-h-0">
               {!(performanceExpanded && synthesized) && <CanvasPanel />}

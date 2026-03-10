@@ -82,7 +82,7 @@ export function CanvasPanel() {
               onClick={() => setFeedbackEnabled(!feedbackEnabled)}
               className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors ml-1"
             >
-              <div className={`relative w-7 h-4 rounded-full transition-colors ${feedbackEnabled ? 'bg-primary' : 'bg-muted-foreground/30'}`}>
+              <div className={`relative w-7 h-4 rounded-full transition-colors ${feedbackEnabled ? 'bg-blue-500' : 'bg-muted-foreground/30'}`}>
                 <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-transform ${feedbackEnabled ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
               </div>
               <span>피드백</span>

@@ -16,7 +16,7 @@ export function IconSidebar() {
   const router = useRouter();
   const isHome = pathname === '/';
 
-  const navigate = (view: 'canvas' | 'gallery' | 'portfolio') => {
+  const navigate = (view: 'canvas' | 'gallery' | 'portfolio' | 'settings') => {
     if (isHome) {
       setCurrentView(view);
     } else {
@@ -58,7 +58,8 @@ export function IconSidebar() {
         </button>
 
         <button
-          className="w-9 h-9 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+          onClick={() => navigate('settings')}
+          className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${currentView === 'settings' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-foreground'}`}
           title="설정"
         >
           <SettingsIcon />

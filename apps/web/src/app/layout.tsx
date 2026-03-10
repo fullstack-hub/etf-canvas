@@ -30,7 +30,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="ko" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
@@ -38,7 +38,7 @@ export default function RootLayout({
         <Providers>
           {children}
           <Footer />
-          <Toaster position="top-center" theme="dark" toastOptions={{ style: { width: 'fit-content', minWidth: 'unset' } }} />
+          <Toaster position="top-center" toastOptions={{ style: { width: 'fit-content', minWidth: 'unset' } }} />
         </Providers>
       </body>
     </html>

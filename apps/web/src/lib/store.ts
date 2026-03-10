@@ -18,8 +18,8 @@ function deriveWeights(amounts: Record<string, number>, comparing: string[]): Re
 
 interface CanvasStore {
   // View
-  currentView: 'canvas' | 'portfolio' | 'gallery';
-  setCurrentView: (view: 'canvas' | 'portfolio' | 'gallery') => void;
+  currentView: 'canvas' | 'portfolio' | 'gallery' | 'settings';
+  setCurrentView: (view: 'canvas' | 'portfolio' | 'gallery' | 'settings') => void;
 
   // ETF selection (left panel)
   selectedEtfCode: string | null;
