@@ -1,9 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { createHash } from 'crypto';
+import { createHash, randomUUID } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { EtfService } from '../etf/etf.service';
 import { RedisService } from '../redis/redis.service';
 import { GeminiService, FALLBACK_MSG } from '../gemini/gemini.service';
+import { generateSlug } from './slug.util';
 
 const PERIODS = ['1w', '1m', '3m', '6m', '1y', '3y'] as const;
 
@@ -93,22 +94,43 @@ export class PortfolioService {
     name: string,
     items: { code: string; name: string; weight: number; category?: string }[],
   ) {
-    // 모든 기간별 simulate 실행하여 스냅샷 생성
     const codes = items.map((i) => i.code);
     const weights = items.map((i) => i.weight);
     const snapshot = await this.buildSnapshot(codes, weights);
-
-    // 1y 기준 returnRate/mdd (기존 호환)
     const yearData = snapshot.periods['1y'];
+
+    // slug 생성
+    const uuid = randomUUID();
+    const slug = generateSlug(items, uuid);
+
+    // 피드백 조회: Redis 캐시 → miss 시 Gemini 호출
+    let feedbackResult: { feedback: string; actions: { category: string; label: string }[] } | null = null;
+    try {
+      const feedbackItems = items.map((i) => ({
+        code: i.code,
+        name: i.name,
+        weight: i.weight,
+        category: i.category || '',
+      }));
+      feedbackResult = await this.feedback(feedbackItems);
+    } catch {
+      // 피드백 실패해도 저장은 진행
+    }
 
     return this.prisma.portfolio.create({
       data: {
+        id: uuid,
         userId,
         name,
+        slug,
         items,
         snapshot: snapshot as any,
         returnRate: yearData?.totalReturn ?? null,
         mdd: yearData?.maxDrawdown ?? null,
+        feedbackText: feedbackResult?.feedback || null,
+        feedbackActions: feedbackResult?.actions
+          ? (feedbackResult.actions as any)
+          : undefined,
       },
     });
   }
