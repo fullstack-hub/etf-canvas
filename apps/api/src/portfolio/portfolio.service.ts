@@ -327,6 +327,13 @@ export class PortfolioService {
     };
   }
 
+  async listSlugs() {
+    return this.prisma.portfolio.findMany({
+      select: { slug: true, updatedAt: true },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
   async delete(userId: string, id: string) {
     const p = await this.prisma.portfolio.findFirst({ where: { id, userId } });
     if (!p) throw new NotFoundException();
