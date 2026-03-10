@@ -439,7 +439,7 @@ export class PortfolioService {
       where: { userId },
       orderBy,
     });
-    return rows.map((r) => ({ ...r, totalAmount: Number(r.totalAmount) }));
+    return rows.map((r: any) => ({ ...r, totalAmount: Number(r.totalAmount) }));
   }
 
   async backfillSnapshots() {
@@ -530,7 +530,7 @@ export class PortfolioService {
     });
 
     const withSince = (await Promise.all(
-      portfolios.map(async (p) => {
+      portfolios.map(async (p: any) => {
         try {
           const since = await this.computeSince(p);
           // 대기 중(데이터 부족) 포트폴리오 제외
