@@ -36,7 +36,7 @@ export function PortfolioCard({ name, slug, items, feedbackSnippet, tags, create
   return (
     <Link
       href={`/portfolio/${slug}`}
-      className="block rounded-xl border bg-background p-4 hover:border-primary/40 hover:shadow-md transition-all"
+      className="block rounded-xl border border-border bg-card p-4 shadow-sm hover:shadow-lg hover:shadow-black/10 transition-all"
     >
       <div className="flex items-start justify-between mb-2">
         <h3 className="font-bold text-sm truncate flex-1">{name}</h3>
@@ -65,7 +65,7 @@ export function PortfolioCard({ name, slug, items, feedbackSnippet, tags, create
       </p>
 
       {feedbackSnippet && (
-        <p className="text-xs text-muted-foreground/80 line-clamp-2 mb-2">{feedbackSnippet}</p>
+        <p className="text-xs text-muted-foreground line-clamp-2 mb-2">{feedbackSnippet}</p>
       )}
 
       <div className="flex items-center justify-between">

@@ -105,19 +105,19 @@ export function DividendSection({ items, period = '1y', totalAmount: totalAmount
         <p className="text-xs text-muted-foreground mt-0.5">같은 조건이라면, 분배금은 이만큼 받았어요</p>
       </div>
       <div className="grid grid-cols-4 gap-3">
-        <div className="rounded-lg border p-4">
+        <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
           <p className="text-xs text-muted-foreground mb-1">누적 분배율</p>
-          <p className="text-2xl font-bold tabular-nums text-blue-500">{stats.totalRate.toFixed(2)}%</p>
+          <p className="text-2xl font-bold tabular-nums text-sky-400">{stats.totalRate.toFixed(2)}%</p>
         </div>
-        <div className="rounded-lg border p-4">
+        <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
           <p className="text-xs text-muted-foreground mb-1">연환산 분배율</p>
-          <p className="text-2xl font-bold tabular-nums text-blue-500">{stats.annualizedRate.toFixed(2)}%</p>
+          <p className="text-2xl font-bold tabular-nums text-sky-400">{stats.annualizedRate.toFixed(2)}%</p>
         </div>
-        <div className="rounded-lg border p-4">
+        <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
           <p className="text-xs text-muted-foreground mb-1">월평균 분배율</p>
           <p className="text-2xl font-bold tabular-nums">{stats.monthlyAvgRate.toFixed(2)}%</p>
         </div>
-        <div className="rounded-lg border p-4">
+        <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
           <p className="text-xs text-muted-foreground mb-1">기간 분배금</p>
           <p className="text-2xl font-bold tabular-nums">{Math.round(totalAmount * stats.totalRate / 100).toLocaleString()}원</p>
         </div>
@@ -126,7 +126,7 @@ export function DividendSection({ items, period = '1y', totalAmount: totalAmount
         <>
           <button
             onClick={() => setExpanded(!expanded)}
-            className="flex items-center gap-1 text-[11px] text-muted-foreground/50 hover:text-muted-foreground mt-2 transition-colors"
+            className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground mt-2 transition-colors"
           >
             <ChevronDown className={`w-3 h-3 transition-transform ${expanded ? 'rotate-180' : ''}`} />
             종목별 상세
@@ -151,7 +151,7 @@ export function DividendSection({ items, period = '1y', totalAmount: totalAmount
                         <p className="text-[11px] text-muted-foreground">{etf.code}</p>
                       </td>
                       <td className="text-right px-4 py-2.5 tabular-nums text-muted-foreground">{etf.weight}%</td>
-                      <td className="text-right px-4 py-2.5 font-bold tabular-nums text-blue-500">{etf.rate.toFixed(2)}%</td>
+                      <td className="text-right px-4 py-2.5 font-bold tabular-nums text-sky-400">{etf.rate.toFixed(2)}%</td>
                       <td className="text-right px-4 py-2.5 tabular-nums">{Math.round(totalAmount * (etf.weight / 100) * etf.rate / 100).toLocaleString()}원</td>
                       <td className="text-right px-4 py-2.5 tabular-nums text-muted-foreground">{etf.count}회</td>
                     </tr>

@@ -198,8 +198,8 @@ function PortfolioListItem({ portfolio: p, isActive, onClick }: { portfolio: Por
       onClick={onClick}
       className={`relative group rounded-xl border transition-all duration-200 cursor-pointer overflow-hidden
         ${isActive
-          ? 'bg-card border-primary/30 shadow-lg ring-1 ring-primary/10'
-          : 'bg-card/50 border-border/40 hover:border-border/60 hover:shadow-sm'
+          ? 'bg-card border-border shadow-lg shadow-black/20 ring-1 ring-primary/15'
+          : 'bg-card/70 border-border/50 hover:border-border hover:bg-card hover:shadow-md hover:shadow-black/10'
         }`
       }
     >
@@ -209,11 +209,11 @@ function PortfolioListItem({ portfolio: p, isActive, onClick }: { portfolio: Por
           <h3 className={`font-bold text-[14px] truncate transition-colors ${isActive ? 'text-foreground' : 'text-foreground/80 group-hover:text-foreground'}`}>
             {p.name}
           </h3>
-          <span className="text-[10px] text-muted-foreground/60 shrink-0 tabular-nums">
+          <span className="text-[10px] text-muted-foreground shrink-0 tabular-nums">
             {p.items.length}종목
           </span>
         </div>
-        <p className="text-[11px] text-muted-foreground/50 mt-0.5 tabular-nums">
+        <p className="text-[11px] text-muted-foreground/80 mt-0.5 tabular-nums">
           {new Date(p.createdAt).toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric' })} 저장
         </p>
       </div>
@@ -227,7 +227,7 @@ function PortfolioListItem({ portfolio: p, isActive, onClick }: { portfolio: Por
               className={`flex-1 py-1 text-[10px] font-semibold rounded transition-all ${
                 timeframe.value === tf.value
                   ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground/60 hover:text-muted-foreground'
+                  : 'text-muted-foreground hover:text-muted-foreground'
               }`}
               onClick={(e) => {
                 e.stopPropagation();
@@ -250,36 +250,36 @@ function PortfolioListItem({ portfolio: p, isActive, onClick }: { portfolio: Por
           <>
             <div className="grid grid-cols-4 gap-3">
               <div>
-                <div className="text-[9px] text-muted-foreground/50 font-medium uppercase tracking-wider">수익률</div>
-                <div className={`text-[14px] font-bold tabular-nums tracking-tight mt-0.5 ${isPositive ? 'text-emerald-500' : 'text-red-500'}`}>
+                <div className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider">수익률</div>
+                <div className={`text-[14px] font-bold tabular-nums tracking-tight mt-0.5 ${isPositive ? 'text-red-500' : 'text-blue-500'}`}>
                   {simData.totalReturn >= 0 ? '+' : ''}{simData.totalReturn.toFixed(1)}%
                 </div>
               </div>
               <div>
-                <div className="text-[9px] text-muted-foreground/50 font-medium uppercase tracking-wider">연환산</div>
-                <div className={`text-[14px] font-bold tabular-nums tracking-tight mt-0.5 ${simData.annualizedReturn >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                <div className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider">연환산</div>
+                <div className={`text-[14px] font-bold tabular-nums tracking-tight mt-0.5 ${simData.annualizedReturn >= 0 ? 'text-red-500' : 'text-blue-500'}`}>
                   {simData.annualizedReturn >= 0 ? '+' : ''}{simData.annualizedReturn.toFixed(1)}%
                 </div>
               </div>
               <div>
-                <div className="text-[9px] text-muted-foreground/50 font-medium uppercase tracking-wider">MDD</div>
-                <div className="text-[14px] font-bold tabular-nums tracking-tight mt-0.5 text-foreground/70">
+                <div className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider">MDD</div>
+                <div className="text-[14px] font-bold tabular-nums tracking-tight mt-0.5 text-foreground/90">
                   {simData.maxDrawdown.toFixed(1)}%
                 </div>
               </div>
               <div>
-                <div className="text-[9px] text-muted-foreground/50 font-medium uppercase tracking-wider">변동성</div>
-                <div className="text-[14px] font-bold tabular-nums tracking-tight mt-0.5 text-foreground/70">
+                <div className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider">변동성</div>
+                <div className="text-[14px] font-bold tabular-nums tracking-tight mt-0.5 text-foreground/90">
                   {volatility != null ? `${volatility.toFixed(1)}%` : '-'}
                 </div>
               </div>
             </div>
-            <p className="text-[9px] text-muted-foreground/40 mt-2">
+            <p className="text-[10px] text-muted-foreground mt-2">
               저장일 기준 과거 백테스트
             </p>
           </>
         ) : (
-          <div className="text-[11px] text-muted-foreground/40 text-center py-1">데이터 없음</div>
+          <div className="text-[11px] text-muted-foreground/70 text-center py-1">데이터 없음</div>
         )}
       </div>
     </div>
@@ -351,7 +351,7 @@ function PortfolioDetailPanel({ portfolio: p, onLoad, onDelete, deleting }: {
         <button
           onClick={onDelete}
           disabled={deleting}
-          className="p-2.5 -mr-2.5 text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 rounded-xl transition-colors"
+          className="p-2.5 -mr-2.5 text-muted-foreground/70 hover:text-destructive hover:bg-destructive/10 rounded-xl transition-colors"
           title="포트폴리오 삭제"
         >
           {deleting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Trash2 className="w-5 h-5" />}

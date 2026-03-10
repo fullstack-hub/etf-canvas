@@ -60,7 +60,7 @@ export function SnapshotSection({ items, period, onPeriodChange, totalAmount: to
       <div className="flex items-center justify-between mb-1">
         <div>
           <h2 className="text-lg font-bold">성과 지표</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">이 조합이 과거에 어떤 성과를 냈는지 확인해보세요</p>
+          <p className="text-xs text-muted-foreground mt-0.5">포트폴리오의 최근 성과를 확인해보세요</p>
         </div>
         <div className="flex bg-muted/40 rounded-md p-0.5 border">
           {PERIODS.map((p) => (
@@ -79,7 +79,7 @@ export function SnapshotSection({ items, period, onPeriodChange, totalAmount: to
         </div>
       </div>
       {dateRange && (
-        <p className="text-[11px] text-muted-foreground/60 mb-4">{dateRange.from} ~ {dateRange.to}</p>
+        <p className="text-[11px] text-muted-foreground mb-4">{dateRange.from} ~ {dateRange.to}</p>
       )}
       {!dateRange && <div className="mb-4" />}
       {isLoading ? (
@@ -89,32 +89,32 @@ export function SnapshotSection({ items, period, onPeriodChange, totalAmount: to
       ) : simData && simData.totalReturn != null ? (
         <>
           <div className="grid grid-cols-4 gap-3">
-            <div className="rounded-lg border p-4">
+            <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
               <p className="text-xs text-muted-foreground mb-1">수익률</p>
               <p className={`text-2xl font-bold tabular-nums ${simData.totalReturn >= 0 ? 'text-red-500' : 'text-blue-500'}`}>
                 {simData.totalReturn >= 0 ? '+' : ''}{simData.totalReturn.toFixed(2)}%
               </p>
             </div>
-            <div className="rounded-lg border p-4">
+            <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
               <p className="text-xs text-muted-foreground mb-1">연환산</p>
               <p className={`text-2xl font-bold tabular-nums ${(simData.annualizedReturn ?? 0) >= 0 ? 'text-red-500' : 'text-blue-500'}`}>
                 {(simData.annualizedReturn ?? 0) >= 0 ? '+' : ''}{(simData.annualizedReturn ?? 0).toFixed(2)}%
               </p>
             </div>
-            <div className="rounded-lg border p-4">
+            <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
               <p className="text-xs text-muted-foreground mb-1">MDD</p>
-              <p className="text-2xl font-bold tabular-nums">{(simData.maxDrawdown ?? 0).toFixed(1)}%</p>
+              <p className="text-2xl font-bold tabular-nums text-foreground">{(simData.maxDrawdown ?? 0).toFixed(1)}%</p>
             </div>
-            <div className="rounded-lg border p-4">
+            <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
               <p className="text-xs text-muted-foreground mb-1">변동성</p>
-              <p className="text-2xl font-bold tabular-nums">{volatility != null ? `${volatility.toFixed(1)}%` : '-'}</p>
+              <p className="text-2xl font-bold tabular-nums text-foreground">{volatility != null ? `${volatility.toFixed(1)}%` : '-'}</p>
             </div>
           </div>
           {simData.perEtf && simData.perEtf.length > 0 && (
             <>
               <button
                 onClick={() => setExpanded(!expanded)}
-                className="flex items-center gap-1 text-[11px] text-muted-foreground/50 hover:text-muted-foreground mt-2 transition-colors"
+                className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground mt-2 transition-colors"
               >
                 <ChevronDown className={`w-3 h-3 transition-transform ${expanded ? 'rotate-180' : ''}`} />
                 종목별 상세

@@ -282,6 +282,9 @@ export function PerformancePanel() {
   })();
   const dividendData = filteredDividendData;
 
+  const isGrowthPositive = (synthReturn ?? 0) >= 0;
+  const growthColor = isGrowthPositive ? '#ef4444' : '#3b82f6';
+  const growthGradId = isGrowthPositive ? 'growthGrad-pos' : 'growthGrad-neg';
   const showLoading = isLoading || (!simData && isFetching);
 
   return (
@@ -394,16 +397,16 @@ export function PerformancePanel() {
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={chartData} margin={{ top: 5, right: 5, left: -15, bottom: 0 }}>
                       <defs>
-                        <linearGradient id="growthGrad" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                          <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                        <linearGradient id={growthGradId} x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor={growthColor} stopOpacity={0.3} />
+                          <stop offset="95%" stopColor={growthColor} stopOpacity={0} />
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="text-border/30" strokeOpacity={0.3} />
                       <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: 'currentColor', opacity: 0.4 }} dy={8} minTickGap={50} />
                       <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: 'currentColor', opacity: 0.4 }} tickFormatter={(v) => `${Math.round(v)}%`} ticks={yTicks} domain={[yTicks[0] ?? 0, yTicks[yTicks.length - 1] ?? 0]} />
                       <Tooltip content={<ChartTooltip />} />
-                      <Area type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} fillOpacity={1} fill="url(#growthGrad)" />
+                      <Area type="monotone" dataKey="value" stroke={growthColor} strokeWidth={2} fillOpacity={1} fill={`url(#${growthGradId})`} />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
@@ -516,16 +519,16 @@ export function PerformancePanel() {
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={chartData} margin={{ top: 5, right: 5, left: -15, bottom: 0 }}>
                         <defs>
-                          <linearGradient id="growthGrad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                          <linearGradient id={growthGradId} x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor={growthColor} stopOpacity={0.3} />
+                            <stop offset="95%" stopColor={growthColor} stopOpacity={0} />
                           </linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="text-border/30" strokeOpacity={0.3} />
                         <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: 'currentColor', opacity: 0.4 }} dy={8} minTickGap={50} />
                         <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: 'currentColor', opacity: 0.4 }} tickFormatter={(v) => `${Math.round(v)}%`} ticks={yTicks} domain={[yTicks[0] ?? 0, yTicks[yTicks.length - 1] ?? 0]} />
                         <Tooltip content={<ChartTooltip />} />
-                        <Area type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} fillOpacity={1} fill="url(#growthGrad)" />
+                        <Area type="monotone" dataKey="value" stroke={growthColor} strokeWidth={2} fillOpacity={1} fill={`url(#${growthGradId})`} />
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
@@ -594,7 +597,7 @@ function ChartTooltip({ active, payload }: { active?: boolean; payload?: Array<{
   return (
     <div className="rounded-lg border bg-popover/95 backdrop-blur-sm px-3 py-2 shadow-xl">
       <p className="text-[11px] text-muted-foreground mb-0.5">{`${y}.${m}.${dd}`}</p>
-      <p className={`text-sm font-bold ${isPositive ? 'text-emerald-500' : 'text-red-500'}`}>
+      <p className={`text-sm font-bold ${isPositive ? 'text-red-500' : 'text-blue-500'}`}>
         수익률 {isPositive ? '+' : ''}{val.toFixed(2)}%
       </p>
     </div>
@@ -615,7 +618,7 @@ function MetricCard({ title, value, icon, neutral, tooltip, customDisplay, compa
   const isNegative = value != null && value < 0;
   const valueColor = neutral
     ? 'text-foreground'
-    : isPositive ? 'text-emerald-500' : isNegative ? 'text-red-500' : 'text-foreground';
+    : isPositive ? 'text-red-500' : isNegative ? 'text-blue-500' : 'text-foreground';
   const prefix = neutral ? '' : isPositive ? '+' : '';
   const display = customDisplay ?? (value != null ? `${prefix}${Math.abs(value).toFixed(2)}%` : '-');
 
@@ -623,15 +626,16 @@ function MetricCard({ title, value, icon, neutral, tooltip, customDisplay, compa
     return (
       <div className="rounded-lg border border-border/40 bg-muted/5 px-2.5 py-2 flex flex-col gap-0.5 relative min-w-[100px]">
         <div className="flex items-center gap-1">
-          <span className="text-[10px] font-semibold text-muted-foreground">{title}</span>
-          {tooltip && (
+          {tooltip ? (
             <span
-              className="text-muted-foreground/40 cursor-help"
+              className="text-[10px] font-semibold text-muted-foreground border-b border-dashed border-muted-foreground/30 cursor-help"
               onMouseEnter={() => setShowTip(true)}
               onMouseLeave={() => setShowTip(false)}
             >
-              <Info className="w-2.5 h-2.5" />
+              {title}
             </span>
+          ) : (
+            <span className="text-[10px] font-semibold text-muted-foreground">{title}</span>
           )}
           {showTip && tooltip && (
             <div className="absolute top-full left-0 mt-1 z-50 px-3 py-2 rounded-lg border bg-popover shadow-lg text-[11px] text-left w-[220px] animate-in fade-in zoom-in-95 duration-100">
@@ -649,15 +653,16 @@ function MetricCard({ title, value, icon, neutral, tooltip, customDisplay, compa
   return (
     <div className="rounded-xl border border-border/70 bg-muted/5 px-4 py-3 flex items-center justify-between gap-3 relative">
       <div className="flex items-center gap-1.5 shrink-0">
-        <span className="text-[13px] font-bold text-muted-foreground">{title}</span>
-        {tooltip && (
+        {tooltip ? (
           <span
-            className="text-muted-foreground/40 cursor-help"
+            className="text-[13px] font-bold text-muted-foreground border-b border-dashed border-muted-foreground/30 cursor-help"
             onMouseEnter={() => setShowTip(true)}
             onMouseLeave={() => setShowTip(false)}
           >
-            <Info className="w-3 h-3" />
+            {title}
           </span>
+        ) : (
+          <span className="text-[13px] font-bold text-muted-foreground">{title}</span>
         )}
         {showTip && tooltip && (
           <div className="absolute top-full left-0 mt-1 z-50 px-3 py-2 rounded-lg border bg-popover shadow-lg text-[11px] text-left w-[240px] animate-in fade-in zoom-in-95 duration-100">
@@ -744,13 +749,7 @@ function SimulationCard({ baseAmount, currentValue, profit, synthReturn, periodD
     : `${n.toLocaleString()}`;
 
   return (
-    <div className={`rounded-xl border px-4 py-2.5 flex items-center shrink-0 ${
-      currentValue != null
-        ? isPositive
-          ? 'border-emerald-500/20 bg-emerald-500/[0.03] dark:bg-emerald-500/[0.05]'
-          : 'border-red-500/20 bg-red-500/[0.03] dark:bg-red-500/[0.05]'
-        : 'border-border/40 bg-muted/5'
-    }`}>
+    <div className="rounded-xl border border-border/60 bg-muted/5 px-4 py-2.5 flex items-center shrink-0">
       {/* 제목 */}
       <div className="shrink-0 mr-4">
         <span className="text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">투자 시뮬레이션</span>
@@ -767,25 +766,25 @@ function SimulationCard({ baseAmount, currentValue, profit, synthReturn, periodD
         {/* 화살표 + 평가금액 + 수익률 */}
         {currentValue != null && (
           <>
-            <svg className={`w-5 h-5 shrink-0 ${isPositive ? 'text-emerald-500/50' : 'text-red-500/50'}`} viewBox="0 0 20 20" fill="none">
-              <path d="M4 10h12M13 7l3 3-3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            <svg className={`w-8 h-8 shrink-0 ${isPositive ? 'text-red-500/40' : 'text-blue-500/40'}`} viewBox="0 0 24 24" fill="currentColor">
+              <path d="M4 11h12.17l-1.88-1.88a1 1 0 1 1 1.42-1.42l3.59 3.59a1 1 0 0 1 0 1.42l-3.59 3.59a1 1 0 0 1-1.42-1.42L16.17 13H4a1 1 0 0 1 0-2z" />
             </svg>
 
             <div className="flex flex-col items-center">
               <span className="text-[11px] text-muted-foreground/60">평가금액</span>
-              <span className={`text-base font-bold tabular-nums ${isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+              <span className={`text-base font-bold tabular-nums ${isPositive ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}`}>
                 {fmt(currentValue)}<span className="text-xs font-medium ml-0.5">원</span>
               </span>
             </div>
 
             {profit != null && synthReturn != null && (
               <div className={`flex flex-col items-center px-2.5 py-1 rounded-lg ${
-                isPositive ? 'bg-emerald-500/10' : 'bg-red-500/10'
+                isPositive ? 'bg-red-500/10' : 'bg-blue-500/10'
               }`}>
-                <span className={`text-sm font-extrabold tabular-nums ${isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                <span className={`text-sm font-extrabold tabular-nums ${isPositive ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}`}>
                   {isPositive ? '+' : ''}{synthReturn.toFixed(2)}%
                 </span>
-                <span className={`text-xs font-semibold tabular-nums ${isPositive ? 'text-emerald-500/70' : 'text-red-500/70'}`}>
+                <span className={`text-xs font-semibold tabular-nums ${isPositive ? 'text-red-500/70' : 'text-blue-500/70'}`}>
                   {isPositive ? '+' : ''}{fmt(Math.abs(profit))}원
                 </span>
               </div>

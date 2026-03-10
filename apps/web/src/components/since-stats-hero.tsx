@@ -41,7 +41,7 @@ export function SinceStatsHero({ fetchKey, fetchFn, saveDate }: {
         <Info className="w-10 h-10 text-muted-foreground/30 mb-4" />
         <h3 className="text-[17px] font-bold text-foreground/80 mb-1.5">실전 시뮬레이션 대기 중</h3>
         <p className="text-[13px] text-muted-foreground/80 max-w-md leading-relaxed">
-          저장했던 날의 구성 비중대로 매수했다고 가정할 때, 저장일 기준 첫 거래일이 지나면 어떻게 변했을지 시뮬레이션 결과를 이곳에서 확인해 볼 수 있어요.
+          {(() => { const ds = saveDate.split('T')[0]; const [,m,d] = ds.split('-'); return `${Number(m)}월 ${Number(d)}일`; })()}에 구성한 비중대로 매수했다고 가정할 때, 첫 거래일이 지나면 어떻게 변했을지 시뮬레이션 결과를 이곳에서 확인해 볼 수 있어요.
         </p>
       </div>
     );
@@ -53,27 +53,26 @@ export function SinceStatsHero({ fetchKey, fetchFn, saveDate }: {
   const isPositive = ret >= 0;
 
   return (
-    <div className={`relative overflow-hidden rounded-3xl border p-7 md:p-9 transition-all ${isPositive ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-red-500/5 border-red-500/20'}`}>
-      <div className={`absolute top-0 right-0 -mr-16 -mt-16 w-56 h-56 rounded-full blur-[70px] opacity-30 ${isPositive ? 'bg-emerald-500' : 'bg-red-500'}`} style={{ pointerEvents: 'none' }} />
+    <div className="relative overflow-hidden rounded-3xl border border-border bg-card p-7 md:p-9 shadow-sm transition-all">
 
       <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
           <p className="text-[13px] font-bold text-muted-foreground mb-2 flex items-center gap-2">
             저장 후 <span className="bg-background px-2.5 py-0.5 rounded-full text-foreground shadow-sm ring-1 ring-border/50">{data.daysSinceSave}일</span> 경과
             {data.dailyValues?.length > 0 && (
-              <span className="text-[11px] font-normal text-muted-foreground/60">
+              <span className="text-[11px] font-normal text-muted-foreground">
                 ({data.dailyValues[data.dailyValues.length - 1].date} 종가 기준)
               </span>
             )}
           </p>
           <div className="flex items-baseline gap-2">
-            <span className={`text-5xl md:text-6xl font-black tracking-tighter tabular-nums ${isPositive ? 'text-emerald-500' : 'text-red-500'}`}>
+            <span className={`text-5xl md:text-6xl font-black tracking-tighter tabular-nums ${isPositive ? 'text-red-500' : 'text-blue-500'}`}>
               {isPositive ? '+' : ''}{ret.toFixed(2)}%
             </span>
           </div>
           <p className="text-[15px] font-medium text-foreground/80 mt-4 leading-relaxed">
-            저장 당시에 구성한 비중대로 <strong className="text-foreground">{startValue.toLocaleString()}원</strong>을 매수했다고 가정한다면,<br />
-            현재 평가금액은 <strong className={`font-bold tabular-nums ${isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>{finalValue.toLocaleString()}원</strong>이에요.
+            {(() => { const ds = saveDate.split('T')[0]; const [,m,d] = ds.split('-'); return `${Number(m)}월 ${Number(d)}일`; })()}에 구성한 비중대로 <strong className="text-foreground">{startValue.toLocaleString()}원</strong>을 매수했다고 가정한다면,<br />
+            현재 평가금액은 <strong className={`font-bold tabular-nums ${isPositive ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}`}>{finalValue.toLocaleString()}원</strong>이에요.
           </p>
         </div>
 
@@ -83,7 +82,7 @@ export function SinceStatsHero({ fetchKey, fetchFn, saveDate }: {
               <>
                 <div className="text-right">
                   <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">연환산</p>
-                  <p className={`text-lg font-bold tabular-nums leading-none ${data.annualizedReturn >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                  <p className={`text-lg font-bold tabular-nums leading-none ${data.annualizedReturn >= 0 ? 'text-red-500' : 'text-blue-500'}`}>
                     {data.annualizedReturn >= 0 ? '+' : ''}{data.annualizedReturn.toFixed(1)}%
                   </p>
                 </div>
@@ -129,7 +128,7 @@ function HeroChart({ dailyValues, isPositive }: { dailyValues: { date: string; v
   const points = pointsArr.map(pt => `${pt.x},${pt.y}`).join(' ');
   const areaPoints = `${pointsArr[0].x},${h} ${points} ${pointsArr[pointsArr.length - 1].x},${h}`;
   const baseY = h - p - ((firstVal - min) / range) * (h - p * 2);
-  const strokeColor = isPositive ? '#10b981' : '#ef4444';
+  const strokeColor = isPositive ? '#ef4444' : '#3b82f6';
   const gradientId = `hero-gradient-${isPositive ? 'pos' : 'neg'}`;
 
   return (

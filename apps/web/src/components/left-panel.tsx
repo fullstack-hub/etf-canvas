@@ -19,8 +19,8 @@ const CATEGORY_STYLES: Record<string, { active: string; icon: string }> = {
   '섹터/테마': { active: 'border-violet-400 bg-violet-50 text-violet-800 dark:bg-violet-950/40 dark:text-violet-200', icon: 'text-violet-400' },
   '채권': { active: 'border-lime-500 bg-lime-50 text-lime-800 dark:bg-lime-950/40 dark:text-lime-200', icon: 'text-lime-500' },
   '원자재': { active: 'border-amber-400 bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200', icon: 'text-amber-400' },
-  '레버리지/인버스': { active: 'border-red-400 bg-red-50 text-red-800 dark:bg-red-950/40 dark:text-red-200', icon: 'text-red-400' },
-  '혼합': { active: 'border-orange-400 bg-orange-50 text-orange-800 dark:bg-orange-950/40 dark:text-orange-200', icon: 'text-orange-400' },
+  '레버리지/인버스': { active: 'border-rose-400 bg-rose-50 text-rose-800 dark:bg-rose-950/40 dark:text-rose-200', icon: 'text-rose-400' },
+  '혼합': { active: 'border-cyan-400 bg-cyan-50 text-cyan-800 dark:bg-cyan-950/40 dark:text-cyan-200', icon: 'text-cyan-400' },
   '액티브': { active: 'border-fuchsia-400 bg-fuchsia-50 text-fuchsia-800 dark:bg-fuchsia-950/40 dark:text-fuchsia-200', icon: 'text-fuchsia-400' },
   'New': { active: 'border-pink-400 bg-pink-50 text-pink-800 dark:bg-pink-950/40 dark:text-pink-200', icon: 'text-pink-400' },
 };
@@ -184,7 +184,7 @@ export function LeftPanel() {
               {categories.map((cat) => (
                 <button
                   key={cat.key}
-                  onClick={() => { setCategory(category === cat.key ? '' : cat.key); setInfoCat(cat.key); }}
+                  onClick={() => { setCategory(category === cat.key ? '' : cat.key); setInfoCat(cat.key); selectEtf(''); }}
                   className={`flex items-center justify-between gap-1 px-2.5 h-[48px] rounded-lg border text-[11px] leading-tight transition-colors ${
                     category === cat.key
                       ? `${CATEGORY_STYLES[cat.key]?.active || 'border-blue-500 bg-blue-50 text-blue-900'} font-bold`
@@ -376,11 +376,11 @@ function EtfListItem({
           <span className="opacity-60">운용보수</span><span>{expenseRatio != null ? `${(expenseRatio * 100).toFixed(3)}%` : <span className="inline-block w-3 h-3 border-2 border-muted-foreground/40 border-t-muted-foreground rounded-full animate-spin" />}</span>
           <span className="opacity-60">상장일</span><span>{etf.listedDate || '-'}</span>
         </div>
-        <div className="flex items-center gap-1 pt-1.5 mt-1 border-t border-background/10">
+        <div className="flex items-center gap-1 pt-1.5 mt-1 border-t border-border">
           <kbd className="text-[9px] px-1.5 py-0.5 rounded bg-sky-500/80 text-white font-mono">더블클릭</kbd>
-          <span className="text-[10px] text-background/70">또는</span>
+          <span className="text-[10px] text-muted-foreground">또는</span>
           <kbd className="text-[9px] px-1.5 py-0.5 rounded bg-sky-500/80 text-white font-mono">드래그</kbd>
-          <span className="text-[10px] text-background/70">캔버스에 추가</span>
+          <span className="text-[10px] text-muted-foreground">캔버스에 추가</span>
         </div>
       </TooltipContent>
     </Tooltip>

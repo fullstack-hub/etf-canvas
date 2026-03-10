@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSession } from 'next-auth/react';
 import { api } from '@/lib/api';
@@ -332,9 +333,7 @@ function EtfCard({
 
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
-    const rect = cardRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    setCtxMenu({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+    setCtxMenu({ x: e.clientX, y: e.clientY });
   }, []);
 
   useEffect(() => {
@@ -356,8 +355,7 @@ function EtfCard({
   return (
     <div
       ref={cardRef}
-      className={`group relative rounded-lg overflow-visible select-none cursor-pointer transition-all duration-200
-        ${ctxMenu ? 'z-50' : ''}
+      className={`group relative rounded-lg overflow-visible select-none cursor-pointer transition-[box-shadow,border-color,opacity] duration-200
         ${isComparing
           ? 'shadow-md ring-1 ring-foreground/70'
           : 'shadow-sm hover:shadow-md border border-border/50 hover:border-border'
@@ -390,9 +388,9 @@ function EtfCard({
       </div>
 
       {/* Card body */}
-      <div className={`bg-background relative ${isComparing ? '' : 'rounded-b-lg'} overflow-hidden`}>
+      <div className={`bg-card relative ${isComparing ? '' : 'rounded-b-lg'} overflow-hidden`}>
         {isLoading && (
-          <div className="absolute inset-0 bg-background/80 backdrop-blur-[1px] flex items-center justify-center z-10">
+          <div className="absolute inset-0 bg-card/80 backdrop-blur-[1px] flex items-center justify-center z-10">
             <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
           </div>
         )}
@@ -407,9 +405,7 @@ function EtfCard({
               onClick={(e) => {
                 e.stopPropagation();
                 window.dispatchEvent(new MouseEvent('click'));
-                const rect = cardRef.current?.getBoundingClientRect();
-                if (!rect) return;
-                setTimeout(() => setCtxMenu({ x: e.clientX - rect.left, y: e.clientY - rect.top }), 0);
+                setTimeout(() => setCtxMenu({ x: e.clientX, y: e.clientY }), 0);
               }}
               className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-muted transition-all shrink-0"
             >
@@ -431,7 +427,7 @@ function EtfCard({
       {/* Amount controls (only when comparing) */}
       {isComparing && (
         <div
-          className="bg-background border-t px-2.5 py-2 rounded-b-lg space-y-1"
+          className="bg-card border-t px-2.5 py-2 rounded-b-lg space-y-1"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-center gap-1.5">
@@ -444,11 +440,11 @@ function EtfCard({
         </div>
       )}
 
-      {/* Context menu */}
-      {ctxMenu && (
+      {/* Context menu — portaled to body to escape grid stacking */}
+      {ctxMenu && typeof window !== 'undefined' && createPortal(
         <div
-          className="absolute z-50 min-w-[140px] rounded-lg border bg-popover shadow-lg py-1 animate-in fade-in zoom-in-95 duration-100"
-          style={{ right: 4, top: ctxMenu.y }}
+          style={{ position: 'fixed', left: ctxMenu.x, top: ctxMenu.y, zIndex: 99999 }}
+          className="min-w-[140px] rounded-lg border bg-popover shadow-lg py-1"
         >
           <button
             className="flex items-center gap-2 w-full px-3 py-1.5 text-xs hover:bg-muted transition-colors text-left"
@@ -472,7 +468,8 @@ function EtfCard({
             <Trash2 className="w-3.5 h-3.5" />
             삭제
           </button>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

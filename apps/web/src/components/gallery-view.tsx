@@ -94,7 +94,7 @@ export function GalleryView() {
             <Section
               icon={<TrendingUp className="w-4.5 h-4.5 text-red-500" />}
               title="수익률 TOP"
-              subtitle="저장 시점 대비 실전 수익률이 높은 포트폴리오"
+              subtitle="실전 수익률이 높은 포트폴리오"
             >
               {loadingReturn ? <SectionLoader /> : topReturn && topReturn.length > 0 ? (
                 <PortfolioGrid data={topReturn} />
