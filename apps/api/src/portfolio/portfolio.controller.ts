@@ -27,6 +27,11 @@ export class PortfolioController {
     return this.svc.feedback(body.items);
   }
 
+  @Get('public/:slug')
+  getPublic(@Param('slug') slug: string) {
+    return this.svc.getPublic(slug);
+  }
+
   @Post()
   @UseGuards(JwtGuard)
   @ApiBearerAuth('jwt')

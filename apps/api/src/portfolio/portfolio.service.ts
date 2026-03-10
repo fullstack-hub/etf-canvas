@@ -309,6 +309,24 @@ export class PortfolioService {
     return p;
   }
 
+  async getPublic(slug: string) {
+    const p = await this.prisma.portfolio.findUnique({ where: { slug } });
+    if (!p) throw new NotFoundException();
+    return {
+      name: p.name,
+      slug: p.slug,
+      items: p.items,
+      snapshot: p.snapshot,
+      returnRate: p.returnRate,
+      mdd: p.mdd,
+      feedbackText: p.feedbackText,
+      feedbackActions: p.feedbackActions,
+      feedbackSnippet: p.feedbackSnippet,
+      tags: p.tags,
+      createdAt: p.createdAt,
+    };
+  }
+
   async delete(userId: string, id: string) {
     const p = await this.prisma.portfolio.findFirst({ where: { id, userId } });
     if (!p) throw new NotFoundException();
