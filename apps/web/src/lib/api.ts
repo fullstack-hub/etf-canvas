@@ -2,22 +2,34 @@ import type { ETFSummary, ETFDetail, ETFDailyPrice, ETFDividend, SimulateRequest
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
-// 401 시 토큰 갱신 콜백 (SessionProvider에서 등록)
+// 토큰 getter/refresher (SessionProvider에서 등록)
+let _getToken: (() => string | null) | null = null;
 let _refreshToken: (() => Promise<string | null>) | null = null;
+
+export function setTokenProvider(fn: () => string | null) {
+  _getToken = fn;
+}
 export function setTokenRefresher(fn: () => Promise<string | null>) {
   _refreshToken = fn;
 }
 
 async function fetcher<T>(url: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${url}`, {
-    ...options,
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-  });
+  const token = _getToken?.();
+  const headers: Record<string, string> = {
+    ...(options?.body ? { 'Content-Type': 'application/json' } : {}),
+    ...options?.headers as Record<string, string>,
+  };
+  if (token && !headers['Authorization']) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(`${API_BASE}${url}`, { ...options, headers });
+
   if (res.status === 401 && _refreshToken) {
     const newToken = await _refreshToken();
     if (newToken) {
-      const retryHeaders = { ...options?.headers, Authorization: `Bearer ${newToken}` };
-      const retry = await fetch(`${API_BASE}${url}`, { ...options, headers: { 'Content-Type': 'application/json', ...retryHeaders } });
+      headers['Authorization'] = `Bearer ${newToken}`;
+      const retry = await fetch(`${API_BASE}${url}`, { ...options, headers });
       if (!retry.ok) throw new Error(`API Error: ${retry.status}`);
       return retry.json();
     }
@@ -49,14 +61,13 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(req),
     }),
-  // Portfolio
-  savePortfolio: (token: string, name: string, items: { code: string; name: string; weight: number; category?: string }[]) =>
+  // Portfolio (인증은 fetcher가 자동 처리)
+  savePortfolio: (name: string, items: { code: string; name: string; weight: number; category?: string }[], feedback?: { feedback: string; actions: { category: string; label: string }[]; tags: string[]; snippet: string } | null, totalAmount?: number) =>
     fetcher<{ id: string; slug: string }>('/portfolio', {
       method: 'POST',
-      body: JSON.stringify({ name, items }),
-      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ name, items, feedback: feedback || null, totalAmount }),
     }),
-  listPortfolios: (token: string, sort?: string) =>
+  listPortfolios: (sort?: string) =>
     fetcher<{
       id: string; name: string;
       items: { code: string; name: string; weight: number; category?: string }[];
@@ -64,18 +75,20 @@ export const api = {
         periods: Record<string, { totalReturn: number; annualizedReturn: number; maxDrawdown: number }>;
         avgVolatility: number;
       } | null;
-      returnRate: number | null; mdd: number | null; createdAt: string;
-    }[]>(`/portfolio${sort ? `?sort=${sort}` : ''}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    }),
-  getPortfolioSince: (token: string, id: string) =>
+      returnRate: number | null; mdd: number | null;
+      totalAmount: number;
+      feedbackText: string | null; feedbackActions: { category: string; label: string }[] | null;
+      createdAt: string;
+    }[]>(`/portfolio${sort ? `?sort=${sort}` : ''}`),
+  getPortfolioSince: (id: string) =>
     fetcher<{
       totalReturn: number; annualizedReturn: number; maxDrawdown: number;
       dailyValues: { date: string; value: number }[];
       daysSinceSave: number;
-    }>(`/portfolio/${id}/since`, {
-      headers: { Authorization: `Bearer ${token}` },
-    }),
+      basisLabel?: string;
+      basisDate?: string;
+      message?: string;
+    }>(`/portfolio/${id}/since`),
   getPortfolioFeedback: (items: { code: string; name: string; weight: number; category: string }[]) =>
     fetcher<{
       feedback: string;
@@ -84,26 +97,45 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ items }),
     }),
-  deletePortfolio: async (token: string, id: string) => {
-    const res = await fetch(`${API_BASE}/portfolio/${id}`, {
+  renamePortfolio: (id: string, name: string) =>
+    fetcher<{ id: string; name: string }>(`/portfolio/${id}/name`, {
+      method: 'PATCH',
+      body: JSON.stringify({ name }),
+    }),
+  deletePortfolio: (id: string) =>
+    fetcher<{ ok: boolean }>(`/portfolio/${id}`, {
       method: 'DELETE',
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!res.ok) throw new Error(`API Error: ${res.status}`);
-    return res.json() as Promise<{ ok: boolean }>;
-  },
+    }),
+  autoSavePortfolio: (items: { code: string; name: string; weight: number; category?: string }[], feedback: { feedback: string; actions: { category: string; label: string }[]; tags: string[]; snippet: string } | null, totalAmount?: number) =>
+    fetcher<{ id: string; slug: string }>('/portfolio/auto-save', {
+      method: 'POST',
+      body: JSON.stringify({ items, feedback, totalAmount }),
+    }),
 
-  getTopPortfolios: (limit = 20) =>
+  // Public (인증 불필요)
+  getTopPortfolios: (limit = 20, sort: 'latest' | 'return' | 'mdd' = 'latest') =>
     fetcher<{
       name: string;
       slug: string;
       items: { code: string; name: string; weight: number }[];
       returnRate: number | null;
       mdd: number | null;
+      sinceReturn?: number | null;
+      sinceMdd?: number | null;
       feedbackSnippet: string | null;
       tags: string[];
       createdAt: string;
-    }[]>(`/portfolio/public/top?limit=${limit}`),
+    }[]>(`/portfolio/public/top?limit=${limit}&sort=${sort}`),
+
+  getPublicSince: (slug: string) =>
+    fetcher<{
+      totalReturn: number; annualizedReturn: number; maxDrawdown: number;
+      dailyValues: { date: string; value: number }[];
+      daysSinceSave: number;
+      basisLabel?: string;
+      basisDate?: string;
+      message?: string;
+    }>(`/portfolio/public/${slug}/since`),
 
   getPortfolioTags: () =>
     fetcher<{ tag: string; count: number }[]>('/portfolio/public/tags'),
@@ -118,13 +150,6 @@ export const api = {
       tags: string[];
       createdAt: string;
     }[]>(`/portfolio/public/by-tag/${encodeURIComponent(tag)}`),
-
-  autoSavePortfolio: (token: string, items: { code: string; name: string; weight: number; category?: string }[], feedback: { feedback: string; actions: { category: string; label: string }[]; tags: string[]; snippet: string } | null) =>
-    fetcher<{ id: string; slug: string }>('/portfolio/auto-save', {
-      method: 'POST',
-      body: JSON.stringify({ items, feedback }),
-      headers: { Authorization: `Bearer ${token}` },
-    }),
 
   getPublicPortfolio: (slug: string) =>
     fetcher<{
@@ -141,6 +166,7 @@ export const api = {
       feedbackActions: { category: string; label: string }[] | null;
       feedbackSnippet: string | null;
       tags: string[];
+      totalAmount: number;
       createdAt: string;
     }>(`/portfolio/public/${slug}`),
 

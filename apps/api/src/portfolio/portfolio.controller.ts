@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
   Delete,
   Body,
   Param,
@@ -33,8 +34,9 @@ export class PortfolioController {
   }
 
   @Get('public/top')
-  getTop(@Query('limit') limit?: string) {
-    return this.svc.getTop(Number(limit) || 20);
+  getTop(@Query('limit') limit?: string, @Query('sort') sort?: string) {
+    const validSort = ['latest', 'return', 'mdd'].includes(sort || '') ? sort as 'latest' | 'return' | 'mdd' : 'latest';
+    return this.svc.getTop(Number(limit) || 20, validSort);
   }
 
   @Get('public/tags')
@@ -47,9 +49,19 @@ export class PortfolioController {
     return this.svc.getByTag(tag);
   }
 
+  @Get('public/:slug/since')
+  publicSince(@Param('slug') slug: string) {
+    return this.svc.publicSince(slug);
+  }
+
   @Get('public/:slug')
   getPublic(@Param('slug') slug: string) {
     return this.svc.getPublic(slug);
+  }
+
+  @Post('backfill-snapshots')
+  backfillSnapshots() {
+    return this.svc.backfillSnapshots();
   }
 
   @Post('auto-save')
@@ -60,9 +72,10 @@ export class PortfolioController {
     @Body() body: {
       items: { code: string; name: string; weight: number; category?: string }[];
       feedback: { feedback: string; actions: { category: string; label: string }[]; tags: string[]; snippet: string } | null;
+      totalAmount?: number;
     },
   ) {
-    return this.svc.autoSave(req.userId, body.items, body.feedback);
+    return this.svc.autoSave(req.userId, body.items, body.feedback, body.totalAmount);
   }
 
   @Post()
@@ -70,9 +83,9 @@ export class PortfolioController {
   @ApiBearerAuth('jwt')
   create(
     @Req() req: any,
-    @Body() body: { name: string; items: { code: string; name: string; weight: number; category?: string }[] },
+    @Body() body: { name: string; items: { code: string; name: string; weight: number; category?: string }[]; feedback?: { feedback: string; actions: { category: string; label: string }[]; tags: string[]; snippet: string } | null; totalAmount?: number },
   ) {
-    return this.svc.create(req.userId, body.name, body.items);
+    return this.svc.create(req.userId, body.name, body.items, body.feedback || null, body.totalAmount);
   }
 
   @Get()
@@ -94,6 +107,17 @@ export class PortfolioController {
   @ApiBearerAuth('jwt')
   since(@Req() req: any, @Param('id') id: string) {
     return this.svc.since(req.userId, id);
+  }
+
+  @Patch(':id/name')
+  @UseGuards(JwtGuard)
+  @ApiBearerAuth('jwt')
+  rename(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Body() body: { name: string },
+  ) {
+    return this.svc.rename(req.userId, id, body.name);
   }
 
   @Delete(':id')

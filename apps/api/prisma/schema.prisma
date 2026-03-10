@@ -87,6 +87,7 @@ model Portfolio {
   feedbackActions Json?    @map("feedback_actions")
   feedbackSnippet String?  @map("feedback_snippet")
   tags            String[] @default([])
+  totalAmount     BigInt   @default(100000000) @map("total_amount")
   isDraft         Boolean  @default(false) @map("is_draft")
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @default(now()) @map("updated_at") @updatedAt

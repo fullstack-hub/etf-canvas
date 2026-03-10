@@ -1,4 +1,8 @@
+'use client';
+
 import Link from 'next/link';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '@/lib/api';
 
 interface Props {
   name: string;
@@ -8,11 +12,26 @@ interface Props {
   feedbackSnippet: string | null;
   tags: string[];
   createdAt: string;
+  sinceReturn?: number | null;
+  sinceMdd?: number | null;
+  showMdd?: boolean;
 }
 
-export function PortfolioCard({ name, slug, items, returnRate, feedbackSnippet, tags, createdAt }: Props) {
+export function PortfolioCard({ name, slug, items, feedbackSnippet, tags, createdAt, sinceReturn: sinceReturnProp, sinceMdd: sinceMddProp, showMdd }: Props) {
   const top3 = [...items].sort((a, b) => b.weight - a.weight).slice(0, 3);
   const date = new Date(createdAt).toLocaleDateString('ko-KR');
+
+  // 갤러리에서 이미 계산된 값이 있으면 그대로 사용, 없으면 API 호출
+  const hasPropData = sinceReturnProp != null;
+  const { data: sinceData } = useQuery({
+    queryKey: ['public-since', slug],
+    queryFn: () => api.getPublicSince(slug),
+    staleTime: 1000 * 60 * 30,
+    enabled: !hasPropData,
+  });
+
+  const realReturn = hasPropData ? sinceReturnProp : (sinceData && !sinceData.message ? sinceData.totalReturn : null);
+  const realMdd = sinceMddProp ?? (sinceData && !sinceData.message ? sinceData.maxDrawdown : null);
 
   return (
     <Link
@@ -21,10 +40,22 @@ export function PortfolioCard({ name, slug, items, returnRate, feedbackSnippet, 
     >
       <div className="flex items-start justify-between mb-2">
         <h3 className="font-bold text-sm truncate flex-1">{name}</h3>
-        {returnRate != null && (
-          <span className={`text-sm font-bold ml-2 shrink-0 ${Number(returnRate) >= 0 ? 'text-red-500' : 'text-blue-500'}`}>
-            {Number(returnRate) >= 0 ? '+' : ''}{Number(returnRate).toFixed(1)}%
-          </span>
+        {showMdd ? (
+          realMdd != null ? (
+            <span className="text-sm font-bold ml-2 shrink-0 text-emerald-500">
+              MDD {realMdd > 0 ? `-${realMdd.toFixed(1)}` : '0.0'}%
+            </span>
+          ) : (
+            <span className="text-xs text-muted-foreground ml-2 shrink-0">대기 중</span>
+          )
+        ) : (
+          realReturn != null ? (
+            <span className={`text-sm font-bold ml-2 shrink-0 ${realReturn >= 0 ? 'text-red-500' : 'text-blue-500'}`}>
+              {realReturn >= 0 ? '+' : ''}{realReturn.toFixed(1)}%
+            </span>
+          ) : (
+            <span className="text-xs text-muted-foreground ml-2 shrink-0">대기 중</span>
+          )
         )}
       </div>
 

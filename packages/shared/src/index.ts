@@ -66,6 +66,8 @@ export interface SimulateResult {
     name: string;
     weight: number;
     returnRate: number;
+    maxDrawdown?: number;
+    volatility?: number;
   }[];
   /** 기간 시작일 종가 (code → price) */
   startPrices?: Record<string, number>;

@@ -2,12 +2,14 @@
 
 import { useState } from 'react';
 import { useSession } from 'next-auth/react';
+import { useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useCanvasStore } from '@/lib/store';
 
 export function SavePortfolioModal({ onClose }: { onClose: () => void }) {
   const { data: session } = useSession();
-  const { comparing, selected, weights } = useCanvasStore();
+  const { comparing, selected, weights, amounts } = useCanvasStore();
+  const queryClient = useQueryClient();
   const [name, setName] = useState('');
   const [saving, setSaving] = useState(false);
   const [savedSlug, setSavedSlug] = useState<string | null>(null);
@@ -21,8 +23,12 @@ export function SavePortfolioModal({ onClose }: { onClose: () => void }) {
         const etf = selected.find((s) => s.code === code);
         return { code, name: etf?.name || code, weight: weights[code] || 0 };
       });
-      const result = await api.savePortfolio(session.user.id, name.trim(), items);
+      const totalAmount = comparing.reduce((sum, code) => sum + (amounts[code] || 0), 0);
+      const result = await api.savePortfolio(name.trim(), items, null, totalAmount);
       setSavedSlug(result.slug);
+      queryClient.invalidateQueries({ queryKey: ['portfolios'] });
+      queryClient.invalidateQueries({ queryKey: ['gallery-top'] });
+      queryClient.invalidateQueries({ queryKey: ['gallery-tags'] });
     } finally {
       setSaving(false);
     }

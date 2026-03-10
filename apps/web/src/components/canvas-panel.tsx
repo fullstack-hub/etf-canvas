@@ -13,6 +13,11 @@ import { SimilarEtfModal } from '@/components/similar-etf-modal';
 import { LoginModal } from '@/components/login-modal';
 import { toast } from 'sonner';
 import { IssuerBadge } from '@/components/issuer-badge';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { CATEGORY_COLORS } from '@/lib/category-colors';
 import type { ETFSummary } from '@etf-canvas/shared';
 
 export function CanvasPanel() {
@@ -23,6 +28,7 @@ export function CanvasPanel() {
   const [replaceTarget, setReplaceTarget] = useState<ETFSummary | null>(null);
   const [showLogin, setShowLogin] = useState(false);
   const [showSave, setShowSave] = useState(false);
+  const [showResetDialog, setShowResetDialog] = useState(false);
 
   useEffect(() => {
     if (session && pendingSynthesize) {
@@ -97,7 +103,7 @@ export function CanvasPanel() {
           )}
           {selected.length > 0 && (
             <>
-              <Button size="sm" variant="outline" className="gap-1.5" onClick={clearCanvas}>
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setShowResetDialog(true)}>
                 <RotateCcw className="w-3.5 h-3.5" />
                 초기화
               </Button>
@@ -122,17 +128,20 @@ export function CanvasPanel() {
                             setFeedback(hash, res.feedback, res.actions);
                             // 자동저장 (피드백 포함)
                             const fb = { feedback: res.feedback, actions: res.actions, tags: (res as any).tags || [], snippet: (res as any).snippet || '' };
-                            api.autoSavePortfolio(session.user!.id!, items, fb).catch(() => {});
+                            api.autoSavePortfolio(items, fb, totalAmount).catch((e) => console.error('auto-save failed:', e));
                           })
                           .catch(() => {
                             setFeedback('', '피드백을 생성할 수 없어요.', []);
                             // 피드백 실패해도 자동저장
-                            api.autoSavePortfolio(session.user!.id!, items, null).catch(() => {});
+                            api.autoSavePortfolio(items, null, totalAmount).catch((e) => console.error('auto-save failed:', e));
                           });
+                      } else {
+                        // 같은 구성이어도 자동저장
+                        api.autoSavePortfolio(items, null).catch((e) => console.error('auto-save failed:', e));
                       }
                     } else {
                       // 피드백 비활성화 상태에서도 자동저장
-                      api.autoSavePortfolio(session.user!.id!, items, null).catch(() => {});
+                      api.autoSavePortfolio(items, null).catch((e) => console.error('auto-save failed:', e));
                     }
                   }
                 }} className="gap-1.5">
@@ -192,11 +201,26 @@ export function CanvasPanel() {
               const etf = selected.find((s) => s.code === code);
               return { code, name: etf?.name || code, weight: weights[code] || 0, category: etf?.categories?.[0] || '' };
             });
-            await api.savePortfolio((session as any).accessToken, name, items);
+            const fb = feedbackText ? { feedback: feedbackText, actions: feedbackActions, tags: [] as string[], snippet: '' } : null;
+            await api.savePortfolio(name, items, fb, totalAmount);
             queryClient.invalidateQueries({ queryKey: ['portfolios'] });
+            queryClient.invalidateQueries({ queryKey: ['gallery-top'] });
+            queryClient.invalidateQueries({ queryKey: ['gallery-tags'] });
           }}
         />
       )}
+      <AlertDialog open={showResetDialog} onOpenChange={setShowResetDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>캔버스를 초기화할까요?</AlertDialogTitle>
+            <AlertDialogDescription>선택한 ETF와 합성 결과가 모두 초기화돼요.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction onClick={clearCanvas}>초기화</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -301,7 +325,7 @@ function EtfCard({
   onReplace: () => void;
 }) {
   const cat = etf.categories[0];
-  const colors = CATEGORY_COLORS[cat] || CATEGORY_COLORS._default;
+  const catColor = CATEGORY_COLORS[cat] || CATEGORY_COLORS._default;
 
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -345,8 +369,8 @@ function EtfCard({
       onContextMenu={handleContextMenu}
     >
       {/* Header */}
-      <div className={`flex items-center justify-between px-2.5 h-7 rounded-t-lg ${colors.headerBg}`}>
-        <span className={`text-[10px] font-semibold truncate ${colors.headerText}`}>
+      <div className={`flex items-center justify-between px-2.5 h-7 rounded-t-lg ${catColor.bg}`}>
+        <span className="text-[10px] font-semibold truncate text-foreground/70">
           {cat || ''}
         </span>
         <button
@@ -594,14 +618,3 @@ export function FloatingFeedback({ loading, text, actions, onAction }: {
   );
 }
 
-const CATEGORY_COLORS: Record<string, { accent: string; headerBg: string; headerText: string }> = {
-  '국내 대표지수': { accent: 'bg-blue-500', headerBg: 'bg-blue-50 dark:bg-blue-950/40', headerText: 'text-blue-700/70 dark:text-blue-300/70' },
-  '해외 대표지수': { accent: 'bg-cyan-500', headerBg: 'bg-cyan-50 dark:bg-cyan-950/40', headerText: 'text-cyan-700/70 dark:text-cyan-300/70' },
-  '섹터/테마': { accent: 'bg-violet-500', headerBg: 'bg-violet-50 dark:bg-violet-950/40', headerText: 'text-violet-700/70 dark:text-violet-300/70' },
-  '액티브': { accent: 'bg-purple-500', headerBg: 'bg-purple-50 dark:bg-purple-950/40', headerText: 'text-purple-700/70 dark:text-purple-300/70' },
-  '채권': { accent: 'bg-emerald-500', headerBg: 'bg-emerald-50 dark:bg-emerald-950/40', headerText: 'text-emerald-700/70 dark:text-emerald-300/70' },
-  '혼합': { accent: 'bg-teal-500', headerBg: 'bg-teal-50 dark:bg-teal-950/40', headerText: 'text-teal-700/70 dark:text-teal-300/70' },
-  '원자재': { accent: 'bg-amber-500', headerBg: 'bg-amber-50 dark:bg-amber-950/40', headerText: 'text-amber-700/70 dark:text-amber-300/70' },
-  '레버리지/인버스': { accent: 'bg-red-500', headerBg: 'bg-red-50 dark:bg-red-950/40', headerText: 'text-red-700/70 dark:text-red-300/70' },
-  _default: { accent: 'bg-muted-foreground', headerBg: 'bg-muted/50', headerText: 'text-muted-foreground' },
-};

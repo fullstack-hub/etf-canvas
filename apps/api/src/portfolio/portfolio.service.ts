@@ -5,6 +5,7 @@ import { EtfService } from '../etf/etf.service';
 import { RedisService } from '../redis/redis.service';
 import { GeminiService, FALLBACK_MSG } from '../gemini/gemini.service';
 import { generateSlug } from './slug.util';
+import { getMarketDataCutoff } from '../common/market-time';
 
 const PERIODS = ['1w', '1m', '3m', '6m', '1y', '3y'] as const;
 
@@ -96,6 +97,7 @@ export class PortfolioService {
     userId: string,
     items: { code: string; name: string; weight: number; category?: string }[],
     feedbackResult: { feedback: string; actions: { category: string; label: string }[]; tags: string[]; snippet: string } | null,
+    totalAmount?: number,
   ) {
     const codes = items.map((i) => i.code);
     const weights = items.map((i) => i.weight);
@@ -106,25 +108,27 @@ export class PortfolioService {
       where: { userId, isDraft: true },
     });
 
-    const data = {
+    const baseData = {
       items,
       snapshot: snapshot as any,
       returnRate: yearData?.totalReturn ?? null,
       mdd: yearData?.maxDrawdown ?? null,
-      feedbackText: feedbackResult?.feedback || null,
-      feedbackActions: feedbackResult?.actions
-        ? (feedbackResult.actions as any)
-        : undefined,
-      feedbackSnippet: feedbackResult?.snippet || null,
-      tags: feedbackResult?.tags || [],
+      ...(totalAmount != null ? { totalAmount: BigInt(totalAmount) } : {}),
     };
+    const fbData = feedbackResult ? {
+      feedbackText: feedbackResult.feedback || null,
+      feedbackActions: feedbackResult.actions ? (feedbackResult.actions as any) : undefined,
+      feedbackSnippet: feedbackResult.snippet || null,
+      tags: feedbackResult.tags || [],
+    } : {};
 
     if (existing) {
       // 기존 draft 업데이트
       return this.prisma.portfolio.update({
         where: { id: existing.id },
         data: {
-          ...data,
+          ...baseData,
+          ...fbData,
           slug: generateSlug(items, existing.id),
         },
       });
@@ -139,7 +143,8 @@ export class PortfolioService {
         name: '임시 저장',
         slug: generateSlug(items, uuid),
         isDraft: true,
-        ...data,
+        ...baseData,
+        ...fbData,
       },
     });
   }
@@ -151,6 +156,8 @@ export class PortfolioService {
     userId: string,
     name: string,
     items: { code: string; name: string; weight: number; category?: string }[],
+    feedbackFromClient: { feedback: string; actions: { category: string; label: string }[]; tags: string[]; snippet: string } | null = null,
+    totalAmount?: number,
   ) {
     // draft가 있으면 정식 전환
     const draft = await this.prisma.portfolio.findFirst({
@@ -158,13 +165,41 @@ export class PortfolioService {
     });
 
     if (draft) {
+      const codes = items.map((i) => i.code);
+      const weights = items.map((i) => i.weight);
+
+      // snapshot이 없으면 다시 빌드
+      let snapshot = draft.snapshot as any;
+      let returnRate: any = draft.returnRate;
+      let mdd: any = draft.mdd;
+      if (!snapshot) {
+        snapshot = await this.buildSnapshot(codes, weights);
+        const yearData = (snapshot as PortfolioSnapshot).periods['1y'];
+        returnRate = yearData?.totalReturn ?? null;
+        mdd = yearData?.maxDrawdown ?? null;
+      }
+
+      const updateData: any = {
+        name,
+        slug: generateSlug(items, draft.id),
+        isDraft: false,
+        snapshot,
+        returnRate,
+        mdd,
+        ...(totalAmount != null ? { totalAmount: BigInt(totalAmount) } : {}),
+      };
+      // 프론트에서 피드백을 전달받았으면 확실히 저장
+      if (feedbackFromClient) {
+        updateData.feedbackText = feedbackFromClient.feedback || null;
+        updateData.feedbackActions = feedbackFromClient.actions || null;
+        updateData.feedbackSnippet = feedbackFromClient.snippet || null;
+        if (feedbackFromClient.tags?.length) {
+          updateData.tags = feedbackFromClient.tags;
+        }
+      }
       return this.prisma.portfolio.update({
         where: { id: draft.id },
-        data: {
-          name,
-          slug: generateSlug(items, draft.id),
-          isDraft: false,
-        },
+        data: updateData,
       });
     }
 
@@ -201,11 +236,12 @@ export class PortfolioService {
           : undefined,
         feedbackSnippet: feedbackResult?.snippet || null,
         tags: feedbackResult?.tags || [],
+        ...(totalAmount != null ? { totalAmount: BigInt(totalAmount) } : {}),
       },
     });
   }
 
-  private async buildSnapshot(codes: string[], weights: number[]): Promise<PortfolioSnapshot> {
+  private async buildSnapshot(codes: string[], weights: number[], endDate?: string): Promise<PortfolioSnapshot> {
     const periodResults: PortfolioSnapshot['periods'] = {};
     const allDailyReturns: number[] = [];
 
@@ -215,14 +251,15 @@ export class PortfolioService {
       if (!e?.listedDate) return max;
       return e.listedDate > max ? e.listedDate : max;
     }, new Date(0));
-    const daysSinceListed = Math.ceil((Date.now() - latestListed.getTime()) / (1000 * 60 * 60 * 24));
+    const refDate = endDate ? new Date(endDate) : new Date();
+    const daysSinceListed = Math.ceil((refDate.getTime() - latestListed.getTime()) / (1000 * 60 * 60 * 24));
 
     const PERIOD_DAYS: Record<string, number> = { '1w': 7, '1m': 30, '3m': 90, '6m': 180, '1y': 365, '3y': 1095 };
     const availablePeriods = PERIODS.filter((p) => daysSinceListed >= PERIOD_DAYS[p]);
 
     const results = await Promise.allSettled(
       availablePeriods.map((period) =>
-        this.etfService.simulate({ codes, weights, amount: 10_000_000, period }).then((r) => ({ period, result: r })),
+        this.etfService.simulate({ codes, weights, amount: 10_000_000, period, endDate }).then((r) => ({ period, result: r })),
       ),
     );
 
@@ -260,29 +297,41 @@ export class PortfolioService {
    * 저장일 ~ 오늘 시뮬레이션 ("그때 샀더라면")
    */
   async since(userId: string, id: string) {
-    // 일별 캐시 (당일 시딩 후 한번만 계산)
-    const today = new Date().toISOString().slice(0, 10);
-    const cacheKey = `portfolio:since:${id}:${today}`;
-    const cached = await this.redis.getJson<any>(cacheKey);
-    if (cached) return cached;
-
     const p = await this.prisma.portfolio.findFirst({ where: { id, userId } });
     if (!p) throw new NotFoundException();
+    return this.computeSince(p);
+  }
+
+  async publicSince(slug: string) {
+    const p = await this.prisma.portfolio.findUnique({ where: { slug } as any });
+    if (!p) throw new NotFoundException();
+    return this.computeSince(p);
+  }
+
+  private async computeSince(p: { id: string; items: any; totalAmount: bigint; createdAt: Date }) {
+    const id = p.id;
+    const cutoff = getMarketDataCutoff();
+    const cacheKey = `portfolio:since:${id}:${cutoff.cacheKey}`;
+    const cached = await this.redis.getJson<any>(cacheKey);
+    if (cached) return cached;
 
     const items = p.items as { code: string; name: string; weight: number }[];
     const saveDate = p.createdAt;
     const now = new Date();
-    const saveDateStr = saveDate.toISOString().slice(0, 10);
-    const todayStr = now.toISOString().slice(0, 10);
+    // KST 기준 저장일
+    const kstSaveDate = new Date(saveDate.getTime() + 9 * 3600_000);
+    const saveDateStr = kstSaveDate.toISOString().slice(0, 10);
 
     // 저장일과 오늘이 같은 날이면 바로 리턴
-    if (saveDateStr === todayStr) {
-      const result = { totalReturn: 0, annualizedReturn: 0, maxDrawdown: 0, dailyValues: [], daysSinceSave: 0, message: 'today' };
-      await this.redis.setJson(cacheKey, result, 86400);
+    if (saveDateStr === cutoff.basisDate) {
+      const result = { totalReturn: 0, annualizedReturn: 0, maxDrawdown: 0, dailyValues: [], daysSinceSave: 0, basisLabel: cutoff.basisLabel, basisDate: cutoff.basisDate, message: 'today' };
+      await this.redis.setJson(cacheKey, result, cutoff.ttl);
       return result;
     }
 
-    const daysSinceSave = Math.floor((now.getTime() - saveDate.getTime()) / (1000 * 60 * 60 * 24));
+    // KST 캘린더 일수 차이
+    const kstNowStr = new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10);
+    const daysSinceSave = Math.round((new Date(kstNowStr).getTime() - new Date(saveDateStr).getTime()) / (1000 * 60 * 60 * 24));
 
     // 저장일부터의 가격 데이터로 시뮬레이션
     const codes = items.map((i) => i.code);
@@ -295,28 +344,46 @@ export class PortfolioService {
       codes.map((code) => this.etfService.getDailyPrices(code, periodForDays)),
     );
 
-    // date→close 맵, saveDate 이후만
+    // 저장일 이후 가격만 사용 (당일 종가 = 매수 기준가)
+    // 비거래일 저장 시 다음 거래일 종가가 자연스럽게 기준가가 됨
     const priceMaps = allPrices.map((prices) => {
       const map = new Map<string, number>();
       for (const p of prices) {
-        if (p.date >= saveDateStr) map.set(p.date, p.close);
+        if (p.date >= saveDateStr) {
+          map.set(p.date, p.close);
+        }
       }
       return map;
     });
 
-    // 공통 날짜 (교집합, saveDate 이후)
+    // 공통 날짜 (교집합)
     const allDateSets = priceMaps.map((m) => new Set(m.keys()));
     const commonDates = [...(priceMaps[0]?.keys() || [])]
       .filter((d) => allDateSets.every((s) => s.has(d)))
       .sort();
 
-    if (commonDates.length < 2) {
-      const result = { totalReturn: 0, annualizedReturn: 0, maxDrawdown: 0, dailyValues: [], daysSinceSave, message: 'no_trading_days' };
-      await this.redis.setJson(cacheKey, result, 86400);
+    if (commonDates.length === 0) {
+      // 데이터 없으면 캐시하지 않음 (다음 호출 시 재시도)
+      return { totalReturn: 0, annualizedReturn: 0, maxDrawdown: 0, dailyValues: [], daysSinceSave, basisLabel: cutoff.basisLabel, basisDate: cutoff.basisDate, message: 'no_trading_days' };
+    }
+
+    if (commonDates.length === 1) {
+      const singleDate = commonDates[0];
+      const result = {
+        totalReturn: 0,
+        annualizedReturn: 0,
+        maxDrawdown: 0,
+        dailyValues: [{ date: singleDate, value: Number(p.totalAmount) || 100_000_000 }],
+        daysSinceSave,
+        basisLabel: cutoff.basisLabel,
+        basisDate: cutoff.basisDate,
+        message: 'waiting_next_trading_day',
+      };
+      await this.redis.setJson(cacheKey, result, cutoff.ttl);
       return result;
     }
 
-    const amount = 10_000_000;
+    const amount = Number(p.totalAmount) || 100_000_000;
     const basePrices = priceMaps.map((m) => m.get(commonDates[0]) || 1);
     const etfAmounts = weights.map((w) => amount * (w / 100));
     const dailyValues: { date: string; value: number }[] = [];
@@ -353,10 +420,11 @@ export class PortfolioService {
       maxDrawdown,
       dailyValues,
       daysSinceSave,
+      basisLabel: cutoff.basisLabel,
+      basisDate: cutoff.basisDate,
     };
 
-    // 86400초 = 1일 캐시
-    await this.redis.setJson(cacheKey, result, 86400);
+    await this.redis.setJson(cacheKey, result, cutoff.ttl);
     return result;
   }
 
@@ -367,10 +435,41 @@ export class PortfolioService {
       case 'mdd': orderBy = { mdd: 'asc' }; break;
       default: orderBy = { createdAt: 'desc' };
     }
-    return this.prisma.portfolio.findMany({
-      where: { userId, isDraft: false },
+    const rows = await this.prisma.portfolio.findMany({
+      where: { userId },
       orderBy,
     });
+    return rows.map((r) => ({ ...r, totalAmount: Number(r.totalAmount) }));
+  }
+
+  async backfillSnapshots() {
+    const portfolios = await this.prisma.portfolio.findMany({
+      where: { snapshot: { equals: null as any } },
+    });
+    let updated = 0;
+    for (const p of portfolios) {
+      const items = p.items as any[];
+      if (!items?.length) continue;
+      const codes = items.map((i: any) => i.code);
+      const weights = items.map((i: any) => i.weight);
+      try {
+        const endDate = p.createdAt.toISOString().slice(0, 10);
+        const snapshot = await this.buildSnapshot(codes, weights, endDate);
+        const yearData = snapshot.periods['1y'];
+        await this.prisma.portfolio.update({
+          where: { id: p.id },
+          data: {
+            snapshot: snapshot as any,
+            returnRate: yearData?.totalReturn ?? null,
+            mdd: yearData?.maxDrawdown ?? null,
+          },
+        });
+        updated++;
+      } catch (e) {
+        console.error(`backfill failed for portfolio ${p.id}:`, (e as Error).message);
+      }
+    }
+    return { total: portfolios.length, updated };
   }
 
   async get(userId: string, id: string) {
@@ -393,26 +492,69 @@ export class PortfolioService {
       feedbackActions: p.feedbackActions,
       feedbackSnippet: p.feedbackSnippet,
       tags: p.tags,
+      totalAmount: Number(p.totalAmount),
       createdAt: p.createdAt,
     };
   }
 
-  async getTop(limit: number) {
-    return this.prisma.portfolio.findMany({
+  async getTop(limit: number, sort: 'latest' | 'return' | 'mdd' = 'latest') {
+    const select = {
+      name: true,
+      slug: true,
+      items: true,
+      returnRate: true,
+      mdd: true,
+      feedbackSnippet: true,
+      tags: true,
+      createdAt: true,
+    } as const;
+
+    if (sort === 'latest') {
+      return this.prisma.portfolio.findMany({
+        where: { isDraft: false },
+        select,
+        orderBy: { createdAt: 'desc' },
+        take: Math.min(limit, 50),
+      });
+    }
+
+    // 수익률/MDD 정렬: computeSince 기반 + Redis 캐시
+    const cutoff = getMarketDataCutoff();
+    const cacheKey = `gallery:top:${sort}:${limit}:${cutoff.cacheKey}`;
+    const cached = await this.redis.getJson<any[]>(cacheKey);
+    if (cached) return cached;
+
+    const portfolios = await this.prisma.portfolio.findMany({
       where: { isDraft: false },
-      select: {
-        name: true,
-        slug: true,
-        items: true,
-        returnRate: true,
-        mdd: true,
-        feedbackSnippet: true,
-        tags: true,
-        createdAt: true,
-      },
-      orderBy: { createdAt: 'desc' },
-      take: Math.min(limit, 50),
+      select: { id: true, totalAmount: true, ...select },
     });
+
+    const withSince = (await Promise.all(
+      portfolios.map(async (p) => {
+        try {
+          const since = await this.computeSince(p);
+          // 대기 중(데이터 부족) 포트폴리오 제외
+          if (since.message || since.dailyValues.length < 2) return null;
+          return { ...p, sinceReturn: since.totalReturn, sinceMdd: since.maxDrawdown };
+        } catch {
+          return null;
+        }
+      }),
+    )).filter((x): x is NonNullable<typeof x> => x !== null);
+
+    if (sort === 'return') {
+      withSince.sort((a, b) => b.sinceReturn - a.sinceReturn);
+    } else {
+      withSince.sort((a, b) => a.sinceMdd - b.sinceMdd);
+    }
+
+    const result = withSince.slice(0, Math.min(limit, 50)).map(({ id, totalAmount, sinceReturn, sinceMdd, ...rest }) => ({
+      ...rest,
+      sinceReturn,
+      sinceMdd,
+    }));
+    await this.redis.setJson(cacheKey, result, cutoff.ttl);
+    return result;
   }
 
   async listTags() {
@@ -453,6 +595,15 @@ export class PortfolioService {
       where: { isDraft: false },
       select: { slug: true, updatedAt: true },
       orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async rename(userId: string, id: string, name: string) {
+    const p = await this.prisma.portfolio.findFirst({ where: { id, userId } });
+    if (!p) throw new NotFoundException();
+    return this.prisma.portfolio.update({
+      where: { id },
+      data: { name: name.trim().slice(0, 100) },
     });
   }
 

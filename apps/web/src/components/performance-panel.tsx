@@ -9,19 +9,13 @@ import {
   AreaChart, Area, ComposedChart, Bar, Line, XAxis, YAxis, Tooltip,
   ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell, Legend,
 } from 'recharts';
-import { Maximize2, Minimize2, Sparkles, TrendingUp, Info } from 'lucide-react';
+import { Sparkles, TrendingUp, Info, Maximize2, Minimize2 } from 'lucide-react';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import type { SimulateRequest } from '@etf-canvas/shared';
-
-const PIE_COLORS: Record<string, string> = {
-  '국내 대표지수': '#6b9bd2',
-  '해외 대표지수': '#7ec4cf',
-  '섹터/테마': '#9b8ec4',
-  '액티브': '#b89cc8',
-  '채권': '#7bc4a5',
-  '혼합': '#85c5b8',
-  '원자재': '#dbb97a',
-  '레버리지/인버스': '#d98b8b',
-};
+import { getCatHex } from '@/lib/category-colors';
 
 /** 각 종목 분배금을 비중 가중 후 월별/분기별 합산 */
 function usePortfolioDividends(
@@ -112,6 +106,8 @@ function usePortfolioDividends(
 
 export function PerformancePanel() {
   const { comparing, selected, weights, amounts } = useCanvasStore();
+  const [closeDialogOpen, setCloseDialogOpen] = useState(false);
+  const closePerfPanel = () => useCanvasStore.setState({ synthesized: false, performanceExpanded: false, performanceMinimized: false });
 
   const timeframes = [
     { label: '1W', value: '1w' },
@@ -125,6 +121,7 @@ export function PerformancePanel() {
   const [timeframe, setTimeframe] = useState(timeframes[5]); // Default 1Y
   const {
     performanceExpanded: expanded, togglePerformanceExpanded: toggleExpanded,
+    performanceMinimized: minimized, setPerformanceMinimized: setMinimized,
     feedbackMinimized, setFeedbackMinimized, feedbackEnabled, feedbackText, feedbackLoading,
   } = useCanvasStore();
 
@@ -288,47 +285,92 @@ export function PerformancePanel() {
   const showLoading = isLoading || (!simData && isFetching);
 
   return (
-    <div className={`${expanded ? 'flex-1' : 'h-[480px]'} border-t bg-background flex flex-col z-20 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] relative`}>
+    <div className={`${minimized ? '' : expanded ? 'flex-1' : 'h-[480px]'} border-t bg-background flex flex-col z-20 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] relative`}>
       {/* Header */}
-      <div className="flex justify-between items-center px-5 pt-4 pb-3 shrink-0">
-        <div className="flex items-center gap-2">
+      <div
+        className={`flex justify-between items-center px-5 shrink-0 ${minimized ? 'py-2.5 cursor-pointer hover:bg-muted/50 transition-colors' : 'pt-4 pb-3'}`}
+        onClick={minimized ? () => setMinimized(false) : undefined}
+      >
+        <div className="flex items-center gap-3">
+          {/* macOS traffic light buttons */}
+          {minimized ? (
+            <button
+              onClick={(e) => { e.stopPropagation(); setMinimized(false); }}
+              className="group/single w-3.5 h-3.5 rounded-full bg-[#febc2e] hover:brightness-90 transition-all flex items-center justify-center"
+              title="펼치기"
+            >
+              <svg className="w-[8px] h-[8px] opacity-0 group-hover/single:opacity-100 transition-opacity" viewBox="0 0 12 12" fill="none" stroke="rgba(0,0,0,0.5)" strokeWidth="2.5" strokeLinecap="round"><path d="M1.5 6h9" /></svg>
+            </button>
+          ) : expanded ? (
+            <button
+              onClick={(e) => { e.stopPropagation(); toggleExpanded(); }}
+              className="group/single w-3.5 h-3.5 rounded-full bg-[#28c840] hover:brightness-90 transition-all flex items-center justify-center"
+              title="축소"
+            >
+              <Minimize2 className="w-[8px] h-[8px] opacity-0 group-hover/single:opacity-100 transition-opacity text-black/50" strokeWidth={2.5} />
+            </button>
+          ) : (
+            <div className="group/traffic flex items-center gap-1.5">
+              <button
+                onClick={(e) => { e.stopPropagation(); setCloseDialogOpen(true); }}
+                className="w-3.5 h-3.5 rounded-full bg-[#ff5f57] hover:brightness-90 transition-all flex items-center justify-center"
+                title="닫기"
+              >
+                <svg className="w-[8px] h-[8px] opacity-0 group-hover/traffic:opacity-100 transition-opacity" viewBox="0 0 12 12" fill="none" stroke="rgba(0,0,0,0.5)" strokeWidth="2.5" strokeLinecap="round"><path d="M2.5 2.5l7 7M9.5 2.5l-7 7" /></svg>
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); setMinimized(true); }}
+                className="w-3.5 h-3.5 rounded-full bg-[#febc2e] hover:brightness-90 transition-all flex items-center justify-center"
+                title="접기"
+              >
+                <svg className="w-[8px] h-[8px] opacity-0 group-hover/traffic:opacity-100 transition-opacity" viewBox="0 0 12 12" fill="none" stroke="rgba(0,0,0,0.5)" strokeWidth="2.5" strokeLinecap="round"><path d="M1.5 6h9" /></svg>
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); toggleExpanded(); }}
+                className="w-3.5 h-3.5 rounded-full bg-[#28c840] hover:brightness-90 transition-all flex items-center justify-center"
+                title="확대"
+              >
+                <Maximize2 className="w-[8px] h-[8px] opacity-0 group-hover/traffic:opacity-100 transition-opacity text-black/50" strokeWidth={2.5} />
+              </button>
+            </div>
+          )}
           <h2 className="font-bold text-[15px]">포트폴리오 퍼포먼스</h2>
-          <button
-            onClick={toggleExpanded}
-            className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md hover:bg-muted/60"
-            title={expanded ? '축소' : '확대'}
-          >
-            {expanded ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
-          </button>
           {feedbackEnabled && !feedbackLoading && feedbackMinimized && feedbackText && (
             <button
-              onClick={() => setFeedbackMinimized(false)}
+              onClick={(e) => { e.stopPropagation(); setFeedbackMinimized(false); }}
               className="flex items-center gap-1 px-2 py-1 rounded-full bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 transition-colors text-xs font-medium"
             >
               <Sparkles className="w-3 h-3 animate-[sparkle_1.5s_ease-in-out_infinite]" style={{ filter: 'drop-shadow(0 0 3px #f59e0b)' }} />
               피드백
             </button>
           )}
+          {minimized && simData && (
+            <span className={`text-sm font-bold tabular-nums ml-1 ${synthReturn != null && synthReturn >= 0 ? 'text-red-500' : 'text-blue-500'}`}>
+              {synthReturn != null ? `${synthReturn >= 0 ? '+' : ''}${synthReturn.toFixed(2)}%` : ''}
+            </span>
+          )}
         </div>
-        <div className="flex bg-muted/40 rounded-md p-0.5 border">
-          {timeframes.map(tf => (
-            <button
-              key={tf.value}
-              disabled={!isValid || isLoading || !isTimeframeAvailable(tf.value)}
-              className={`px-2.5 py-1 text-[11px] font-semibold rounded-sm transition-colors ${
-                timeframe.value === tf.value
-                  ? 'bg-slate-500 text-white shadow-sm'
-                  : 'text-muted-foreground hover:bg-muted/60'
-              } disabled:opacity-40`}
-              onClick={() => setTimeframe(tf)}
-            >
-              {tf.label}
-            </button>
-          ))}
-        </div>
+        {!minimized && (
+          <div className="flex bg-muted/40 rounded-md p-0.5 border">
+            {timeframes.map(tf => (
+              <button
+                key={tf.value}
+                disabled={!isValid || isLoading || !isTimeframeAvailable(tf.value)}
+                className={`px-2.5 py-1 text-[11px] font-semibold rounded-sm transition-colors ${
+                  timeframe.value === tf.value
+                    ? 'bg-slate-500 text-white shadow-sm'
+                    : 'text-muted-foreground hover:bg-muted/60'
+                } disabled:opacity-40`}
+                onClick={() => setTimeframe(tf)}
+              >
+                {tf.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
-      {emptyState ? (
+      {minimized ? null : emptyState ? (
         <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm bg-muted/10 rounded-lg border border-dashed mx-5 mb-4">
           {emptyState}
         </div>
@@ -527,6 +569,18 @@ export function PerformancePanel() {
           )}
         </div>
       )}
+      <AlertDialog open={closeDialogOpen} onOpenChange={setCloseDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>퍼포먼스 패널을 닫을까요?</AlertDialogTitle>
+            <AlertDialogDescription>합성 결과가 초기화돼요.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction onClick={closePerfPanel}>닫기</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -651,7 +705,7 @@ function CategoryPie({ comparingCodes, selected, weights }: {
               stroke="none"
             >
               {data.map((entry) => (
-                <Cell key={entry.name} fill={PIE_COLORS[entry.name] || '#94a3b8'} />
+                <Cell key={entry.name} fill={getCatHex(entry.name)} />
               ))}
             </Pie>
           </PieChart>
@@ -663,7 +717,7 @@ function CategoryPie({ comparingCodes, selected, weights }: {
       <div className="flex flex-col gap-1 min-w-0">
         {data.map((d) => (
           <div key={d.name} className="flex items-center gap-1.5 text-[10px]">
-            <div className="w-2 h-2 rounded-full shrink-0" style={{ background: PIE_COLORS[d.name] || '#94a3b8' }} />
+            <div className="w-2 h-2 rounded-full shrink-0" style={{ background: getCatHex(d.name) }} />
             <span className="text-muted-foreground truncate">{d.name}</span>
             <span className="font-semibold ml-auto tabular-nums">{Math.round(d.value)}%</span>
           </div>

@@ -15,13 +15,13 @@ import type { ETFSummary, ETFSortBy } from '@etf-canvas/shared';
 
 const CATEGORY_STYLES: Record<string, { active: string; icon: string }> = {
   '국내 대표지수': { active: 'border-blue-400 bg-blue-50 text-blue-800 dark:bg-blue-950/40 dark:text-blue-200', icon: 'text-blue-400' },
-  '해외 대표지수': { active: 'border-sky-400 bg-sky-50 text-sky-800 dark:bg-sky-950/40 dark:text-sky-200', icon: 'text-sky-400' },
+  '해외 대표지수': { active: 'border-teal-400 bg-teal-50 text-teal-800 dark:bg-teal-950/40 dark:text-teal-200', icon: 'text-teal-400' },
   '섹터/테마': { active: 'border-violet-400 bg-violet-50 text-violet-800 dark:bg-violet-950/40 dark:text-violet-200', icon: 'text-violet-400' },
-  '채권': { active: 'border-emerald-400 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200', icon: 'text-emerald-400' },
+  '채권': { active: 'border-lime-500 bg-lime-50 text-lime-800 dark:bg-lime-950/40 dark:text-lime-200', icon: 'text-lime-500' },
   '원자재': { active: 'border-amber-400 bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200', icon: 'text-amber-400' },
   '레버리지/인버스': { active: 'border-red-400 bg-red-50 text-red-800 dark:bg-red-950/40 dark:text-red-200', icon: 'text-red-400' },
-  '혼합': { active: 'border-teal-400 bg-teal-50 text-teal-800 dark:bg-teal-950/40 dark:text-teal-200', icon: 'text-teal-400' },
-  '액티브': { active: 'border-purple-400 bg-purple-50 text-purple-800 dark:bg-purple-950/40 dark:text-purple-200', icon: 'text-purple-400' },
+  '혼합': { active: 'border-orange-400 bg-orange-50 text-orange-800 dark:bg-orange-950/40 dark:text-orange-200', icon: 'text-orange-400' },
+  '액티브': { active: 'border-fuchsia-400 bg-fuchsia-50 text-fuchsia-800 dark:bg-fuchsia-950/40 dark:text-fuchsia-200', icon: 'text-fuchsia-400' },
   'New': { active: 'border-pink-400 bg-pink-50 text-pink-800 dark:bg-pink-950/40 dark:text-pink-200', icon: 'text-pink-400' },
 };
 

@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useSession, signOut } from 'next-auth/react';
-import { Layers, LogOut, User, FolderOpen } from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
+import { Layers, LogOut, User, FolderOpen, Trophy } from 'lucide-react';
 import { LoginModal } from '@/components/login-modal';
 import { useCanvasStore } from '@/lib/store';
 
@@ -11,6 +12,18 @@ export function IconSidebar() {
   const { currentView, setCurrentView, clearCanvas } = useCanvasStore();
   const [showLogin, setShowLogin] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const pathname = usePathname();
+  const router = useRouter();
+  const isHome = pathname === '/';
+
+  const navigate = (view: 'canvas' | 'gallery' | 'portfolio') => {
+    if (isHome) {
+      setCurrentView(view);
+    } else {
+      setCurrentView(view);
+      router.push('/');
+    }
+  };
 
   return (
     <>
@@ -19,7 +32,7 @@ export function IconSidebar() {
         <img src="/logo.svg" alt="ETF Canvas" width={32} height={32} className="mb-4" />
 
         <button
-          onClick={() => setCurrentView('canvas')}
+          onClick={() => navigate('canvas')}
           className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${currentView === 'canvas' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-foreground'}`}
           title="합성"
         >
@@ -28,13 +41,21 @@ export function IconSidebar() {
 
         {session?.user && (
           <button
-            onClick={() => setCurrentView('portfolio')}
+            onClick={() => navigate('portfolio')}
             className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${currentView === 'portfolio' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-foreground'}`}
             title="내 포트폴리오"
           >
             <FolderOpen className="w-[18px] h-[18px]" />
           </button>
         )}
+
+        <button
+          onClick={() => navigate('gallery')}
+          className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${currentView === 'gallery' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-foreground'}`}
+          title="TOP 포트폴리오"
+        >
+          <Trophy className="w-[18px] h-[18px]" />
+        </button>
 
         <button
           className="w-9 h-9 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"

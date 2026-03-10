@@ -13,6 +13,7 @@ import type {
   SimulateResult,
   ETFSortBy,
 } from '@etf-canvas/shared';
+import { getMarketDataCutoff, getNaverFetchCutoffDate } from '../common/market-time';
 
 @Injectable()
 export class EtfService {
@@ -190,7 +191,8 @@ export class EtfService {
   }
 
   async getDailyPrices(code: string, period: string): Promise<ETFDailyPrice[]> {
-    const cacheKey = `etf:prices:v3:${code}:${period}`;
+    const cutoff = getMarketDataCutoff();
+    const cacheKey = `etf:prices:v4:${code}:${period}:${cutoff.cacheKey}`;
 
     const cached = await this.redis.getJson<ETFDailyPrice[]>(cacheKey);
     if (cached) return cached;
@@ -199,23 +201,30 @@ export class EtfService {
     const since = new Date();
     since.setDate(since.getDate() - days);
 
+    // cutoff.cutoffDate: 16시 전 → 오늘 UTC자정(어제까지), 16시 후 → 내일 UTC자정(오늘까지)
     // DB 먼저 조회
     let prices = await this.prisma.etfDailyPrice.findMany({
-      where: { etfCode: code, date: { gte: since } },
+      where: { etfCode: code, date: { gte: since, lt: cutoff.cutoffDate } },
       orderBy: { date: 'asc' },
     });
 
-    // DB에 데이터 없으면 네이버에서 가져온 뒤 재조회
-    if (prices.length === 0) {
-      const greedyKey = `etf:greedy_fetched:${code}`;
-      const hasGreedyFetched = await this.redis.getJson<boolean>(greedyKey);
+    // DB 마지막 날짜 vs 최근 거래일 비교 → 빠진 날이 있으면 네이버에서 fetch
+    const lastDbDate = prices.length > 0 ? prices[prices.length - 1].date : null;
+    const needsFetch = this.isMissingTradingDays(lastDbDate, cutoff.isPostClose);
 
-      if (!hasGreedyFetched) {
+    if (needsFetch) {
+      const fetchKey = `etf:daily_synced:${code}:${cutoff.cacheKey}`;
+      const alreadySynced = await this.redis.getJson<boolean>(fetchKey);
+
+      if (!alreadySynced) {
         if (!this.fetchLocks.has(code)) {
+          const fetchDays = lastDbDate
+            ? Math.ceil((Date.now() - new Date(lastDbDate).getTime()) / 86400_000) + 5
+            : 1095;
           const fetchPromise = (async () => {
-            const PREFETCH_DAYS = 1095;
-            await this.fetchAndStoreDailyPricesFromNaver(code, PREFETCH_DAYS);
-            await this.redis.setJson(greedyKey, true, 86400);
+            await this.fetchAndStoreDailyPricesFromNaver(code, fetchDays);
+            await this.redis.deletePattern(`etf:prices:v4:${code}:*`);
+            await this.redis.setJson(fetchKey, true, cutoff.ttl);
           })().finally(() => {
             this.fetchLocks.delete(code);
           });
@@ -225,7 +234,7 @@ export class EtfService {
       }
 
       prices = await this.prisma.etfDailyPrice.findMany({
-        where: { etfCode: code, date: { gte: since } },
+        where: { etfCode: code, date: { gte: since, lt: cutoff.cutoffDate } },
         orderBy: { date: 'asc' },
       });
     }
@@ -240,7 +249,7 @@ export class EtfService {
       nav: p.nav ? Number(p.nav) : null,
     }));
 
-    await this.redis.setJson(cacheKey, result, 86400);
+    await this.redis.setJson(cacheKey, result, cutoff.ttl);
     return result;
   }
 
@@ -345,14 +354,42 @@ export class EtfService {
       dailyValues,
       startPrices: Object.fromEntries(req.codes.map((code, i) => [code, basePrices[i]])),
       perEtf: req.codes.map((code, i) => {
-        const lastDate = commonDates[commonDates.length - 1];
-        const lastPrice = priceMaps[i].get(lastDate) || 0;
         const basePrice = basePrices[i];
+        // 종목별 일별 가치 계산
+        const etfDailyValues = commonDates.map((date) => {
+          const close = priceMaps[i].get(date) || basePrice;
+          return close / basePrice;
+        });
+        const lastRatio = etfDailyValues[etfDailyValues.length - 1] || 1;
+        const returnRate = Math.round((lastRatio - 1) * 10000) / 100;
+        // 종목별 MDD
+        let etfPeak = -Infinity;
+        let etfMdd = 0;
+        for (const ratio of etfDailyValues) {
+          if (ratio > etfPeak) etfPeak = ratio;
+          const dd = ((etfPeak - ratio) / etfPeak) * 100;
+          if (dd > etfMdd) etfMdd = dd;
+        }
+        // 종목별 변동성
+        let etfVol = 0;
+        if (etfDailyValues.length > 2) {
+          const rets: number[] = [];
+          for (let j = 1; j < etfDailyValues.length; j++) {
+            if (etfDailyValues[j - 1] > 0) rets.push((etfDailyValues[j] - etfDailyValues[j - 1]) / etfDailyValues[j - 1]);
+          }
+          if (rets.length > 1) {
+            const m = rets.reduce((a, b) => a + b, 0) / rets.length;
+            const v = rets.reduce((s, r) => s + (r - m) ** 2, 0) / (rets.length - 1);
+            etfVol = Math.round(Math.sqrt(v) * Math.sqrt(252) * 10000) / 100;
+          }
+        }
         return {
           code,
-          name: '',
+          name: code,
           weight: req.weights[i],
-          returnRate: Math.round(((lastPrice - basePrice) / basePrice) * 10000) / 100,
+          returnRate,
+          maxDrawdown: Math.round(etfMdd * 100) / 100,
+          volatility: etfVol,
         };
       }),
     };
@@ -449,10 +486,33 @@ export class EtfService {
 
   async seed(): Promise<number> {
     const count = await this.naver.seedAllEtfs();
-    // 시딩 후 가격 캐시 초기화
-    await this.redis.deletePattern('etf:prices:*');
-    await this.redis.deletePattern('etf:greedy_fetched:*');
+    // 시딩 후 가격 캐시만 초기화 (DB에서 다시 읽도록)
+    // daily_synced는 유지 — 네이버 중복 fetch 방지
+    await this.redis.deletePattern('etf:prices:v4:*');
     return count;
+  }
+
+  /**
+   * DB 마지막 날짜 이후로 거래일이 있는데 데이터가 없는지 확인
+   * isPostClose=true면 오늘까지 체크, false면 어제까지 체크
+   */
+  private isMissingTradingDays(lastDbDate: Date | null, isPostClose: boolean): boolean {
+    if (!lastDbDate) return true;
+    const kstNow = new Date(Date.now() + 9 * 3600_000);
+    // 16시 이후: 오늘까지 데이터 있어야 함, 이전: 어제까지
+    const checkUntil = isPostClose
+      ? kstNow.toISOString().slice(0, 10)
+      : new Date(kstNow.getTime() - 86400_000).toISOString().slice(0, 10);
+    const lastDbStr = lastDbDate.toISOString().slice(0, 10);
+    const d = new Date(lastDbStr + 'T00:00:00.000Z');
+    d.setDate(d.getDate() + 1);
+    const checkDate = new Date(checkUntil + 'T23:59:59.999Z');
+    while (d <= checkDate) {
+      const day = d.getUTCDay();
+      if (day !== 0 && day !== 6) return true;
+      d.setDate(d.getDate() + 1);
+    }
+    return false;
   }
 
   // --- Private ---
@@ -460,7 +520,10 @@ export class EtfService {
   private async fetchAndStoreDailyPricesFromNaver(code: string, days: number): Promise<void> {
     this.logger.log(`ETF ${code} 네이버 일별시세 ${days}일치 조회...`);
     try {
-      const items = await this.naver.fetchDailyPrices(code, days);
+      const rawItems = await this.naver.fetchDailyPrices(code, days);
+      // 16시 이후면 오늘 포함, 이전이면 오늘 제외
+      const cutoffDate = getNaverFetchCutoffDate();
+      const items = rawItems.filter((i) => i.date < cutoffDate);
       if (items.length === 0) return;
 
       // Bulk: delete existing rows for this ETF, then bulk insert

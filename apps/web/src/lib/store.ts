@@ -18,8 +18,8 @@ function deriveWeights(amounts: Record<string, number>, comparing: string[]): Re
 
 interface CanvasStore {
   // View
-  currentView: 'canvas' | 'portfolio';
-  setCurrentView: (view: 'canvas' | 'portfolio') => void;
+  currentView: 'canvas' | 'portfolio' | 'gallery';
+  setCurrentView: (view: 'canvas' | 'portfolio' | 'gallery') => void;
 
   // ETF selection (left panel)
   selectedEtfCode: string | null;
@@ -45,6 +45,8 @@ interface CanvasStore {
   setPortfolioName: (name: string) => void;
   performanceExpanded: boolean;
   togglePerformanceExpanded: () => void;
+  performanceMinimized: boolean;
+  setPerformanceMinimized: (v: boolean) => void;
   addLoadingCode: (code: string) => void;
   removeLoadingCode: (code: string) => void;
   updateEtfData: (code: string, data: Partial<ETFSummary>) => void;
@@ -66,7 +68,7 @@ interface CanvasStore {
 
 export const useCanvasStore = create<CanvasStore>()(persist((set, get) => ({
   currentView: 'canvas',
-  setCurrentView: (view) => set({ currentView: view }),
+  setCurrentView: (view) => set({ currentView: view, ...(view !== 'canvas' ? { feedbackMinimized: true } : {}) }),
 
   selectedEtfCode: null,
   selectEtf: (code) => set({ selectedEtfCode: code }),
@@ -140,7 +142,7 @@ export const useCanvasStore = create<CanvasStore>()(persist((set, get) => ({
     }));
   },
 
-  clearCanvas: () => set({ selected: [], comparing: [], weights: {}, amounts: {}, loadingCodes: [], synthesized: false, performanceExpanded: false, portfolioName: '', feedbackHash: '', feedbackText: '', feedbackActions: [], feedbackLoading: false, browseCategory: null }),
+  clearCanvas: () => set({ selected: [], comparing: [], weights: {}, amounts: {}, loadingCodes: [], synthesized: false, performanceExpanded: false, performanceMinimized: false, portfolioName: '', feedbackHash: '', feedbackText: '', feedbackActions: [], feedbackLoading: false, browseCategory: null }),
   synthesized: false,
   synthesize: () => set({ synthesized: true, pendingSynthesize: false, feedbackMinimized: false }),
   pendingSynthesize: false,
@@ -149,6 +151,8 @@ export const useCanvasStore = create<CanvasStore>()(persist((set, get) => ({
   setPortfolioName: (name) => set({ portfolioName: name }),
   performanceExpanded: false,
   togglePerformanceExpanded: () => set((state) => ({ performanceExpanded: !state.performanceExpanded })),
+  performanceMinimized: false,
+  setPerformanceMinimized: (v) => set({ performanceMinimized: v }),
   addLoadingCode: (code) =>
     set((state) => ({ loadingCodes: [...state.loadingCodes, code] })),
   removeLoadingCode: (code) =>

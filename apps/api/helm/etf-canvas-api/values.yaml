@@ -33,7 +33,7 @@ env: []
 
 seedCronJob:
   enabled: true
-  schedule: "0 18 * * 1-5"
+  schedule: "0 7 * * 1-5"
   discordWebhook: "https://discord.com/api/webhooks/1479675781142806528/RgcDhBAfN9gGe_Ya2UQqLSOjnmYfD7RcRPeiBakScossOzIFYy0W8gVVO1SC7Uvwu0jN"
 
 autoscaling:

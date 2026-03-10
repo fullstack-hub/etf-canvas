@@ -18,6 +18,7 @@ interface PortfolioData {
   feedbackActions: { category: string; label: string }[] | null;
   feedbackSnippet: string | null;
   tags: string[];
+  totalAmount: number;
   createdAt: string;
 }
 
