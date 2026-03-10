@@ -104,7 +104,7 @@ export class PortfolioService {
     const slug = generateSlug(items, uuid);
 
     // 피드백 조회: Redis 캐시 → miss 시 Gemini 호출
-    let feedbackResult: { feedback: string; actions: { category: string; label: string }[] } | null = null;
+    let feedbackResult: { feedback: string; actions: { category: string; label: string }[]; tags: string[]; snippet: string } | null = null;
     try {
       const feedbackItems = items.map((i) => ({
         code: i.code,
@@ -131,6 +131,8 @@ export class PortfolioService {
         feedbackActions: feedbackResult?.actions
           ? (feedbackResult.actions as any)
           : undefined,
+        feedbackSnippet: feedbackResult?.snippet || null,
+        tags: feedbackResult?.tags || [],
       },
     });
   }

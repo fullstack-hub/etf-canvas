@@ -8,6 +8,8 @@ const MAX_NAME_LEN = 100;
 export interface FeedbackResult {
   feedback: string;
   actions: { category: string; label: string }[];
+  tags: string[];
+  snippet: string;
 }
 
 const VALID_CATEGORIES = [
@@ -16,7 +18,7 @@ const VALID_CATEGORIES = [
 ];
 
 export const FALLBACK_MSG = '피드백을 생성할 수 없어요.';
-const FALLBACK: FeedbackResult = { feedback: FALLBACK_MSG, actions: [] };
+const FALLBACK: FeedbackResult = { feedback: FALLBACK_MSG, actions: [], tags: [], snippet: '' };
 
 @Injectable()
 export class GeminiService {
@@ -68,8 +70,12 @@ ${marketSection}
 JSON으로만 응답해:
 {
   "feedback": "3~5문장 한국어 피드백 (포트폴리오 구성 분석 + 현재 시장 상황과의 관계)",
-  "actions": [{ "category": "정확한 카테고리명", "label": "{카테고리명} ETF 조회하기" }]
-}`;
+  "actions": [{ "category": "정확한 카테고리명", "label": "{카테고리명} ETF 조회하기" }],
+  "tags": ["고배당", "미국주식", "성장주"],
+  "snippet": "이 포트폴리오의 핵심 특징을 1문장으로 요약"
+}
+tags 규칙: 투자전략(고배당, 성장주, 인컴), 지역(미국주식, 국내, 일본), 자산(채권, 금, 원자재), 테마(AI, 반도체, 인플레이션방어) 중 2~5개
+snippet 규칙: 검색엔진 노출용 1줄 요약, 50자 내외`;
 
     for (const model of [GEMINI_PRIMARY, GEMINI_FALLBACK_MODEL]) {
       try {
@@ -106,6 +112,8 @@ JSON으로만 응답해:
           actions: (Array.isArray(raw.actions) ? raw.actions : []).filter(
             (a: any) => typeof a?.category === 'string' && VALID_CATEGORIES.includes(a.category) && typeof a?.label === 'string' && a.label,
           ),
+          tags: (Array.isArray(raw.tags) ? raw.tags : []).filter((t: any) => typeof t === 'string').slice(0, 5),
+          snippet: typeof raw.snippet === 'string' ? raw.snippet.slice(0, 100) : '',
         };
 
         return parsed;
