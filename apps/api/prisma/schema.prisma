@@ -75,20 +75,26 @@ model EtfDailyPrice {
 }
 
 model Portfolio {
-  id          String   @id @default(uuid()) @db.Uuid
-  userId      String   @map("user_id")
-  name        String   @db.VarChar(100)
-  items       Json
-  snapshot    Json?
-  returnRate  Decimal? @map("return_rate") @db.Decimal(8, 2)
-  mdd         Decimal? @db.Decimal(8, 2)
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @default(now()) @map("updated_at") @updatedAt
+  id              String   @id @default(uuid()) @db.Uuid
+  userId          String   @map("user_id")
+  name            String   @db.VarChar(100)
+  slug            String   @unique @db.VarChar(200)
+  items           Json
+  snapshot        Json?
+  returnRate      Decimal? @map("return_rate") @db.Decimal(8, 2)
+  mdd             Decimal? @db.Decimal(8, 2)
+  feedbackText    String?  @map("feedback_text")
+  feedbackActions Json?    @map("feedback_actions")
+  feedbackSnippet String?  @map("feedback_snippet")
+  tags            String[] @default([])
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @default(now()) @map("updated_at") @updatedAt
 
   @@index([userId])
   @@index([userId, id])
   @@index([returnRate(sort: Desc)])
   @@index([createdAt(sort: Desc)])
+  @@index([slug])
   @@map("portfolio")
 }
 
