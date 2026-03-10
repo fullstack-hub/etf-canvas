@@ -109,18 +109,30 @@ export function CanvasPanel() {
                     setShowLogin(true);
                   } else {
                     synthesize();
+                    const items = comparing.map((code) => {
+                      const etf = selected.find((s) => s.code === code);
+                      return { code, name: etf?.name || '', weight: weights[code] || 0, category: etf?.categories?.[0] || '' };
+                    });
                     if (feedbackEnabled || process.env.NODE_ENV === 'production') {
                       const hash = [...comparing].sort().map((c) => `${c}:${weights[c] || 0}`).join(',');
                       if (hash !== feedbackHash) {
                         setFeedbackLoading(true);
-                        const items = comparing.map((code) => {
-                          const etf = selected.find((s) => s.code === code);
-                          return { code, name: etf?.name || '', weight: weights[code] || 0, category: etf?.categories?.[0] || '' };
-                        });
                         api.getPortfolioFeedback(items)
-                          .then((res) => setFeedback(hash, res.feedback, res.actions))
-                          .catch(() => setFeedback('', '피드백을 생성할 수 없어요.', []));
+                          .then((res) => {
+                            setFeedback(hash, res.feedback, res.actions);
+                            // 자동저장 (피드백 포함)
+                            const fb = { feedback: res.feedback, actions: res.actions, tags: (res as any).tags || [], snippet: (res as any).snippet || '' };
+                            api.autoSavePortfolio(session.user!.id!, items, fb).catch(() => {});
+                          })
+                          .catch(() => {
+                            setFeedback('', '피드백을 생성할 수 없어요.', []);
+                            // 피드백 실패해도 자동저장
+                            api.autoSavePortfolio(session.user!.id!, items, null).catch(() => {});
+                          });
                       }
+                    } else {
+                      // 피드백 비활성화 상태에서도 자동저장
+                      api.autoSavePortfolio(session.user!.id!, items, null).catch(() => {});
                     }
                   }
                 }} className="gap-1.5">

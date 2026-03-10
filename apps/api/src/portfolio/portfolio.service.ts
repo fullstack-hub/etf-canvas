@@ -89,33 +89,101 @@ export class PortfolioService {
     return context;
   }
 
-  async create(
+  /**
+   * 합성 시 자동저장 — 유저당 draft 1개만 유지 (upsert)
+   */
+  async autoSave(
     userId: string,
-    name: string,
     items: { code: string; name: string; weight: number; category?: string }[],
+    feedbackResult: { feedback: string; actions: { category: string; label: string }[]; tags: string[]; snippet: string } | null,
   ) {
     const codes = items.map((i) => i.code);
     const weights = items.map((i) => i.weight);
     const snapshot = await this.buildSnapshot(codes, weights);
     const yearData = snapshot.periods['1y'];
 
-    // slug 생성
+    const existing = await this.prisma.portfolio.findFirst({
+      where: { userId, isDraft: true },
+    });
+
+    const data = {
+      items,
+      snapshot: snapshot as any,
+      returnRate: yearData?.totalReturn ?? null,
+      mdd: yearData?.maxDrawdown ?? null,
+      feedbackText: feedbackResult?.feedback || null,
+      feedbackActions: feedbackResult?.actions
+        ? (feedbackResult.actions as any)
+        : undefined,
+      feedbackSnippet: feedbackResult?.snippet || null,
+      tags: feedbackResult?.tags || [],
+    };
+
+    if (existing) {
+      // 기존 draft 업데이트
+      return this.prisma.portfolio.update({
+        where: { id: existing.id },
+        data: {
+          ...data,
+          slug: generateSlug(items, existing.id),
+        },
+      });
+    }
+
+    // 새 draft 생성
+    const uuid = randomUUID();
+    return this.prisma.portfolio.create({
+      data: {
+        id: uuid,
+        userId,
+        name: '임시 저장',
+        slug: generateSlug(items, uuid),
+        isDraft: true,
+        ...data,
+      },
+    });
+  }
+
+  /**
+   * 명시적 저장 — draft를 정식으로 전환하거나 새로 생성
+   */
+  async create(
+    userId: string,
+    name: string,
+    items: { code: string; name: string; weight: number; category?: string }[],
+  ) {
+    // draft가 있으면 정식 전환
+    const draft = await this.prisma.portfolio.findFirst({
+      where: { userId, isDraft: true },
+    });
+
+    if (draft) {
+      return this.prisma.portfolio.update({
+        where: { id: draft.id },
+        data: {
+          name,
+          slug: generateSlug(items, draft.id),
+          isDraft: false,
+        },
+      });
+    }
+
+    // draft 없으면 새로 생성 (피드백 포함)
+    const codes = items.map((i) => i.code);
+    const weights = items.map((i) => i.weight);
+    const snapshot = await this.buildSnapshot(codes, weights);
+    const yearData = snapshot.periods['1y'];
+
     const uuid = randomUUID();
     const slug = generateSlug(items, uuid);
 
-    // 피드백 조회: Redis 캐시 → miss 시 Gemini 호출
     let feedbackResult: { feedback: string; actions: { category: string; label: string }[]; tags: string[]; snippet: string } | null = null;
     try {
       const feedbackItems = items.map((i) => ({
-        code: i.code,
-        name: i.name,
-        weight: i.weight,
-        category: i.category || '',
+        code: i.code, name: i.name, weight: i.weight, category: i.category || '',
       }));
       feedbackResult = await this.feedback(feedbackItems);
-    } catch {
-      // 피드백 실패해도 저장은 진행
-    }
+    } catch { /* 피드백 실패해도 저장 진행 */ }
 
     return this.prisma.portfolio.create({
       data: {
@@ -300,7 +368,7 @@ export class PortfolioService {
       default: orderBy = { createdAt: 'desc' };
     }
     return this.prisma.portfolio.findMany({
-      where: { userId },
+      where: { userId, isDraft: false },
       orderBy,
     });
   }
@@ -331,6 +399,7 @@ export class PortfolioService {
 
   async getTop(limit: number) {
     return this.prisma.portfolio.findMany({
+      where: { isDraft: false },
       select: {
         name: true,
         slug: true,
@@ -348,6 +417,7 @@ export class PortfolioService {
 
   async listTags() {
     const portfolios = await this.prisma.portfolio.findMany({
+      where: { isDraft: false },
       select: { tags: true },
     });
     const tagCount = new Map<string, number>();
@@ -363,7 +433,7 @@ export class PortfolioService {
 
   async getByTag(tag: string) {
     return this.prisma.portfolio.findMany({
-      where: { tags: { has: tag } },
+      where: { tags: { has: tag }, isDraft: false },
       select: {
         name: true,
         slug: true,
@@ -380,6 +450,7 @@ export class PortfolioService {
 
   async listSlugs() {
     return this.prisma.portfolio.findMany({
+      where: { isDraft: false },
       select: { slug: true, updatedAt: true },
       orderBy: { createdAt: 'desc' },
     });

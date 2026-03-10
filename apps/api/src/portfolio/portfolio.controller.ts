@@ -52,6 +52,19 @@ export class PortfolioController {
     return this.svc.getPublic(slug);
   }
 
+  @Post('auto-save')
+  @UseGuards(JwtGuard)
+  @ApiBearerAuth('jwt')
+  autoSave(
+    @Req() req: any,
+    @Body() body: {
+      items: { code: string; name: string; weight: number; category?: string }[];
+      feedback: { feedback: string; actions: { category: string; label: string }[]; tags: string[]; snippet: string } | null;
+    },
+  ) {
+    return this.svc.autoSave(req.userId, body.items, body.feedback);
+  }
+
   @Post()
   @UseGuards(JwtGuard)
   @ApiBearerAuth('jwt')

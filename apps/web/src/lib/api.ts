@@ -119,6 +119,13 @@ export const api = {
       createdAt: string;
     }[]>(`/portfolio/public/by-tag/${encodeURIComponent(tag)}`),
 
+  autoSavePortfolio: (token: string, items: { code: string; name: string; weight: number; category?: string }[], feedback: { feedback: string; actions: { category: string; label: string }[]; tags: string[]; snippet: string } | null) =>
+    fetcher<{ id: string; slug: string }>('/portfolio/auto-save', {
+      method: 'POST',
+      body: JSON.stringify({ items, feedback }),
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+
   getPublicPortfolio: (slug: string) =>
     fetcher<{
       name: string;

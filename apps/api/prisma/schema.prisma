@@ -87,11 +87,13 @@ model Portfolio {
   feedbackActions Json?    @map("feedback_actions")
   feedbackSnippet String?  @map("feedback_snippet")
   tags            String[] @default([])
+  isDraft         Boolean  @default(false) @map("is_draft")
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @default(now()) @map("updated_at") @updatedAt
 
   @@index([userId])
   @@index([userId, id])
+  @@index([userId, isDraft])
   @@index([returnRate(sort: Desc)])
   @@index([createdAt(sort: Desc)])
   @@index([slug])
