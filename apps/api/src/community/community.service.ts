@@ -69,7 +69,7 @@ export class CommunityService {
     weekAgo.setDate(weekAgo.getDate() - 7);
 
     return this.prisma.post.findMany({
-      where: { isHidden: false, createdAt: { gte: weekAgo } },
+      where: { isHidden: false, createdAt: { gte: weekAgo }, likeCount: { gte: 1 } },
       orderBy: { likeCount: 'desc' },
       take: limit,
       include: {
