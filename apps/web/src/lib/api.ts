@@ -208,4 +208,82 @@ export const api = {
 
   withdrawMe: () =>
     fetcher<{ ok: boolean }>('/user/me', { method: 'DELETE' }),
+
+  // Community
+  communityCategories: () =>
+    fetcher<{ id: number; slug: string; name: string }[]>('/community/categories'),
+
+  communityPosts: (params: { cursor?: string; limit?: number; sort?: 'latest' | 'popular'; categoryId?: number }) => {
+    const sp = new URLSearchParams();
+    if (params.cursor) sp.set('cursor', params.cursor);
+    if (params.limit) sp.set('limit', String(params.limit));
+    if (params.sort) sp.set('sort', params.sort);
+    if (params.categoryId) sp.set('categoryId', String(params.categoryId));
+    return fetcher<{ posts: CommunityPost[]; nextCursor: string | null }>(`/community/posts?${sp}`);
+  },
+
+  communityWeeklyBest: (limit = 5) =>
+    fetcher<CommunityPost[]>(`/community/posts/weekly-best?limit=${limit}`),
+
+  communityPost: (id: string) =>
+    fetcher<CommunityPostDetail>(`/community/posts/${id}`),
+
+  communityCreatePost: (data: { title: string; content: string; portfolioId?: string }) =>
+    fetcher<CommunityPostDetail>('/community/posts', { method: 'POST', body: JSON.stringify(data) }),
+
+  communityUpdatePost: (id: string, data: { title?: string; content?: string }) =>
+    fetcher<CommunityPostDetail>(`/community/posts/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+
+  communityDeletePost: (id: string) =>
+    fetcher<{ ok: boolean }>(`/community/posts/${id}`, { method: 'DELETE' }),
+
+  communityToggleLike: (id: string) =>
+    fetcher<{ liked: boolean }>(`/community/posts/${id}/like`, { method: 'POST' }),
+
+  communityComments: (postId: string) =>
+    fetcher<CommunityComment[]>(`/community/posts/${postId}/comments`),
+
+  communityCreateComment: (postId: string, data: { content: string; parentId?: string }) =>
+    fetcher<CommunityComment>(`/community/posts/${postId}/comments`, { method: 'POST', body: JSON.stringify(data) }),
+
+  communityDeleteComment: (id: string) =>
+    fetcher<{ ok: boolean }>(`/community/comments/${id}`, { method: 'DELETE' }),
+
+  communityToggleCommentLike: (id: string) =>
+    fetcher<{ liked: boolean }>(`/community/comments/${id}/like`, { method: 'POST' }),
 };
+
+// Community types
+export interface CommunityPost {
+  id: string;
+  title: string;
+  contentPreview: string;
+  portfolioId: string | null;
+  likeCount: number;
+  commentCount: number;
+  viewCount: number;
+  createdAt: string;
+  author: { nickname: string; investExp?: string; investStyle?: string; showInvestExp?: boolean; showInvestStyle?: boolean };
+  category: { slug: string; name: string };
+}
+
+export interface CommunityPostDetail extends Omit<CommunityPost, 'contentPreview'> {
+  content: string;
+  liked: boolean;
+  author: CommunityPost['author'] & { keycloakId: string };
+}
+
+export interface CommunityComment {
+  id: string;
+  postId: string;
+  authorId: string;
+  parentId: string | null;
+  content: string;
+  likeCount: number;
+  replyCount: number;
+  isDeleted: boolean;
+  liked: boolean;
+  createdAt: string;
+  author: { keycloakId: string; nickname: string; investExp?: string; investStyle?: string; showInvestExp?: boolean; showInvestStyle?: boolean };
+  replies?: CommunityComment[];
+}

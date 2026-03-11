@@ -148,5 +148,105 @@ model User {
   createdAt         DateTime  @default(now()) @map("created_at")
   updatedAt         DateTime  @updatedAt @map("updated_at")
 
+  posts    Post[]
+  comments Comment[]
+
   @@map("users")
+}
+
+model PostCategory {
+  id        Int    @id @default(autoincrement())
+  slug      String @unique @db.VarChar(50)
+  name      String @db.VarChar(50)
+  sortOrder Int    @default(0) @map("sort_order")
+
+  posts Post[]
+
+  @@map("post_category")
+}
+
+model Post {
+  id           String   @id @default(uuid()) @db.Uuid
+  authorId     String   @map("author_id")
+  categoryId   Int      @map("category_id")
+  title        String   @db.VarChar(200)
+  content      String   @db.VarChar(5000)
+  portfolioId  String?  @map("portfolio_id") @db.Uuid
+  likeCount    Int      @default(0) @map("like_count")
+  commentCount Int      @default(0) @map("comment_count")
+  viewCount    Int      @default(0) @map("view_count")
+  isHidden     Boolean  @default(false) @map("is_hidden")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  author   User         @relation(fields: [authorId], references: [keycloakId])
+  category PostCategory @relation(fields: [categoryId], references: [id])
+  comments Comment[]
+  likes    PostLike[]
+  views    PostView[]
+
+  @@index([categoryId, createdAt(sort: Desc)])
+  @@index([createdAt(sort: Desc)])
+  @@index([likeCount(sort: Desc)])
+  @@index([authorId])
+  @@map("post")
+}
+
+model Comment {
+  id         String   @id @default(uuid()) @db.Uuid
+  postId     String   @map("post_id") @db.Uuid
+  authorId   String   @map("author_id")
+  parentId   String?  @map("parent_id") @db.Uuid
+  content    String   @db.VarChar(1000)
+  likeCount  Int      @default(0) @map("like_count")
+  replyCount Int      @default(0) @map("reply_count")
+  isDeleted  Boolean  @default(false) @map("is_deleted")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  post    Post          @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author  User          @relation(fields: [authorId], references: [keycloakId])
+  parent  Comment?      @relation("CommentReplies", fields: [parentId], references: [id])
+  replies Comment[]     @relation("CommentReplies")
+  likes   CommentLike[]
+
+  @@index([postId, createdAt])
+  @@index([parentId])
+  @@index([authorId])
+  @@map("comment")
+}
+
+model PostLike {
+  id        Int      @id @default(autoincrement())
+  postId    String   @map("post_id") @db.Uuid
+  userId    String   @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@map("post_like")
+}
+
+model CommentLike {
+  id        Int      @id @default(autoincrement())
+  commentId String   @map("comment_id") @db.Uuid
+  userId    String   @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@unique([commentId, userId])
+  @@map("comment_like")
+}
+
+model PostView {
+  id        Int      @id @default(autoincrement())
+  postId    String   @map("post_id") @db.Uuid
+  userId    String   @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@map("post_view")
 }

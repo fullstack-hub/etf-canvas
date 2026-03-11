@@ -5,6 +5,7 @@ import { NaverModule } from './naver/naver.module';
 import { EtfModule } from './etf/etf.module';
 import { PortfolioModule } from './portfolio/portfolio.module';
 import { UserModule } from './user/user.module';
+import { CommunityModule } from './community/community.module';
 import { NaverUserinfoProxyController } from './auth/naver-userinfo-proxy.controller';
 
 @Controller()
@@ -23,6 +24,7 @@ class HealthController {
     EtfModule,
     PortfolioModule,
     UserModule,
+    CommunityModule,
   ],
   controllers: [HealthController, NaverUserinfoProxyController],
 })

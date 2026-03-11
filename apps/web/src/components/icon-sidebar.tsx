@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { usePathname, useRouter } from 'next/navigation';
-import { Layers, User, FolderOpen, Trophy, Sun, Moon, Settings } from 'lucide-react';
+import { Layers, User, FolderOpen, Trophy, Sun, Moon, Settings, MessageSquare } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { LoginModal } from '@/components/login-modal';
 import { useCanvasStore } from '@/lib/store';
@@ -19,7 +19,7 @@ export function IconSidebar() {
   const router = useRouter();
   const isHome = pathname === '/';
 
-  const navigate = (view: 'canvas' | 'gallery' | 'portfolio' | 'settings' | 'mypage') => {
+  const navigate = (view: 'canvas' | 'gallery' | 'portfolio' | 'settings' | 'mypage' | 'community') => {
     if (isHome) {
       setCurrentView(view);
     } else {
@@ -58,6 +58,14 @@ export function IconSidebar() {
           title="TOP 포트폴리오"
         >
           <Trophy className="w-[18px] h-[18px]" />
+        </button>
+
+        <button
+          onClick={() => navigate('community')}
+          className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${currentView === 'community' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-foreground'}`}
+          title="커뮤니티"
+        >
+          <MessageSquare className="w-[18px] h-[18px]" />
         </button>
 
         <button

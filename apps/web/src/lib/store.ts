@@ -22,8 +22,8 @@ interface CanvasStore {
   setColorConvention: (v: 'kr' | 'us') => void;
 
   // View
-  currentView: 'canvas' | 'portfolio' | 'gallery' | 'settings' | 'mypage';
-  setCurrentView: (view: 'canvas' | 'portfolio' | 'gallery' | 'settings' | 'mypage') => void;
+  currentView: 'canvas' | 'portfolio' | 'gallery' | 'settings' | 'mypage' | 'community';
+  setCurrentView: (view: 'canvas' | 'portfolio' | 'gallery' | 'settings' | 'mypage' | 'community') => void;
 
   // ETF selection (left panel)
   selectedEtfCode: string | null;
