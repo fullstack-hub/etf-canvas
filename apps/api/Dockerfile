@@ -10,8 +10,8 @@ COPY .npmrc ./
 RUN GITHUB_TOKEN=${GITHUB_TOKEN} pnpm install --frozen-lockfile
 
 COPY . .
-RUN pnpm turbo build --filter=@etf-canvas/api
 RUN cd apps/api && npx prisma generate
+RUN pnpm turbo build --filter=@etf-canvas/api
 RUN pnpm deploy --filter=@etf-canvas/api --prod --legacy /app/deploy
 RUN cp -r /app/node_modules/.pnpm/@prisma+client*/node_modules/.prisma /app/deploy/node_modules/.prisma
 
