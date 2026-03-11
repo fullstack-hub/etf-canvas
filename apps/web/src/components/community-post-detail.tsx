@@ -2,11 +2,11 @@
 
 import { useState } from 'react';
 import { useSession } from 'next-auth/react';
+import Link from 'next/link';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ChevronLeft, Heart, MessageCircle, Eye, Trash2, Pencil, Briefcase, Clock, MoreHorizontal, ExternalLink, TrendingUp, TrendingDown } from 'lucide-react';
 import { api } from '@/lib/api';
 import type { CommunityPostDetail as PostDetailType, CommunityComment } from '@/lib/api';
-import { useCanvasStore } from '@/lib/store';
 import { getCatColor } from '@/lib/category-colors';
 import { CommunityCommentItem } from '@/components/community-comment';
 import { CommunityWrite } from '@/components/community-write';
@@ -32,7 +32,6 @@ function formatCount(n: number) {
 export function CommunityPostDetail({ postId, onBack }: { postId: string; onBack: () => void }) {
   const { data: session } = useSession();
   const queryClient = useQueryClient();
-  const { setCurrentView } = useCanvasStore();
   const [showEdit, setShowEdit] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [showNicknameModal, setShowNicknameModal] = useState(false);
@@ -258,7 +257,7 @@ export function CommunityPostDetail({ postId, onBack }: { postId: string; onBack
             <p className="text-xs text-muted-foreground mb-5">커뮤니티에 참여하려면 먼저 닉네임을 설정해주세요.</p>
             <div className="flex justify-end gap-2">
               <button onClick={() => setShowNicknameModal(false)} className="px-3 py-1.5 text-xs rounded-lg bg-muted text-foreground hover:opacity-80 transition-opacity">취소</button>
-              <button onClick={() => { setShowNicknameModal(false); setCurrentView('mypage'); }} className="px-3 py-1.5 text-xs rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity">설정하러 가기</button>
+              <Link href="/mypage" onClick={() => setShowNicknameModal(false)} className="px-3 py-1.5 text-xs rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity">설정하러 가기</Link>
             </div>
           </div>
         </div>

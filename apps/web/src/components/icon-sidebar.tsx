@@ -2,30 +2,28 @@
 
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
+import Link from 'next/link';
 import { Layers, User, FolderOpen, Trophy, Sun, Moon, Settings, MessageSquare } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { LoginModal } from '@/components/login-modal';
-import { useCanvasStore } from '@/lib/store';
 
 export function IconSidebar() {
   const { data: session } = useSession();
-  const { currentView, setCurrentView } = useCanvasStore();
   const [showLogin, setShowLogin] = useState(false);
   const { setTheme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   const pathname = usePathname();
-  const router = useRouter();
-  const isHome = pathname === '/';
 
-  const navigate = (view: 'canvas' | 'gallery' | 'portfolio' | 'settings' | 'mypage' | 'community') => {
-    if (isHome) {
-      setCurrentView(view);
-    } else {
-      setCurrentView(view);
-      router.push('/');
-    }
+  const isActive = (view: string) => {
+    if (view === 'canvas') return pathname === '/';
+    if (view === 'community') return pathname.startsWith('/community');
+    if (view === 'gallery') return pathname.startsWith('/gallery');
+    if (view === 'portfolio') return pathname === '/portfolio';
+    if (view === 'settings') return pathname === '/settings';
+    if (view === 'mypage') return pathname === '/mypage';
+    return false;
   };
 
   return (
@@ -34,47 +32,47 @@ export function IconSidebar() {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/logo.svg" alt="ETF Canvas" width={32} height={32} className="mb-4" />
 
-        <button
-          onClick={() => navigate('canvas')}
-          className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${currentView === 'canvas' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-foreground'}`}
+        <Link
+          href="/"
+          className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${isActive('canvas') ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-foreground'}`}
           title="합성"
         >
           <Layers className="w-[18px] h-[18px]" />
-        </button>
+        </Link>
 
         {session?.user && (
-          <button
-            onClick={() => navigate('portfolio')}
-            className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${currentView === 'portfolio' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-foreground'}`}
+          <Link
+            href="/portfolio"
+            className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${isActive('portfolio') ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-foreground'}`}
             title="내 포트폴리오"
           >
             <FolderOpen className="w-[18px] h-[18px]" />
-          </button>
+          </Link>
         )}
 
-        <button
-          onClick={() => navigate('gallery')}
-          className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${currentView === 'gallery' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-foreground'}`}
+        <Link
+          href="/gallery"
+          className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${isActive('gallery') ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-foreground'}`}
           title="TOP 포트폴리오"
         >
           <Trophy className="w-[18px] h-[18px]" />
-        </button>
+        </Link>
 
-        <button
-          onClick={() => navigate('community')}
-          className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${currentView === 'community' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-foreground'}`}
+        <Link
+          href="/community"
+          className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${isActive('community') ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-foreground'}`}
           title="커뮤니티"
         >
           <MessageSquare className="w-[18px] h-[18px]" />
-        </button>
+        </Link>
 
-        <button
-          onClick={() => navigate('settings')}
-          className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${currentView === 'settings' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-foreground'}`}
+        <Link
+          href="/settings"
+          className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${isActive('settings') ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-foreground'}`}
           title="설정"
         >
           <Settings className="w-[18px] h-[18px]" />
-        </button>
+        </Link>
 
         <div className="mt-auto flex flex-col items-center gap-1">
           <button
@@ -90,9 +88,9 @@ export function IconSidebar() {
           {/* 유저 / 로그인 */}
           <div className="relative">
             {session?.user ? (
-              <button
-                onClick={() => navigate('mypage')}
-                className={`w-9 h-9 rounded-lg flex items-center justify-center overflow-hidden transition-all ${currentView === 'mypage' ? 'ring-2 ring-primary' : 'hover:ring-2 hover:ring-ring/30'}`}
+              <Link
+                href="/mypage"
+                className={`w-9 h-9 rounded-lg flex items-center justify-center overflow-hidden transition-all ${isActive('mypage') ? 'ring-2 ring-primary' : 'hover:ring-2 hover:ring-ring/30'}`}
                 title={session.user.name || '마이페이지'}
               >
                 {session.user.image ? (
@@ -103,7 +101,7 @@ export function IconSidebar() {
                     My
                   </div>
                 )}
-              </button>
+              </Link>
             ) : (
               <button
                 onClick={() => setShowLogin(true)}
@@ -121,4 +119,3 @@ export function IconSidebar() {
     </>
   );
 }
-

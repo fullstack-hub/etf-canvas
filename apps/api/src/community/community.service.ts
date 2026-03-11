@@ -19,12 +19,12 @@ export class CommunityService {
   }
 
   async listPosts(params: {
-    cursor?: string;
+    page?: number;
     limit?: number;
     sort?: 'latest' | 'popular';
     categoryId?: number;
   }) {
-    const { cursor, limit = 20, sort = 'latest', categoryId } = params;
+    const { page = 1, limit = 20, sort = 'latest', categoryId } = params;
     const where: any = { isHidden: false };
     if (categoryId) where.categoryId = categoryId;
 
@@ -33,19 +33,19 @@ export class CommunityService {
         ? [{ likeCount: 'desc' as const }, { createdAt: 'desc' as const }]
         : [{ createdAt: 'desc' as const }];
 
-    const posts = await this.prisma.post.findMany({
-      where,
-      orderBy,
-      take: limit + 1,
-      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
-      include: {
-        author: { select: AUTHOR_SELECT },
-        category: { select: { slug: true, name: true } },
-      },
-    });
-
-    const hasMore = posts.length > limit;
-    if (hasMore) posts.pop();
+    const [posts, total] = await Promise.all([
+      this.prisma.post.findMany({
+        where,
+        orderBy,
+        take: limit,
+        skip: (page - 1) * limit,
+        include: {
+          author: { select: AUTHOR_SELECT },
+          category: { select: { slug: true, name: true } },
+        },
+      }),
+      this.prisma.post.count({ where }),
+    ]);
 
     return {
       posts: posts.map((p) => ({
@@ -60,7 +60,9 @@ export class CommunityService {
         author: p.author,
         category: p.category,
       })),
-      nextCursor: hasMore ? posts[posts.length - 1].id : null,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
     };
   }
 

@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import { Pencil, Heart, MessageCircle, Eye, Flame, Briefcase } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
+import Link from 'next/link';
+import { Pencil, Heart, MessageCircle, Eye, Flame, Briefcase, ChevronLeft, ChevronRight } from 'lucide-react';
 import { api } from '@/lib/api';
 import type { CommunityPost } from '@/lib/api';
-import { useCanvasStore } from '@/lib/store';
-import { CommunityPostDetail } from '@/components/community-post-detail';
 import { CommunityWrite } from '@/components/community-write';
 
 function timeAgo(dateStr: string) {
@@ -28,60 +28,58 @@ function formatCount(n: number) {
   return String(n);
 }
 
-export function CommunityView() {
+interface CommunityListProps {
+  initialCategories: { id: number; slug: string; name: string }[];
+  initialPosts: { posts: CommunityPost[]; total: number; page: number; totalPages: number };
+  initialWeeklyBest: CommunityPost[];
+}
+
+export function CommunityList({ initialCategories, initialPosts, initialWeeklyBest }: CommunityListProps) {
   const { data: session } = useSession();
-  const { setCurrentView, communityPostId, setCommunityPostId } = useCanvasStore();
-  const [tab, setTab] = useState<'latest' | 'popular'>('latest');
-  const [categoryId, setCategoryId] = useState<number | undefined>();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [tab, setTab] = useState<'latest' | 'popular'>((searchParams.get('sort') as 'latest' | 'popular') || 'latest');
+  const [categoryId, setCategoryId] = useState<number | undefined>(searchParams.get('category') ? Number(searchParams.get('category')) : undefined);
+  const [page, setPage] = useState(Number(searchParams.get('page')) || 1);
   const [showWrite, setShowWrite] = useState(false);
   const [showNicknameModal, setShowNicknameModal] = useState(false);
 
-  const selectPost = (id: string | null) => {
-    setCommunityPostId(id);
-    const url = id ? `/?view=community&post=${id}` : '/?view=community';
-    window.history.replaceState(null, '', url);
-  };
+  const buildUrl = useCallback((p: number, sort: string, catId?: number) => {
+    const params = new URLSearchParams();
+    if (p > 1) params.set('page', String(p));
+    if (sort !== 'latest') params.set('sort', sort);
+    if (catId) params.set('category', String(catId));
+    const qs = params.toString();
+    return qs ? `/community?${qs}` : '/community';
+  }, []);
+
+  const updateUrl = useCallback((p: number, sort: string, catId?: number) => {
+    window.history.replaceState(null, '', buildUrl(p, sort, catId));
+  }, [buildUrl]);
 
   const { data: categories } = useQuery({
     queryKey: ['community-categories'],
     queryFn: () => api.communityCategories(),
     staleTime: 60_000 * 10,
+    initialData: initialCategories,
   });
 
-  const {
-    data: postsData,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-    isLoading,
-  } = useInfiniteQuery({
-    queryKey: ['community-posts', tab, categoryId],
-    queryFn: ({ pageParam }) => api.communityPosts({ cursor: pageParam, sort: tab, categoryId }),
-    initialPageParam: undefined as string | undefined,
-    getNextPageParam: (last) => last.nextCursor ?? undefined,
+  const isInitialQuery = tab === 'latest' && !categoryId && page === 1;
+  const { data: postsData, isLoading } = useQuery({
+    queryKey: ['community-posts', tab, categoryId, page],
+    queryFn: () => api.communityPosts({ page, sort: tab, categoryId }),
+    initialData: isInitialQuery ? initialPosts : undefined,
   });
 
   const { data: weeklyBest } = useQuery({
     queryKey: ['community-weekly-best'],
     queryFn: () => api.communityWeeklyBest(5),
     staleTime: 60_000 * 5,
-    enabled: tab === 'latest',
+    initialData: initialWeeklyBest,
   });
 
-  const posts = postsData?.pages.flatMap((p) => p.posts) ?? [];
-
-  const observerRef = useRef<IntersectionObserver>(null);
-  const lastRef = useCallback(
-    (node: HTMLDivElement | null) => {
-      if (isFetchingNextPage) return;
-      observerRef.current?.disconnect();
-      observerRef.current = new IntersectionObserver((entries) => {
-        if (entries[0].isIntersecting && hasNextPage) fetchNextPage();
-      });
-      if (node) observerRef.current.observe(node);
-    },
-    [isFetchingNextPage, hasNextPage, fetchNextPage],
-  );
+  const posts = postsData?.posts ?? [];
+  const totalPages = postsData?.totalPages ?? 1;
 
   const { data: me } = useQuery({
     queryKey: ['user-me'],
@@ -95,11 +93,13 @@ export function CommunityView() {
     setShowWrite(true);
   };
 
-  if (communityPostId) {
-    return <CommunityPostDetail postId={communityPostId} onBack={() => selectPost(null)} />;
-  }
   if (showWrite) {
-    return <CommunityWrite onClose={() => setShowWrite(false)} onCreated={(id: string) => { setShowWrite(false); selectPost(id); }} />;
+    return (
+      <CommunityWrite
+        onClose={() => setShowWrite(false)}
+        onCreated={(id: string) => { setShowWrite(false); router.push(`/community/${id}`); }}
+      />
+    );
   }
 
   return (
@@ -124,7 +124,7 @@ export function CommunityView() {
               {(['latest', 'popular'] as const).map((t) => (
                 <button
                   key={t}
-                  onClick={() => setTab(t)}
+                  onClick={() => { setTab(t); setPage(1); updateUrl(1, t, categoryId); }}
                   className={`px-3 py-1.5 rounded-md text-[12px] font-medium transition-colors ${
                     tab === t ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground'
                   }`}
@@ -136,7 +136,7 @@ export function CommunityView() {
             <div className="w-px h-4 bg-border" />
             <div className="flex items-center gap-1 ml-3 overflow-x-auto">
               <button
-                onClick={() => setCategoryId(undefined)}
+                onClick={() => { setCategoryId(undefined); setPage(1); updateUrl(1, tab, undefined); }}
                 className={`px-2.5 py-1.5 rounded-md text-[12px] font-medium transition-colors whitespace-nowrap ${!categoryId ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
               >
                 전체
@@ -144,7 +144,7 @@ export function CommunityView() {
               {categories?.map((c) => (
                 <button
                   key={c.id}
-                  onClick={() => setCategoryId(c.id)}
+                  onClick={() => { setCategoryId(c.id); setPage(1); updateUrl(1, tab, c.id); }}
                   className={`px-2.5 py-1.5 rounded-md text-[12px] font-medium transition-colors whitespace-nowrap ${categoryId === c.id ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
                 >
                   {c.name}
@@ -167,15 +167,62 @@ export function CommunityView() {
             <div className="text-center py-16 text-muted-foreground text-sm">아직 게시글이 없습니다</div>
           ) : (
             <div>
-              {posts.map((post, idx) => (
-                <div key={post.id} ref={idx === posts.length - 1 ? lastRef : undefined}>
-                  <PostRow post={post} onClick={() => selectPost(post.id)} />
-                </div>
+              {posts.map((post) => (
+                <PostRow key={post.id} post={post} />
               ))}
             </div>
           )}
-          {isFetchingNextPage && (
-            <div className="text-center py-3 text-muted-foreground text-xs">불러오는 중...</div>
+
+          {/* Pagination — <a> 태그로 크롤러 추적 가능 */}
+          {totalPages >= 1 && (
+            <nav aria-label="페이지네이션" className="flex items-center justify-center gap-1 pt-6 pb-2">
+              {page > 1 ? (
+                <Link
+                  href={buildUrl(page - 1, tab, categoryId)}
+                  onClick={(e) => { e.preventDefault(); const np = page - 1; setPage(np); updateUrl(np, tab, categoryId); }}
+                  className="p-1.5 rounded-md hover:bg-muted transition-colors"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </Link>
+              ) : (
+                <span className="p-1.5 rounded-md opacity-30"><ChevronLeft className="w-4 h-4" /></span>
+              )}
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 2)
+                .reduce<(number | 'dots')[]>((acc, p, i, arr) => {
+                  if (i > 0 && p - (arr[i - 1]) > 1) acc.push('dots');
+                  acc.push(p);
+                  return acc;
+                }, [])
+                .map((p, i) =>
+                  p === 'dots' ? (
+                    <span key={`dots-${i}`} className="px-1 text-muted-foreground text-xs">…</span>
+                  ) : (
+                    <Link
+                      key={p}
+                      href={buildUrl(p, tab, categoryId)}
+                      onClick={(e) => { e.preventDefault(); setPage(p); updateUrl(p, tab, categoryId); }}
+                      aria-current={page === p ? 'page' : undefined}
+                      className={`min-w-[32px] h-8 rounded-md text-xs font-medium transition-colors flex items-center justify-center ${
+                        page === p ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                      }`}
+                    >
+                      {p}
+                    </Link>
+                  ),
+                )}
+              {page < totalPages ? (
+                <Link
+                  href={buildUrl(page + 1, tab, categoryId)}
+                  onClick={(e) => { e.preventDefault(); const np = page + 1; setPage(np); updateUrl(np, tab, categoryId); }}
+                  className="p-1.5 rounded-md hover:bg-muted transition-colors"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </Link>
+              ) : (
+                <span className="p-1.5 rounded-md opacity-30"><ChevronRight className="w-4 h-4" /></span>
+              )}
+            </nav>
           )}
         </div>
 
@@ -190,9 +237,9 @@ export function CommunityView() {
               </div>
               <div className="space-y-0.5">
                 {weeklyBest.map((p, i) => (
-                  <button
+                  <Link
                     key={p.id}
-                    onClick={() => selectPost(p.id)}
+                    href={`/community/${p.id}`}
                     className="w-full text-left flex items-start gap-2.5 py-2 px-1 rounded-md hover:bg-muted/50 transition-colors"
                   >
                     <span className={`text-[11px] font-bold mt-px shrink-0 w-4 text-center ${i < 3 ? 'text-amber-400' : 'text-muted-foreground'}`}>{i + 1}</span>
@@ -201,12 +248,11 @@ export function CommunityView() {
                       <span className="flex items-center gap-0.5"><Heart className="w-2.5 h-2.5" />{p.likeCount}</span>
                       <span className="flex items-center gap-0.5"><MessageCircle className="w-2.5 h-2.5" />{p.commentCount}</span>
                     </span>
-                  </button>
+                  </Link>
                 ))}
               </div>
             </div>
           )}
-
         </aside>
       </div>
 
@@ -218,7 +264,7 @@ export function CommunityView() {
             <p className="text-xs text-muted-foreground mb-5">커뮤니티에 참여하려면 먼저 닉네임을 설정해주세요.</p>
             <div className="flex justify-end gap-2">
               <button onClick={() => setShowNicknameModal(false)} className="px-3 py-1.5 text-xs rounded-lg bg-muted text-foreground hover:opacity-80 transition-opacity">취소</button>
-              <button onClick={() => { setShowNicknameModal(false); setCurrentView('mypage'); }} className="px-3 py-1.5 text-xs rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity">설정하러 가기</button>
+              <Link href="/mypage" onClick={() => setShowNicknameModal(false)} className="px-3 py-1.5 text-xs rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity">설정하러 가기</Link>
             </div>
           </div>
         </div>
@@ -227,14 +273,14 @@ export function CommunityView() {
   );
 }
 
-/** 포스트 카드 — 미리보기 포함, 고밀도 스캔 */
-function PostRow({ post, onClick }: { post: CommunityPost; onClick: () => void }) {
+/** 포스트 행 — Link로 SEO 크롤링 가능 */
+function PostRow({ post }: { post: CommunityPost }) {
   const isHot = post.likeCount >= 5 || post.commentCount >= 10;
 
   return (
-    <button
-      onClick={onClick}
-      className="w-full text-left py-4 border-b border-border hover:bg-card/40 transition-colors group"
+    <Link
+      href={`/community/${post.id}`}
+      className="block w-full text-left py-4 border-b border-border hover:bg-card/40 transition-colors group"
     >
       {/* Row 1: Title line */}
       <div className="flex items-center gap-2 mb-1">
@@ -275,6 +321,6 @@ function PostRow({ post, onClick }: { post: CommunityPost; onClick: () => void }
           </>
         )}
       </div>
-    </button>
+    </Link>
   );
 }

@@ -51,6 +51,7 @@ export async function generateMetadata(
   return {
     title,
     description,
+    alternates: { canonical: `https://etfcanva.com/portfolio/${slug}` },
     openGraph: {
       title,
       description,

@@ -213,13 +213,13 @@ export const api = {
   communityCategories: () =>
     fetcher<{ id: number; slug: string; name: string }[]>('/community/categories'),
 
-  communityPosts: (params: { cursor?: string; limit?: number; sort?: 'latest' | 'popular'; categoryId?: number }) => {
+  communityPosts: (params: { page?: number; limit?: number; sort?: 'latest' | 'popular'; categoryId?: number }) => {
     const sp = new URLSearchParams();
-    if (params.cursor) sp.set('cursor', params.cursor);
+    if (params.page) sp.set('page', String(params.page));
     if (params.limit) sp.set('limit', String(params.limit));
     if (params.sort) sp.set('sort', params.sort);
     if (params.categoryId) sp.set('categoryId', String(params.categoryId));
-    return fetcher<{ posts: CommunityPost[]; nextCursor: string | null }>(`/community/posts?${sp}`);
+    return fetcher<{ posts: CommunityPost[]; total: number; page: number; totalPages: number }>(`/community/posts?${sp}`);
   },
 
   communityWeeklyBest: (limit = 5) =>

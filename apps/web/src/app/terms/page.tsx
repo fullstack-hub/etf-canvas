@@ -1,3 +1,11 @@
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: '서비스 이용약관 — ETF Canvas',
+  description: 'ETF Canvas 서비스 이용약관. 서비스 내용, 이용자 의무, 면책 조항 등을 안내합니다.',
+  alternates: { canonical: 'https://etfcanva.com/terms' },
+};
+
 export default function TermsPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">

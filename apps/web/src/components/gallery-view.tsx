@@ -73,22 +73,55 @@ function ColumnLoader() {
   );
 }
 
+function ExpandableColumn({ items, variant, loading, icon, title }: {
+  items: any[] | undefined;
+  variant: 'return' | 'mdd' | 'dividend';
+  loading: boolean;
+  icon: React.ReactNode;
+  title: string;
+}) {
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-4">
+        {icon}
+        <h2 className="text-[15px] font-bold">{title}</h2>
+      </div>
+      {loading ? <ColumnLoader /> : (
+        items && items.length > 0 ? (
+          <>
+            <div className="flex flex-col gap-3">
+              {items.map((p: any) => (
+                <GalleryCard key={p.slug} p={p} variant={variant} />
+              ))}
+            </div>
+          </>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-10 text-muted-foreground/50">
+            <Coins className="w-8 h-8 mb-2 opacity-30" />
+            <p className="text-xs">데이터 준비 중</p>
+          </div>
+        )
+      )}
+    </div>
+  );
+}
+
 export function GalleryView() {
   const { data: topReturn, isLoading: loadingReturn } = useQuery({
     queryKey: ['gallery-top', 'return'],
-    queryFn: () => api.getTopPortfolios(6, 'return'),
+    queryFn: () => api.getTopPortfolios(10, 'return'),
     staleTime: 1000 * 60 * 5,
   });
 
   const { data: topMdd, isLoading: loadingMdd } = useQuery({
     queryKey: ['gallery-top', 'mdd'],
-    queryFn: () => api.getTopPortfolios(6, 'mdd'),
+    queryFn: () => api.getTopPortfolios(10, 'mdd'),
     staleTime: 1000 * 60 * 5,
   });
 
   const { data: topDividend, isLoading: loadingDividend } = useQuery({
     queryKey: ['gallery-top', 'dividend'],
-    queryFn: () => api.getTopPortfolios(6, 'dividend'),
+    queryFn: () => api.getTopPortfolios(10, 'dividend'),
     staleTime: 1000 * 60 * 5,
   });
 
@@ -116,57 +149,27 @@ export function GalleryView() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* 수익률 TOP */}
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <TrendingUp className="w-4 h-4 text-red-500" />
-                <h2 className="text-[15px] font-bold">수익률 TOP</h2>
-              </div>
-              {loadingReturn ? <ColumnLoader /> : (
-                <div className="flex flex-col gap-3">
-                  {topReturn?.map((p: any) => (
-                    <GalleryCard key={p.slug} p={p} variant="return" />
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* 안정성 TOP */}
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <Shield className="w-4 h-4 text-emerald-500" />
-                <h2 className="text-[15px] font-bold">안정성 TOP</h2>
-              </div>
-              {loadingMdd ? <ColumnLoader /> : (
-                <div className="flex flex-col gap-3">
-                  {topMdd?.map((p: any) => (
-                    <GalleryCard key={p.slug} p={p} variant="mdd" />
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* 분배금 TOP */}
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <Coins className="w-4 h-4 text-amber-500" />
-                <h2 className="text-[15px] font-bold">분배금 TOP</h2>
-              </div>
-              {loadingDividend ? <ColumnLoader /> : (
-                topDividend && topDividend.length > 0 ? (
-                  <div className="flex flex-col gap-3">
-                    {topDividend.map((p: any) => (
-                      <GalleryCard key={p.slug} p={p} variant="dividend" />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-10 text-muted-foreground/50">
-                    <Coins className="w-8 h-8 mb-2 opacity-30" />
-                    <p className="text-xs">분배금 데이터 준비 중</p>
-                  </div>
-                )
-              )}
-            </div>
+            <ExpandableColumn
+              items={topReturn}
+              variant="return"
+              loading={loadingReturn}
+              icon={<TrendingUp className="w-4 h-4 text-red-500" />}
+              title="수익률 TOP 10"
+            />
+            <ExpandableColumn
+              items={topMdd}
+              variant="mdd"
+              loading={loadingMdd}
+              icon={<Shield className="w-4 h-4 text-emerald-500" />}
+              title="안정성 TOP 10"
+            />
+            <ExpandableColumn
+              items={topDividend}
+              variant="dividend"
+              loading={loadingDividend}
+              icon={<Coins className="w-4 h-4 text-amber-500" />}
+              title="분배금 TOP 10"
+            />
           </div>
         )}
       </div>

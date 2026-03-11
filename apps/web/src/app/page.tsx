@@ -6,11 +6,6 @@ import { LeftPanel } from '@/components/left-panel';
 import { CanvasPanel, FloatingFeedback } from '@/components/canvas-panel';
 import { AttributePanel } from '@/components/attribute-panel';
 import { PerformancePanel } from '@/components/performance-panel';
-import { PortfolioList } from '@/components/portfolio-list';
-import { GalleryView } from '@/components/gallery-view';
-import { SettingsView } from '@/components/settings-view';
-import { MypageView } from '@/components/mypage-view';
-import { CommunityView } from '@/components/community-view';
 import { useCanvasStore } from '@/lib/store';
 
 function useIsAuthed() {
@@ -22,22 +17,8 @@ function useIsAuthed() {
 }
 
 export default function HomePage() {
-  const { performanceExpanded, synthesized, currentView, feedbackEnabled, feedbackLoading, feedbackText, feedbackActions, setBrowseCategory, setCurrentView } = useCanvasStore();
+  const { performanceExpanded, synthesized, feedbackEnabled, feedbackLoading, feedbackText, feedbackActions, setBrowseCategory } = useCanvasStore();
   const authed = useIsAuthed();
-
-  const { setCommunityPostId } = useCanvasStore();
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('view') === 'canvas') {
-      setCurrentView('canvas');
-    }
-    if (params.get('view') === 'community') {
-      setCurrentView('community');
-      const postId = params.get('post');
-      if (postId) setCommunityPostId(postId);
-    }
-  }, [setCurrentView, setCommunityPostId]);
 
   if (!authed) return <LandingPage />;
 
@@ -45,24 +26,12 @@ export default function HomePage() {
     <>
       <div className="h-[calc(100vh-37px)] flex overflow-hidden">
         <IconSidebar />
-        {currentView === 'canvas' && <LeftPanel />}
+        <LeftPanel />
         <div className="flex-1 flex min-w-0 bg-background">
-          {currentView === 'community' ? (
-            <CommunityView />
-          ) : currentView === 'mypage' ? (
-            <MypageView />
-          ) : currentView === 'settings' ? (
-            <SettingsView />
-          ) : currentView === 'portfolio' ? (
-            <PortfolioList />
-          ) : currentView === 'gallery' ? (
-            <GalleryView />
-          ) : (
-            <div className="flex-1 flex flex-col min-w-0 min-h-0">
-              {!(performanceExpanded && synthesized) && <CanvasPanel />}
-              {synthesized && <PerformancePanel />}
-            </div>
-          )}
+          <div className="flex-1 flex flex-col min-w-0 min-h-0">
+            {!(performanceExpanded && synthesized) && <CanvasPanel />}
+            {synthesized && <PerformancePanel />}
+          </div>
           <AttributePanel />
         </div>
       </div>

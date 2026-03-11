@@ -29,8 +29,11 @@ export class PortfolioController {
   }
 
   @Get('public/slugs')
-  listSlugs() {
-    return this.svc.listSlugs();
+  listSlugs(@Query('page') page?: string, @Query('limit') limit?: string) {
+    return this.svc.listSlugs(
+      page ? parseInt(page, 10) : undefined,
+      limit ? parseInt(limit, 10) : undefined,
+    );
   }
 
   @Get('public/top')

@@ -4,7 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EtfService } from '../etf/etf.service';
 import { RedisService } from '../redis/redis.service';
 import { GeminiService, FALLBACK_MSG } from '../gemini/gemini.service';
-import { generateSlug } from './slug.util';
+import { generateSlug, resolveUniqueSlug } from './slug.util';
 import { getMarketDataCutoff } from '../common/market-time';
 
 const PERIODS = ['1w', '1m', '3m', '6m', '1y', '3y'] as const;
@@ -129,7 +129,7 @@ export class PortfolioService {
         data: {
           ...baseData,
           ...fbData,
-          slug: generateSlug(items, existing.id),
+          slug: `draft-${existing.id.replace(/-/g, '').slice(0, 16)}`,
         },
       });
     }
@@ -141,7 +141,7 @@ export class PortfolioService {
         id: uuid,
         userId,
         name: '임시 저장',
-        slug: generateSlug(items, uuid),
+        slug: `draft-${uuid.replace(/-/g, '').slice(0, 16)}`,
         isDraft: true,
         ...baseData,
         ...fbData,
@@ -179,9 +179,13 @@ export class PortfolioService {
         mdd = yearData?.maxDrawdown ?? null;
       }
 
+      const baseSlug = generateSlug(items);
+      const slug = await resolveUniqueSlug(baseSlug, (s) =>
+        this.prisma.portfolio.findUnique({ where: { slug: s } }).then((r) => !!r && r.id !== draft.id),
+      );
       const updateData: any = {
         name,
-        slug: generateSlug(items, draft.id),
+        slug,
         isDraft: false,
         snapshot,
         returnRate,
@@ -197,10 +201,12 @@ export class PortfolioService {
           updateData.tags = feedbackFromClient.tags;
         }
       }
-      return this.prisma.portfolio.update({
+      const updated = await this.prisma.portfolio.update({
         where: { id: draft.id },
         data: updateData,
       });
+      this.pingSearchEngines(slug).catch(() => {});
+      return updated;
     }
 
     // draft 없으면 새로 생성 (피드백 포함)
@@ -210,7 +216,10 @@ export class PortfolioService {
     const yearData = snapshot.periods['1y'];
 
     const uuid = randomUUID();
-    const slug = generateSlug(items, uuid);
+    const baseSlug = generateSlug(items);
+    const slug = await resolveUniqueSlug(baseSlug, (s) =>
+      this.prisma.portfolio.findUnique({ where: { slug: s } }).then((r) => !!r),
+    );
 
     let feedbackResult: { feedback: string; actions: { category: string; label: string }[]; tags: string[]; snippet: string } | null = null;
     try {
@@ -220,7 +229,7 @@ export class PortfolioService {
       feedbackResult = await this.feedback(feedbackItems);
     } catch { /* 피드백 실패해도 저장 진행 */ }
 
-    return this.prisma.portfolio.create({
+    const created = await this.prisma.portfolio.create({
       data: {
         id: uuid,
         userId,
@@ -239,6 +248,41 @@ export class PortfolioService {
         ...(totalAmount != null ? { totalAmount: BigInt(totalAmount) } : {}),
       },
     });
+    this.pingSearchEngines(slug).catch(() => {});
+    return created;
+  }
+
+  /**
+   * 검색엔진 PING — 새 포트폴리오 URL을 Google/Naver에 알림
+   * fire-and-forget: 실패해도 저장에 영향 없음
+   */
+  private async pingSearchEngines(slug: string) {
+    // SEO_PING_ENABLED=true 일 때만 실행 (사이트 공개 후 설정)
+    if (process.env.SEO_PING_ENABLED !== 'true') return;
+
+    const url = `https://etfcanva.com/portfolio/${slug}`;
+    const sitemapUrl = 'https://etfcanva.com/sitemap.xml';
+
+    const pings = [
+      // Google sitemap ping
+      fetch(`https://www.google.com/ping?sitemap=${encodeURIComponent(sitemapUrl)}`),
+      // Naver Search Advisor ping
+      fetch(`https://searchadvisor.naver.com/indexnow?url=${encodeURIComponent(url)}&key=${process.env.NAVER_INDEXNOW_KEY || ''}`).catch(() => {}),
+      // IndexNow (Bing/Yandex/기타)
+      ...(process.env.INDEXNOW_KEY ? [
+        fetch('https://api.indexnow.org/indexnow', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            host: 'etfcanva.com',
+            key: process.env.INDEXNOW_KEY,
+            urlList: [url],
+          }),
+        }).catch(() => {}),
+      ] : []),
+    ];
+
+    await Promise.allSettled(pings);
   }
 
   private async buildSnapshot(codes: string[], weights: number[], endDate?: string): Promise<PortfolioSnapshot> {
@@ -676,12 +720,30 @@ export class PortfolioService {
     });
   }
 
-  async listSlugs() {
-    return this.prisma.portfolio.findMany({
-      where: { isDraft: false },
-      select: { slug: true, updatedAt: true },
-      orderBy: { createdAt: 'desc' },
-    });
+  async listSlugs(page?: number, limit?: number) {
+    const where = { isDraft: false };
+
+    // 페이지네이션 없으면 전체 반환 (하위호환)
+    if (!page || !limit) {
+      return this.prisma.portfolio.findMany({
+        where,
+        select: { slug: true, updatedAt: true },
+        orderBy: { createdAt: 'desc' },
+      });
+    }
+
+    const [slugs, total] = await Promise.all([
+      this.prisma.portfolio.findMany({
+        where,
+        select: { slug: true, updatedAt: true },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.portfolio.count({ where }),
+    ]);
+
+    return { slugs, total, page, totalPages: Math.ceil(total / limit) };
   }
 
   async rename(userId: string, id: string, name: string) {

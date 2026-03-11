@@ -3,10 +3,10 @@
 import { useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import Link from 'next/link';
 import { Heart, MessageCircle, Trash2, Clock, MoreHorizontal } from 'lucide-react';
 import { api } from '@/lib/api';
 import type { CommunityComment } from '@/lib/api';
-import { useCanvasStore } from '@/lib/store';
 
 function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -33,7 +33,6 @@ export function CommunityCommentItem({
 }) {
   const { data: session } = useSession();
   const queryClient = useQueryClient();
-  const { setCurrentView } = useCanvasStore();
   const [showReply, setShowReply] = useState(false);
   const [replyText, setReplyText] = useState('');
   const [showNicknameModal, setShowNicknameModal] = useState(false);
@@ -201,7 +200,7 @@ export function CommunityCommentItem({
             <p className="text-xs text-muted-foreground mb-5">커뮤니티에 참여하려면 먼저 닉네임을 설정해주세요.</p>
             <div className="flex justify-end gap-2">
               <button onClick={() => setShowNicknameModal(false)} className="px-3 py-1.5 text-xs rounded-lg bg-muted text-foreground hover:opacity-80 transition-opacity">취소</button>
-              <button onClick={() => { setShowNicknameModal(false); setCurrentView('mypage'); }} className="px-3 py-1.5 text-xs rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity">설정하러 가기</button>
+              <Link href="/mypage" onClick={() => setShowNicknameModal(false)} className="px-3 py-1.5 text-xs rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity">설정하러 가기</Link>
             </div>
           </div>
         </div>

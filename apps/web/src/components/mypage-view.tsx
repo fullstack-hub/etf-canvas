@@ -62,7 +62,7 @@ function Toggle({ checked, onChange, size = 'md' }: { checked: boolean; onChange
 export function MypageView() {
   const { data: session } = useSession();
   const queryClient = useQueryClient();
-  const { clearCanvas, setCurrentView } = useCanvasStore();
+  const { clearCanvas } = useCanvasStore();
 
   const { data: me, isLoading } = useQuery({
     queryKey: ['user-me'],
@@ -102,7 +102,6 @@ export function MypageView() {
 
   const handleLogout = async () => {
     clearCanvas();
-    setCurrentView('canvas');
     const res = await fetch('/api/auth/logout');
     const { logoutUrl } = await res.json();
     signOut({ redirect: false });
@@ -112,7 +111,6 @@ export function MypageView() {
   const handleWithdraw = async () => {
     await withdrawMutation.mutateAsync();
     clearCanvas();
-    setCurrentView('canvas');
     const res = await fetch('/api/auth/logout');
     const { logoutUrl } = await res.json();
     signOut({ redirect: false });

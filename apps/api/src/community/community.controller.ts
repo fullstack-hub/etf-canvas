@@ -32,13 +32,13 @@ export class CommunityController {
 
   @Get('posts')
   listPosts(
-    @Query('cursor') cursor?: string,
+    @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('sort') sort?: 'latest' | 'popular',
     @Query('categoryId') categoryId?: string,
   ) {
     return this.svc.listPosts({
-      cursor,
+      page: page ? parseInt(page, 10) : undefined,
       limit: limit ? parseInt(limit, 10) : undefined,
       sort,
       categoryId: categoryId ? parseInt(categoryId, 10) : undefined,

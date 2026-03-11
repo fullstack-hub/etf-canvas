@@ -1,5 +1,8 @@
+'use client';
+
 import { useState } from 'react';
 import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useCanvasStore } from '@/lib/store';
@@ -40,7 +43,8 @@ const SORT_OPTIONS = [
 export function PortfolioList() {
   const { data: session, status: sessionStatus } = useSession();
   const queryClient = useQueryClient();
-  const { setCurrentView, addToCanvas, clearCanvas } = useCanvasStore();
+  const router = useRouter();
+  const { addToCanvas, clearCanvas } = useCanvasStore();
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [sort, setSort] = useState<string>('latest');
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -71,7 +75,7 @@ export function PortfolioList() {
         categories: item.category ? [item.category] : [],
       } as any);
     }
-    setCurrentView('canvas');
+    router.push('/');
   };
 
   if (isLoading || sessionStatus === 'loading') {
