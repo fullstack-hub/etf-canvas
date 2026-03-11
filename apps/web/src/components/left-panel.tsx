@@ -75,11 +75,12 @@ export function LeftPanel() {
   }, [addToCanvas, addLoadingCode, removeLoadingCode, updateEtfData]);
 
   // Debounced search — 검색 시 카테고리 해제하고 전체에서 검색
+  const timerRef = useRef<NodeJS.Timeout>(undefined);
   const handleQueryChange = useCallback((value: string) => {
     setQuery(value);
     if (value) setCategory('');
-    const timer = setTimeout(() => setDebouncedQuery(value.replace(/\s+/g, '')), 300);
-    return () => clearTimeout(timer);
+    clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => setDebouncedQuery(value.replace(/\s+/g, '')), 300);
   }, []);
 
   const PAGE_SIZE = 30;

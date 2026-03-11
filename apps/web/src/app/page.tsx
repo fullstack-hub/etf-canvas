@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { IconSidebar } from '@/components/icon-sidebar';
 import { LeftPanel } from '@/components/left-panel';
 import { CanvasPanel, FloatingFeedback } from '@/components/canvas-panel';
@@ -10,9 +10,8 @@ import { useCanvasStore } from '@/lib/store';
 
 function useIsAuthed() {
   const [authed, setAuthed] = useState(false);
-  useEffect(() => {
-    setAuthed(document.cookie.includes('etf-canvas-auth='));
-  }, []);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- hydration-safe: must check cookie only on client
+  useEffect(() => { setAuthed(document.cookie.includes('etf-canvas-authed=1')); }, []);
   return authed;
 }
 
@@ -67,7 +66,7 @@ function LandingPage() {
 
       <main className="flex-1 flex items-center justify-center">
         <div className="text-center space-y-3">
-          <h2 className="text-3xl font-bold tracking-tight">나만의 ETF 포트폴리오를 그리다</h2>
+          <h1 className="text-3xl font-bold tracking-tight">나만의 ETF 포트폴리오를 그리다</h1>
           <p className="text-muted-foreground">ETF를 골라 담고, 비중을 조절하고, 성과를 시뮬레이션하세요</p>
         </div>
       </main>

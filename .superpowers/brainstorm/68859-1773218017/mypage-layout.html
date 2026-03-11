@@ -1,0 +1,138 @@
+<h2>마이페이지 레이아웃</h2>
+<p class="subtitle">전체 구조를 어떻게 배치할지 선택해주세요</p>
+
+<div class="cards">
+  <!-- Option A: 단일 스크롤 -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding: 20px; background: #1a1a2e;">
+      <div style="max-width: 480px; margin: 0 auto;">
+        <!-- 프로필 헤더 -->
+        <div style="background: #16213e; border-radius: 12px; padding: 16px; margin-bottom: 12px; display: flex; align-items: center; gap: 12px;">
+          <div style="width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg, #e94560, #0f3460); display: flex; align-items: center; justify-content: center; color: white; font-size: 20px; font-weight: bold;">J</div>
+          <div>
+            <div style="color: #fff; font-weight: 600; font-size: 15px;">투자달인123</div>
+            <div style="color: #8892b0; font-size: 12px;">카카오 로그인</div>
+          </div>
+          <div style="margin-left: auto; padding: 4px 10px; background: #e94560; border-radius: 6px; color: white; font-size: 11px;">닉네임 변경</div>
+        </div>
+        <!-- 계정 섹션 -->
+        <div style="background: #16213e; border-radius: 12px; padding: 14px; margin-bottom: 12px;">
+          <div style="color: #e94560; font-size: 12px; font-weight: 600; margin-bottom: 8px;">계정</div>
+          <div style="display: flex; justify-content: space-between; color: #ccc; font-size: 13px; padding: 6px 0; border-bottom: 1px solid #1a1a3e;">
+            <span>연동 계정</span><span style="color: #8892b0;">카카오</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; color: #ccc; font-size: 13px; padding: 6px 0;">
+            <span>이메일</span><span style="color: #8892b0;">user@kakao.com</span>
+          </div>
+        </div>
+        <!-- 추가정보 섹션 -->
+        <div style="background: #16213e; border-radius: 12px; padding: 14px; margin-bottom: 12px;">
+          <div style="color: #e94560; font-size: 12px; font-weight: 600; margin-bottom: 8px;">추가정보 (선택)</div>
+          <div style="color: #8892b0; font-size: 12px; padding: 6px 0;">이름 · 나이 · 성별 · 전화번호 · 투자경험 · 투자성향</div>
+        </div>
+        <!-- 공개설정 -->
+        <div style="background: #16213e; border-radius: 12px; padding: 14px; margin-bottom: 12px;">
+          <div style="color: #e94560; font-size: 12px; font-weight: 600; margin-bottom: 8px;">공개설정</div>
+          <div style="color: #8892b0; font-size: 12px;">나이 · 성별 · 투자경험 · 투자성향 공개여부 토글</div>
+        </div>
+        <!-- 하단 버튼 -->
+        <div style="display: flex; gap: 8px;">
+          <div style="flex: 1; text-align: center; padding: 10px; background: #16213e; border-radius: 8px; color: #ccc; font-size: 13px;">로그아웃</div>
+          <div style="flex: 1; text-align: center; padding: 10px; background: #2a0a0a; border-radius: 8px; color: #e94560; font-size: 13px;">회원탈퇴</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A. 단일 스크롤 페이지</h3>
+      <p>모든 섹션이 하나의 페이지에 순서대로 배치. 위에서 아래로 스크롤하며 모든 설정을 한눈에 볼 수 있음. 심플하고 직관적.</p>
+    </div>
+  </div>
+
+  <!-- Option B: 탭 기반 -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding: 20px; background: #1a1a2e;">
+      <div style="max-width: 480px; margin: 0 auto;">
+        <!-- 프로필 헤더 (항상 표시) -->
+        <div style="background: #16213e; border-radius: 12px; padding: 16px; margin-bottom: 12px; display: flex; align-items: center; gap: 12px;">
+          <div style="width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg, #e94560, #0f3460); display: flex; align-items: center; justify-content: center; color: white; font-size: 20px; font-weight: bold;">J</div>
+          <div>
+            <div style="color: #fff; font-weight: 600; font-size: 15px;">투자달인123</div>
+            <div style="color: #8892b0; font-size: 12px;">카카오 로그인</div>
+          </div>
+        </div>
+        <!-- 탭 네비게이션 -->
+        <div style="display: flex; gap: 0; margin-bottom: 12px; background: #16213e; border-radius: 10px; padding: 4px;">
+          <div style="flex: 1; text-align: center; padding: 8px; background: #e94560; border-radius: 8px; color: white; font-size: 12px; font-weight: 600;">프로필</div>
+          <div style="flex: 1; text-align: center; padding: 8px; color: #8892b0; font-size: 12px;">추가정보</div>
+          <div style="flex: 1; text-align: center; padding: 8px; color: #8892b0; font-size: 12px;">계정관리</div>
+        </div>
+        <!-- 탭 컨텐츠 -->
+        <div style="background: #16213e; border-radius: 12px; padding: 14px; min-height: 140px;">
+          <div style="color: #ccc; font-size: 13px;">
+            <div style="padding: 8px 0; border-bottom: 1px solid #1a1a3e; display: flex; justify-content: space-between;">
+              <span>닉네임</span><span style="color: #e94560;">투자달인123 ✏️</span>
+            </div>
+            <div style="padding: 8px 0; border-bottom: 1px solid #1a1a3e; display: flex; justify-content: space-between;">
+              <span>연동 계정</span><span style="color: #8892b0;">카카오</span>
+            </div>
+            <div style="padding: 8px 0; display: flex; justify-content: space-between;">
+              <span>이메일</span><span style="color: #8892b0;">user@kakao.com</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B. 탭 기반 구분</h3>
+      <p>프로필 헤더 아래에 탭으로 섹션 구분. "프로필 / 추가정보 / 계정관리" 탭 전환. 내용이 많아져도 깔끔. 하지만 정보가 숨겨짐.</p>
+    </div>
+  </div>
+
+  <!-- Option C: 아코디언 -->
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding: 20px; background: #1a1a2e;">
+      <div style="max-width: 480px; margin: 0 auto;">
+        <!-- 프로필 헤더 -->
+        <div style="background: #16213e; border-radius: 12px; padding: 16px; margin-bottom: 12px; display: flex; align-items: center; gap: 12px;">
+          <div style="width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg, #e94560, #0f3460); display: flex; align-items: center; justify-content: center; color: white; font-size: 20px; font-weight: bold;">J</div>
+          <div>
+            <div style="color: #fff; font-weight: 600; font-size: 15px;">투자달인123</div>
+            <div style="color: #8892b0; font-size: 12px;">카카오 로그인</div>
+          </div>
+        </div>
+        <!-- 아코디언 섹션들 -->
+        <div style="background: #16213e; border-radius: 12px; margin-bottom: 6px; overflow: hidden;">
+          <div style="padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
+            <span style="color: #fff; font-size: 13px; font-weight: 600;">📋 계정 정보</span>
+            <span style="color: #e94560;">▼</span>
+          </div>
+          <div style="padding: 0 14px 12px; color: #8892b0; font-size: 12px;">
+            <div style="padding: 4px 0;">연동: 카카오 · user@kakao.com</div>
+          </div>
+        </div>
+        <div style="background: #16213e; border-radius: 12px; margin-bottom: 6px;">
+          <div style="padding: 12px 14px; display: flex; justify-content: space-between; align-items: center;">
+            <span style="color: #fff; font-size: 13px; font-weight: 600;">👤 추가정보</span>
+            <span style="color: #8892b0;">▶</span>
+          </div>
+        </div>
+        <div style="background: #16213e; border-radius: 12px; margin-bottom: 6px;">
+          <div style="padding: 12px 14px; display: flex; justify-content: space-between; align-items: center;">
+            <span style="color: #fff; font-size: 13px; font-weight: 600;">🔒 공개설정</span>
+            <span style="color: #8892b0;">▶</span>
+          </div>
+        </div>
+        <div style="background: #16213e; border-radius: 12px; margin-bottom: 6px;">
+          <div style="padding: 12px 14px; display: flex; justify-content: space-between; align-items: center;">
+            <span style="color: #fff; font-size: 13px; font-weight: 600;">⚙️ 계정관리</span>
+            <span style="color: #8892b0;">▶</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C. 아코디언 접기/펼치기</h3>
+      <p>각 섹션을 접어서 보여주고 클릭하면 펼침. 필요한 부분만 열어볼 수 있어 효율적. 하지만 클릭이 많아질 수 있음.</p>
+    </div>
+  </div>
+</div>

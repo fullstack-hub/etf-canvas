@@ -20,7 +20,7 @@ spec:
           restartPolicy: Never
           containers:
             - name: seed
-              image: curlimages/curl:latest
+              image: curlimages/curl:8.12.1
               env:
                 - name: DISCORD_WEBHOOK
                   value: {{ .Values.seedCronJob.discordWebhook | quote }}

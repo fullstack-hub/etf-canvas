@@ -6,22 +6,11 @@ import Link from 'next/link';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ChevronLeft, Heart, MessageCircle, Eye, Trash2, Pencil, Briefcase, Clock, MoreHorizontal, ExternalLink, TrendingUp, TrendingDown } from 'lucide-react';
 import { api } from '@/lib/api';
-import type { CommunityPostDetail as PostDetailType, CommunityComment } from '@/lib/api';
+import type { CommunityPostDetail as PostDetailType } from '@/lib/api';
 import { getCatColor } from '@/lib/category-colors';
+import { timeAgo } from '@/lib/utils';
 import { CommunityCommentItem } from '@/components/community-comment';
 import { CommunityWrite } from '@/components/community-write';
-
-function timeAgo(dateStr: string) {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const m = Math.floor(diff / 60000);
-  if (m < 1) return '방금';
-  if (m < 60) return `${m}분 전`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}시간 전`;
-  const d = Math.floor(h / 24);
-  if (d < 30) return `${d}일 전`;
-  return new Date(dateStr).toLocaleDateString('ko-KR');
-}
 
 function formatCount(n: number) {
   if (n >= 10000) return `${(n / 10000).toFixed(1)}만`;
@@ -131,7 +120,7 @@ export function CommunityPostDetail({ postId, onBack }: { postId: string; onBack
     );
   }
 
-  const isAuthor = session?.user && post.author.keycloakId === (session.user as any).id;
+  const isAuthor = session?.user && post.author.keycloakId === session.user.id;
   const badges: string[] = [];
   if (post.author.showInvestExp && post.author.investExp) badges.push(post.author.investExp);
   if (post.author.showInvestStyle && post.author.investStyle) badges.push(post.author.investStyle);

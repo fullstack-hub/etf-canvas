@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 
-const GEMINI_PRIMARY = 'gemini-3-flash-preview';
+const GEMINI_PRIMARY = 'gemini-2.5-flash-preview';
 const GEMINI_FALLBACK_MODEL = 'gemini-2.5-flash';
 const makeUrl = (model: string) => `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 const MAX_NAME_LEN = 100;
@@ -33,7 +33,7 @@ export class GeminiService {
   }
 
   async analyzeFeedback(
-    items: { code: string; name: string; weight: number; category: string }[],
+    items: { code: string; name: string; weight: number; category?: string }[],
     marketContext?: { kospi1w: number; sp5001w: number; usdkrw: number; gold1w: number },
   ): Promise<FeedbackResult> {
     if (!this.isAvailable()) return FALLBACK;
@@ -41,7 +41,7 @@ export class GeminiService {
     // 입력 sanitize
     const sanitized = items.slice(0, 20).map((i) => ({
       name: String(i.name || '').slice(0, MAX_NAME_LEN),
-      category: VALID_CATEGORIES.includes(i.category) ? i.category : '',
+      category: i.category && VALID_CATEGORIES.includes(i.category) ? i.category : '',
       weight: Math.max(0, Math.min(100, Number(i.weight) || 0)),
     }));
 
@@ -72,7 +72,7 @@ ${marketSection}
 
 JSON으로만 응답해:
 {
-  "feedback": "3~5문장 한국어 피드백 (포트폴리오 구성 분석 + 현재 시장 상황과의 관계)",
+  "feedback": "마크다운 형식의 한국어 피드백 (볼드, 리스트 등 활용. 포트폴리오 구성 분석 + 현재 시장 상황과의 관계)",
   "actions": [{ "category": "정확한 카테고리명", "label": "{카테고리명} ETF 조회하기" }],
   "tags": ["고배당", "미국주식", "성장주"],
   "snippet": "포트폴리오 핵심 특징 요약 (50자 내외)"

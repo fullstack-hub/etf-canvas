@@ -10,9 +10,9 @@ interface Props {
 }
 
 export function PriceChart({ data, compact }: Props) {
-  if (!data.length) return <div className="text-muted-foreground text-center py-8 text-sm">데이터 없음</div>;
-
   const rc = useReturnColors();
+
+  if (!data.length) return <div className="text-muted-foreground text-center py-8 text-sm">데이터 없음</div>;
 
   if (compact) {
     const basePrice = data[0].close;

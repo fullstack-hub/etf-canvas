@@ -1,19 +1,22 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { marked } from 'marked';
+import DOMPurify from 'dompurify';
 import { createPortal } from 'react-dom';
+
+marked.setOptions({ breaks: true, gfm: true });
 import { useQueryClient } from '@tanstack/react-query';
 import { useSession } from 'next-auth/react';
 import { api } from '@/lib/api';
 import { useCanvasStore } from '@/lib/store';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeftRight, Loader2, Check, Info, Trash2, Sparkles, RotateCcw, EllipsisVertical, AlertTriangle, CheckCircle2, Search, X, GripVertical } from 'lucide-react';
+import { ArrowLeftRight, Loader2, Check, Info, Trash2, Sparkles, RotateCcw, EllipsisVertical, AlertTriangle, CheckCircle2, Search, GripVertical } from 'lucide-react';
 import { EtfDetailModal } from '@/components/etf-detail-modal';
 import { SimilarEtfModal } from '@/components/similar-etf-modal';
 import { LoginModal } from '@/components/login-modal';
 import { toast } from 'sonner';
-import { IssuerBadge } from '@/components/issuer-badge';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -22,7 +25,7 @@ import { CATEGORY_COLORS } from '@/lib/category-colors';
 import type { ETFSummary } from '@etf-canvas/shared';
 
 export function CanvasPanel() {
-  const { selected, comparing, weights, amounts, setAmount, loadingCodes, removeFromCanvas, toggleCompare, clearCanvas, addToCanvas, addLoadingCode, removeLoadingCode, updateEtfData, synthesize, synthesized, pendingSynthesize, setPendingSynthesize, feedbackEnabled, setFeedbackEnabled, feedbackHash, feedbackText, feedbackActions, feedbackLoading, setFeedback, setFeedbackLoading, setBrowseCategory } = useCanvasStore();
+  const { selected, comparing, weights, amounts, setAmount, loadingCodes, removeFromCanvas, toggleCompare, clearCanvas, addToCanvas, addLoadingCode, removeLoadingCode, updateEtfData, synthesize, synthesized, pendingSynthesize, setPendingSynthesize, feedbackEnabled, setFeedbackEnabled, feedbackHash, feedbackText, feedbackActions, setFeedback, setFeedbackLoading } = useCanvasStore();
   const { data: session } = useSession();
   const queryClient = useQueryClient();
   const [detailTarget, setDetailTarget] = useState<ETFSummary | null>(null);
@@ -64,7 +67,8 @@ export function CanvasPanel() {
 
   return (
     <div
-      className={`flex-1 overflow-auto p-6 space-y-5 bg-canvas-dot bg-[length:24px_24px] transition-all duration-200 relative border-2 ${dragOver ? 'border-dashed border-primary/30 bg-primary/[0.03]' : 'border-transparent'}`}
+      className="flex-1 overflow-auto p-6 space-y-5 bg-canvas-dot bg-[length:24px_24px] transition-all duration-300 relative"
+      style={dragOver ? { boxShadow: 'inset 0 0 0 2px rgba(59,130,246,0.4), inset 0 0 40px rgba(59,130,246,0.06)', backgroundColor: 'rgba(59,130,246,0.04)' } : undefined}
       onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
       onDragLeave={() => setDragOver(false)}
       onDrop={handleDrop}
@@ -128,7 +132,7 @@ export function CanvasPanel() {
                           .then((res) => {
                             setFeedback(hash, res.feedback, res.actions);
                             // 자동저장 (피드백 포함)
-                            const fb = { feedback: res.feedback, actions: res.actions, tags: (res as any).tags || [], snippet: (res as any).snippet || '' };
+                            const fb = { feedback: res.feedback, actions: res.actions, tags: res.tags || [], snippet: res.snippet || '' };
                             api.autoSavePortfolio(items, fb, totalAmount).catch((e) => console.error('auto-save failed:', e));
                           })
                           .catch(() => {
@@ -273,28 +277,31 @@ function SaveModal({ onClose, onSave }: { onClose: () => void; onSave: (name: st
 }
 
 function AmountInput({ value, onChange }: { value: number; onChange: (v: number) => void }) {
-  const [text, setText] = useState(value > 0 ? String(value) : '');
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState('');
 
-  useEffect(() => {
-    setText(value > 0 ? String(value) : '');
-  }, [value]);
+  const displayValue = editing ? text : (value > 0 ? String(value) : '');
 
   return (
     <Input
       type="text"
       inputMode="numeric"
-      value={text}
+      value={displayValue}
+      onFocus={() => {
+        setEditing(true);
+        setText(value > 0 ? String(value) : '');
+      }}
       onChange={(e) => {
         const raw = e.target.value.replace(/[^0-9]/g, '');
         setText(raw);
         onChange(Math.max(0, Number(raw) || 0));
       }}
       onBlur={() => {
+        setEditing(false);
         const n = Math.max(0, Number(text) || 0);
-        setText(n > 0 ? String(n) : '');
         onChange(n);
       }}
-      className="h-6 flex-1 px-1.5 text-right text-xs tabular-nums"
+      className="h-6 flex-1 px-1.5 text-right text-xs tabular-nums border-border"
       placeholder="0"
     />
   );
@@ -481,6 +488,12 @@ export function FloatingFeedback({ loading, text, actions, onAction }: {
   onAction: (cat: string) => void;
 }) {
   const { feedbackMinimized, setFeedbackMinimized } = useCanvasStore();
+  const feedbackHtml = useMemo(() => {
+    if (!text) return '';
+    const pre = text.replace(/([)\]>}!?.])\*\*([가-힣ㄱ-ㅎㅏ-ㅣ])/g, '$1** $2');
+    const html = (marked.parse(pre) as string).replace(/<\/strong> ([가-힣ㄱ-ㅎㅏ-ㅣ])/g, '</strong>$1');
+    return DOMPurify.sanitize(html);
+  }, [text]);
   const dragging = useRef(false);
   const offset = useRef({ x: 0, y: 0 });
   const cardRef = useRef<HTMLDivElement>(null);
@@ -527,7 +540,7 @@ export function FloatingFeedback({ loading, text, actions, onAction }: {
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
     };
-  }, []);
+  }, [applyTransform]);
 
   if (feedbackMinimized) return null;
 
@@ -544,9 +557,11 @@ export function FloatingFeedback({ loading, text, actions, onAction }: {
       >
         <GripVertical className="w-3.5 h-3.5 text-muted-foreground/40" />
         <h3 className="font-bold text-sm flex-1">포트폴리오 피드백</h3>
-        <button onClick={() => setFeedbackMinimized(true)} className="p-0.5 rounded hover:bg-muted transition-colors" title="최소화">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M5 12h14" /></svg>
-        </button>
+        {!loading && (
+          <button onClick={() => setFeedbackMinimized(true)} className="p-0.5 rounded hover:bg-muted transition-colors" title="최소화">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M5 12h14" /></svg>
+          </button>
+        )}
       </div>
       {/* Feedback content */}
       <div className="flex flex-col">
@@ -573,7 +588,7 @@ export function FloatingFeedback({ loading, text, actions, onAction }: {
                     ? <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
                     : <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
                   }
-                  <p className="text-xs text-foreground/80 leading-relaxed whitespace-pre-line">{text}</p>
+                  <div className="text-xs text-foreground/80 leading-relaxed prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-ul:my-1 prose-li:my-0.5 prose-strong:text-foreground prose-headings:text-foreground" dangerouslySetInnerHTML={{ __html: feedbackHtml }} />
                 </div>
               </div>
             </div>

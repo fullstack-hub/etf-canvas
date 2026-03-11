@@ -1,7 +1,7 @@
 import type { MetadataRoute } from 'next';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-const SITE_URL = 'https://etfcanva.com';
+const SITE_URL = 'https://etf-canvas.com';
 const ITEMS_PER_SITEMAP = 5000;
 
 /**
@@ -16,8 +16,8 @@ export async function generateSitemaps() {
 
   try {
     const [slugsRes, postsRes] = await Promise.all([
-      fetch(`${API_BASE}/portfolio/public/slugs?page=1&limit=1`, { cache: 'no-store' }),
-      fetch(`${API_BASE}/community/posts?page=1&limit=1`, { cache: 'no-store' }),
+      fetch(`${API_BASE}/portfolio/public/slugs?page=1&limit=1`, { next: { revalidate: 3600 } }),
+      fetch(`${API_BASE}/community/posts?page=1&limit=1`, { next: { revalidate: 3600 } }),
     ]);
 
     if (slugsRes.ok) {
@@ -46,7 +46,7 @@ export async function generateSitemaps() {
 async function getChunkMeta() {
   let portfolioChunks = 0;
   try {
-    const res = await fetch(`${API_BASE}/portfolio/public/slugs?page=1&limit=1`, { cache: 'no-store' });
+    const res = await fetch(`${API_BASE}/portfolio/public/slugs?page=1&limit=1`, { next: { revalidate: 3600 } });
     if (res.ok) {
       const data = await res.json();
       portfolioChunks = Math.max(0, Math.ceil((data.total ?? 0) / ITEMS_PER_SITEMAP));
@@ -67,7 +67,7 @@ export default async function sitemap({ id }: { id: number }): Promise<MetadataR
     ];
 
     try {
-      const res = await fetch(`${API_BASE}/portfolio/public/tags`, { cache: 'no-store' });
+      const res = await fetch(`${API_BASE}/portfolio/public/tags`, { next: { revalidate: 3600 } });
       if (res.ok) {
         const tags: { tag: string }[] = await res.json();
         for (const { tag } of tags) {
@@ -92,7 +92,7 @@ export default async function sitemap({ id }: { id: number }): Promise<MetadataR
     try {
       const res = await fetch(
         `${API_BASE}/portfolio/public/slugs?page=${id}&limit=${ITEMS_PER_SITEMAP}`,
-        { cache: 'no-store' },
+        { next: { revalidate: 3600 } },
       );
       if (res.ok) {
         const data = await res.json();
@@ -116,7 +116,7 @@ export default async function sitemap({ id }: { id: number }): Promise<MetadataR
   try {
     const res = await fetch(
       `${API_BASE}/community/posts?page=${communityPage}&limit=${ITEMS_PER_SITEMAP}&sort=latest`,
-      { cache: 'no-store' },
+      { next: { revalidate: 3600 } },
     );
     if (res.ok) {
       const { posts } = await res.json();

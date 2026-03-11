@@ -59,9 +59,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       session.user.id = token.sub!;
       session.user.name = token.name;
       session.user.image = token.picture as string | undefined;
-      (session as any).accessToken = token.accessToken;
-      (session as any).idp = token.idp;
-      (session as any).error = token.error;
+      session.accessToken = token.accessToken as string | undefined;
+      session.idp = token.idp as string | undefined;
+      session.error = token.error as string | undefined;
       return session;
     },
   },

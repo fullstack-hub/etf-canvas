@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
+import crypto from 'crypto';
+
+export const runtime = 'nodejs';
 
 const COOKIE_NAME = 'etf-canvas-auth';
+
+function hmacToken(password: string): string {
+  return crypto.createHmac('sha256', password).update('etf-canvas-auth').digest('hex');
+}
 
 export function middleware(req: NextRequest) {
   const password = process.env.SITE_PASSWORD;
@@ -11,7 +18,7 @@ export function middleware(req: NextRequest) {
   if (publicPaths.some(p => req.nextUrl.pathname.startsWith(p))) return NextResponse.next();
 
   const cookie = req.cookies.get(COOKIE_NAME);
-  if (cookie?.value === password) return NextResponse.next();
+  if (cookie?.value === hmacToken(password)) return NextResponse.next();
 
   // 홈페이지는 gate 대신 그대로 표시 (랜딩 페이지)
   if (req.nextUrl.pathname === '/') return NextResponse.next();

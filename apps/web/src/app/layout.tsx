@@ -22,12 +22,12 @@ export const metadata: Metadata = {
   icons: {
     icon: "/favicon.svg",
   },
-  metadataBase: new URL('https://etfcanva.com'),
+  metadataBase: new URL('https://etf-canvas.com'),
   alternates: { canonical: '/' },
   openGraph: {
     title: 'ETF Canvas - 나만의 ETF 포트폴리오를 그리다',
     description: 'ETF를 골라 담고, 비중을 조절하고, 성과를 시뮬레이션하세요.',
-    url: 'https://etfcanva.com',
+    url: 'https://etf-canvas.com',
     siteName: 'ETF Canvas',
     type: 'website',
   },

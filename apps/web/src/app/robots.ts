@@ -6,6 +6,6 @@ export default function robots(): MetadataRoute.Robots {
       userAgent: '*',
       allow: '/',
     },
-    sitemap: 'https://etfcanva.com/sitemap.xml',
+    sitemap: 'https://etf-canvas.com/sitemap.xml',
   };
 }

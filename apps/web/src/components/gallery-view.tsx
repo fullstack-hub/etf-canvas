@@ -1,14 +1,14 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { api } from '@/lib/api';
+import { api, type GalleryPortfolio } from '@/lib/api';
 import { Loader2, Trophy, TrendingUp, Shield, Coins } from 'lucide-react';
 import { useReturnColors } from '@/lib/return-colors';
 import Link from 'next/link';
 
-function GalleryCard({ p, variant }: { p: any; variant: 'return' | 'mdd' | 'dividend' }) {
+function GalleryCard({ p, variant }: { p: GalleryPortfolio; variant: 'return' | 'mdd' | 'dividend' }) {
   const rc = useReturnColors();
-  const top3 = [...p.items].sort((a: any, b: any) => b.weight - a.weight).slice(0, 3);
+  const top3 = [...p.items].sort((a, b) => b.weight - a.weight).slice(0, 3);
   const date = new Date(p.createdAt).toLocaleDateString('ko-KR');
 
   const sinceReturn = p.sinceReturn;
@@ -49,7 +49,7 @@ function GalleryCard({ p, variant }: { p: any; variant: 'return' | 'mdd' | 'divi
       </div>
 
       <p className="text-[11px] text-muted-foreground mb-2 truncate">
-        {top3.map((i: any) => i.name).join(', ')}
+        {top3.map((i) => i.name).join(', ')}
         {p.items.length > 3 && ` 외 ${p.items.length - 3}개`}
       </p>
 
@@ -74,7 +74,7 @@ function ColumnLoader() {
 }
 
 function ExpandableColumn({ items, variant, loading, icon, title }: {
-  items: any[] | undefined;
+  items: GalleryPortfolio[] | undefined;
   variant: 'return' | 'mdd' | 'dividend';
   loading: boolean;
   icon: React.ReactNode;
@@ -90,7 +90,7 @@ function ExpandableColumn({ items, variant, loading, icon, title }: {
         items && items.length > 0 ? (
           <>
             <div className="flex flex-col gap-3">
-              {items.map((p: any) => (
+              {items.map((p) => (
                 <GalleryCard key={p.slug} p={p} variant={variant} />
               ))}
             </div>

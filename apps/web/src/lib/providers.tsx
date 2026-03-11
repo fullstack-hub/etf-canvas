@@ -11,23 +11,23 @@ function TokenRegistrar({ children }: { children: ReactNode }) {
 
   // 현재 토큰을 fetcher에 제공
   useEffect(() => {
-    setTokenProvider(() => (session as any)?.accessToken ?? null);
-  }, [(session as any)?.accessToken]);
+    setTokenProvider(() => session?.accessToken ?? null);
+  }, [session?.accessToken]);
 
   // 401 시 토큰 갱신
   useEffect(() => {
     setTokenRefresher(async () => {
       const fresh = await update();
-      return (fresh as any)?.accessToken ?? null;
+      return fresh?.accessToken ?? null;
     });
   }, [update]);
 
   // 토큰 갱신 실패 시 자동 로그아웃
   useEffect(() => {
-    if ((session as any)?.error === 'RefreshTokenError') {
+    if (session?.error === 'RefreshTokenError') {
       signOut({ callbackUrl: '/gate' });
     }
-  }, [(session as any)?.error]);
+  }, [session?.error]);
 
   return <>{children}</>;
 }

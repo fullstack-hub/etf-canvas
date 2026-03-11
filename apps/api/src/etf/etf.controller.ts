@@ -3,7 +3,8 @@ import { ApiSecurity } from '@nestjs/swagger';
 import { EtfService } from './etf.service';
 import { PortfolioService } from '../portfolio/portfolio.service';
 import { AdminGuard } from '../auth/admin.guard';
-import type { CompareRequest, SimulateRequest, ETFSortBy } from '@etf-canvas/shared';
+import { CompareDto, SimulateDto } from './etf.dto';
+import type { ETFSortBy } from '@etf-canvas/shared';
 
 @Controller('etf')
 export class EtfController {
@@ -73,12 +74,12 @@ export class EtfController {
   }
 
   @Post('compare')
-  compare(@Body() body: CompareRequest) {
+  compare(@Body() body: CompareDto) {
     return this.etfService.compare(body);
   }
 
   @Post('simulate')
-  simulate(@Body() body: SimulateRequest) {
+  simulate(@Body() body: SimulateDto) {
     return this.etfService.simulate(body);
   }
 }

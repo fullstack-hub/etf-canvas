@@ -8,19 +8,8 @@ import Link from 'next/link';
 import { Pencil, Heart, MessageCircle, Eye, Flame, Briefcase, ChevronLeft, ChevronRight } from 'lucide-react';
 import { api } from '@/lib/api';
 import type { CommunityPost } from '@/lib/api';
+import { timeAgo } from '@/lib/utils';
 import { CommunityWrite } from '@/components/community-write';
-
-function timeAgo(dateStr: string) {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const m = Math.floor(diff / 60000);
-  if (m < 1) return '방금';
-  if (m < 60) return `${m}분 전`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}시간 전`;
-  const d = Math.floor(h / 24);
-  if (d < 30) return `${d}일 전`;
-  return new Date(dateStr).toLocaleDateString('ko-KR');
-}
 
 function formatCount(n: number) {
   if (n >= 10000) return `${(n / 10000).toFixed(1)}만`;
@@ -108,8 +97,11 @@ export function CommunityList({ initialCategories, initialPosts, initialWeeklyBe
         {/* Main Feed */}
         <div className="flex-1 min-w-0">
           {/* Header */}
-          <div className="flex items-center justify-between mb-6">
-            <h1 className="text-lg font-semibold tracking-tight">커뮤니티</h1>
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center gap-2">
+              <MessageCircle className="w-5 h-5 text-primary" />
+              <h1 className="text-lg font-semibold tracking-tight">커뮤니티</h1>
+            </div>
             {session?.user && (
               <button onClick={handleWriteClick} className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 transition-opacity">
                 <Pencil className="w-3 h-3" />
@@ -117,6 +109,7 @@ export function CommunityList({ initialCategories, initialPosts, initialWeeklyBe
               </button>
             )}
           </div>
+          <p className="text-xs text-muted-foreground mb-6">포트폴리오를 공유하고, 투자 전략을 나눠보세요</p>
 
           {/* Tabs + Category */}
           <div className="flex items-center gap-1 mb-5 pb-4 border-b border-border">

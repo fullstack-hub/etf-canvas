@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { PriceChart } from '@/components/price-chart';
@@ -8,7 +8,7 @@ import {
   ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis,
   CartesianGrid, Tooltip,
 } from 'recharts';
-import { X, TrendingUp, Globe, Building2, Percent, Target, DollarSign, Calendar, BarChart3 } from 'lucide-react';
+import { X, TrendingUp, Building2, Percent, Target, DollarSign, Calendar, BarChart3 } from 'lucide-react';
 import { useReturnColors } from '@/lib/return-colors';
 import type { ETFSummary } from '@etf-canvas/shared';
 
@@ -177,15 +177,27 @@ export function EtfDetailModal({ etf, onClose }: Props) {
           {detail?.holdings && detail.holdings.length > 0 ? (
             <>
               <div className="grid grid-cols-2 gap-x-6 gap-y-0">
-                {detail.holdings.slice(0, 10).map((h, i) => (
-                  <div
-                    key={h.stockCode || i}
-                    className={`flex justify-between py-1.5 text-sm border-b border-border/40 ${i < 2 ? 'bg-muted/20 -mx-1 px-1 rounded' : ''}`}
-                  >
-                    <span className="truncate flex-1">{h.stockName || h.stockCode}</span>
-                    <span className="text-muted-foreground tabular-nums ml-2">{h.weight.toFixed(1)}%</span>
-                  </div>
-                ))}
+                {(() => {
+                  const palette = ['#3b82f6','#14b8a6','#8b5cf6','#d946ef','#84cc16','#06b6d4','#f59e0b','#f43f5e','#22c55e','#6366f1'];
+                  const top10 = detail.holdings.slice(0, 10);
+                  const maxWeight = Math.max(...top10.map(h => h.weight));
+                  return top10.map((h, i) => (
+                    <div
+                      key={h.stockCode || i}
+                      className="relative flex justify-between py-1.5 text-sm border-b border-border/40 overflow-hidden"
+                    >
+                      <div
+                        className="absolute inset-y-0 left-0 rounded-r"
+                        style={{
+                          width: `${(h.weight / maxWeight) * 100}%`,
+                          backgroundColor: `color-mix(in srgb, ${palette[i % palette.length]} 20%, transparent)`,
+                        }}
+                      />
+                      <span className="relative truncate flex-1">{h.stockName || h.stockCode}</span>
+                      <span className="relative text-muted-foreground tabular-nums ml-2">{h.weight.toFixed(1)}%</span>
+                    </div>
+                  ));
+                })()}
               </div>
               <div className="text-[11px] text-muted-foreground/60 mt-2 space-y-0.5">
                 <p>* 구성종목, 주식수 및 구성비중은 전일 기준이에요.</p>
@@ -227,18 +239,21 @@ function DividendDetailChart({ dividends, period }: {
   const cutoffMonth = `${cutoff.getFullYear()}-${String(cutoff.getMonth() + 1).padStart(2, '0')}`;
 
   // 필터 후 cumRate를 0부터 재계산
-  const filtered = allEntries.filter(([month]) => month >= cutoffMonth);
-  let cumRate = 0;
-  const recent = filtered.map(([month, v]) => {
-    cumRate += v.rate;
-    return {
-      month: `${Number(month.slice(5, 7))}월`,
-      monthFull: month,
-      rate: Math.round(v.rate * 100) / 100,
-      amount: v.amount,
-      cumRate: Math.round(cumRate * 100) / 100,
-    };
-  });
+  const recent = useMemo(() => {
+    const filtered = allEntries.filter(([month]) => month >= cutoffMonth);
+    return filtered.reduce<{ month: string; monthFull: string; rate: number; amount: number; cumRate: number }[]>((acc, [month, v]) => {
+      const prevCum = acc.length > 0 ? acc[acc.length - 1].cumRate : 0;
+      const cumRate = Math.round((prevCum + v.rate) * 100) / 100;
+      acc.push({
+        month: `${Number(month.slice(5, 7))}월`,
+        monthFull: month,
+        rate: Math.round(v.rate * 100) / 100,
+        amount: v.amount,
+        cumRate,
+      });
+      return acc;
+    }, []);
+  }, [allEntries, cutoffMonth]);
 
   const avgRate = recent.length > 0
     ? Math.round((recent.reduce((s, d) => s + d.rate, 0) / recent.length) * 100) / 100
@@ -253,12 +268,12 @@ function DividendDetailChart({ dividends, period }: {
           <span className="flex items-center gap-1"><span className="w-3 h-[1.5px] bg-amber-500 inline-block rounded" /> 누적{recent.length > 0 ? ` (${recent[recent.length - 1].cumRate}%)` : ''}</span>
         </div>
       </div>
-      <div className="h-48">
+      <div className="h-48 [&_svg]:outline-none">
         <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={recent} margin={{ top: 2, right: 0, left: 0, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#ddd" />
-            <XAxis dataKey="month" tickLine={false} axisLine={{ stroke: '#ddd' }} tick={{ fontSize: 9, fill: '#999' }} dy={4} />
-            <YAxis yAxisId="left" tickLine={false} axisLine={false} tick={{ fontSize: 9, fill: '#999' }} tickFormatter={(v: number) => `${v.toFixed(v % 1 === 0 ? 0 : 2)}%`} width={50} tickCount={4} />
+          <ComposedChart data={recent} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="text-border/20" strokeOpacity={0.2} />
+            <XAxis dataKey="month" tickLine={false} axisLine={false} tick={{ fontSize: 9, fill: 'currentColor', opacity: 0.4 }} dy={4} />
+            <YAxis yAxisId="left" tickLine={false} axisLine={false} tick={{ fontSize: 9, fill: 'currentColor', opacity: 0.4 }} tickFormatter={(v: number) => `${v.toFixed(v % 1 === 0 ? 0 : 2)}%`} width={50} tickCount={4} />
             <YAxis yAxisId="right" orientation="right" tickLine={false} axisLine={false} tick={false} width={0} />
             <Tooltip
               cursor={{ fill: 'currentColor', opacity: 0.04 }}

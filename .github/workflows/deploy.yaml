@@ -26,6 +26,12 @@ jobs:
           BEFORE_SHA: ${{ github.event.before }}
           AFTER_SHA: ${{ github.sha }}
         run: |
+          if [ "$BEFORE_SHA" = "0000000000000000000000000000000000000000" ]; then
+            # force push나 첫 push인 경우 전부 빌드
+            echo "api=true" >> $GITHUB_OUTPUT
+            echo "web=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
           DIFF=$(git diff --name-only "$BEFORE_SHA" "$AFTER_SHA")
           echo "api=false" >> $GITHUB_OUTPUT
           echo "web=false" >> $GITHUB_OUTPUT
@@ -68,8 +74,10 @@ jobs:
           IMAGE_TAG: ${{ steps.version.outputs.tag }}
           GITHUB_TOKEN: ${{ secrets.GH_PKG_TOKEN }}
         run: |
-          docker build \
+          DOCKER_BUILDKIT=1 docker build \
             --platform linux/arm64 \
+            --build-arg BUILDKIT_INLINE_CACHE=1 \
+            --cache-from "$ECR_REGISTRY/apps/etf-canvas-api:latest" \
             --build-arg GITHUB_TOKEN="$GITHUB_TOKEN" \
             -t "$ECR_REGISTRY/apps/etf-canvas-api:$IMAGE_TAG" \
             -t "$ECR_REGISTRY/apps/etf-canvas-api:latest" \
@@ -109,8 +117,10 @@ jobs:
           IMAGE_TAG: ${{ steps.version.outputs.tag }}
           GITHUB_TOKEN: ${{ secrets.GH_PKG_TOKEN }}
         run: |
-          docker build \
+          DOCKER_BUILDKIT=1 docker build \
             --platform linux/arm64 \
+            --build-arg BUILDKIT_INLINE_CACHE=1 \
+            --cache-from "$ECR_REGISTRY/apps/etf-canvas-web:latest" \
             --build-arg GITHUB_TOKEN="$GITHUB_TOKEN" \
             -t "$ECR_REGISTRY/apps/etf-canvas-web:$IMAGE_TAG" \
             -t "$ECR_REGISTRY/apps/etf-canvas-web:latest" \

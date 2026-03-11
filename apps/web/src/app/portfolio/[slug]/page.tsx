@@ -4,6 +4,10 @@ import { PortfolioPublicView } from './portfolio-public-view';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
+function safeJsonLd(obj: object): string {
+  return JSON.stringify(obj).replace(/</g, '\\u003c');
+}
+
 interface PortfolioData {
   name: string;
   slug: string;
@@ -51,11 +55,11 @@ export async function generateMetadata(
   return {
     title,
     description,
-    alternates: { canonical: `https://etfcanva.com/portfolio/${slug}` },
+    alternates: { canonical: `https://etf-canvas.com/portfolio/${slug}` },
     openGraph: {
       title,
       description,
-      url: `https://etfcanva.com/portfolio/${slug}`,
+      url: `https://etf-canvas.com/portfolio/${slug}`,
       siteName: 'ETF Canvas',
       type: 'website',
     },
@@ -79,14 +83,14 @@ export default async function PortfolioPage({
   const etfNames = data.items.map((i) => i.name).join(' + ');
   const returnText = data.returnRate != null ? `1Y 수익률 ${data.returnRate > 0 ? '+' : ''}${data.returnRate}%` : '';
 
-  // JSON-LD: 값은 모두 서버 데이터에서 생성된 안전한 문자열
-  const jsonLd = JSON.stringify({
+  // JSON-LD: safeJsonLd로 </script> 패턴 이스케이프 (XSS 방지)
+  const jsonLd = safeJsonLd({
     '@context': 'https://schema.org',
     '@type': 'FinancialProduct',
     name: `${data.name} — ${etfNames} 포트폴리오`,
     description: data.feedbackSnippet || data.feedbackText?.slice(0, 200) || `${etfNames} 조합 포트폴리오. ${returnText}`,
     provider: { '@type': 'Organization', name: 'ETF Canvas' },
-    url: `https://etfcanva.com/portfolio/${slug}`,
+    url: `https://etf-canvas.com/portfolio/${slug}`,
   });
 
   return (

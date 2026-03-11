@@ -1,8 +1,22 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 
-const KEYCLOAK_ISSUER = process.env.KEYCLOAK_ISSUER!;
-const JWKS = createRemoteJWKSet(new URL(`${KEYCLOAK_ISSUER}/protocol/openid-connect/certs`));
+let _keycloakIssuer: string | null = null;
+let _jwks: ReturnType<typeof createRemoteJWKSet> | null = null;
+
+export function getKeycloakIssuer(): string {
+  if (!_keycloakIssuer) {
+    _keycloakIssuer = process.env.KEYCLOAK_ISSUER!;
+  }
+  return _keycloakIssuer;
+}
+
+export function getJWKS() {
+  if (!_jwks) {
+    _jwks = createRemoteJWKSet(new URL(`${getKeycloakIssuer()}/protocol/openid-connect/certs`));
+  }
+  return _jwks;
+}
 
 @Injectable()
 export class JwtGuard implements CanActivate {
@@ -13,7 +27,7 @@ export class JwtGuard implements CanActivate {
 
     const token = auth.slice(7);
     try {
-      const { payload } = await jwtVerify(token, JWKS, { issuer: KEYCLOAK_ISSUER });
+      const { payload } = await jwtVerify(token, getJWKS(), { issuer: getKeycloakIssuer() });
       req.userId = payload.sub;
       req.provider = (payload as any).identity_provider ?? null;
       return true;

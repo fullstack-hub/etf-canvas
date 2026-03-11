@@ -27,7 +27,7 @@ export class PortfolioService {
     private readonly gemini: GeminiService,
   ) {}
 
-  async feedback(items: { code: string; name: string; weight: number; category: string }[]) {
+  async feedback(items: { code: string; name: string; weight: number; category?: string }[]) {
     const today = new Date().toISOString().slice(0, 10);
     const sorted = [...items].sort((a, b) => a.code.localeCompare(b.code));
     const hash = createHash('sha256')
@@ -260,8 +260,8 @@ export class PortfolioService {
     // SEO_PING_ENABLED=true 일 때만 실행 (사이트 공개 후 설정)
     if (process.env.SEO_PING_ENABLED !== 'true') return;
 
-    const url = `https://etfcanva.com/portfolio/${slug}`;
-    const sitemapUrl = 'https://etfcanva.com/sitemap.xml';
+    const url = `https://etf-canvas.com/portfolio/${slug}`;
+    const sitemapUrl = 'https://etf-canvas.com/sitemap.xml';
 
     const pings = [
       // Google sitemap ping
@@ -274,7 +274,7 @@ export class PortfolioService {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            host: 'etfcanva.com',
+            host: 'etf-canvas.com',
             key: process.env.INDEXNOW_KEY,
             urlList: [url],
           }),
@@ -347,7 +347,7 @@ export class PortfolioService {
   }
 
   async publicSince(slug: string) {
-    const p = await this.prisma.portfolio.findUnique({ where: { slug } as any });
+    const p = await this.prisma.portfolio.findFirst({ where: { slug, isDraft: false } });
     if (!p) throw new NotFoundException();
     return this.computeSince(p);
   }
@@ -551,7 +551,7 @@ export class PortfolioService {
     const cached = await this.redis.getJson<any>(cacheKey);
     if (cached) return cached;
 
-    const p = await this.prisma.portfolio.findUnique({ where: { slug } });
+    const p = await this.prisma.portfolio.findFirst({ where: { slug, isDraft: false } });
     if (!p) throw new NotFoundException();
     const result = {
       name: p.name,

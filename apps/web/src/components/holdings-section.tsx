@@ -23,7 +23,7 @@ export function HoldingsSection({ items }: { items: Item[] }) {
           const c = getCatColor(item.category);
           return (
             <div key={item.code} className="relative rounded-lg border overflow-hidden">
-              <div className={`absolute inset-y-0 left-0 ${c.bg}`} style={{ width: `${item.weight}%` }} />
+              <div className="absolute inset-y-0 left-0" style={{ width: `${item.weight}%`, backgroundColor: `color-mix(in srgb, ${c.hex} 15%, transparent)` }} />
               <div className="relative flex items-center justify-between p-3">
                 <div className="flex items-center gap-2">
                   <span className={`w-2.5 h-2.5 rounded-full ${c.dot} shrink-0`} />

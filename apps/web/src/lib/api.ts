@@ -1,5 +1,19 @@
 import type { ETFSummary, ETFDetail, ETFDailyPrice, ETFDividend, SimulateRequest, SimulateResult, ETFSortBy } from '@etf-canvas/shared';
 
+export type GalleryPortfolio = {
+  name: string;
+  slug: string;
+  items: { code: string; name: string; weight: number }[];
+  returnRate: number | null;
+  mdd: number | null;
+  sinceReturn?: number | null;
+  sinceMdd?: number | null;
+  weightedDividendYield?: number | null;
+  feedbackSnippet: string | null;
+  tags: string[];
+  createdAt: string;
+};
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
 // 토큰 getter/refresher (SessionProvider에서 등록)
@@ -88,11 +102,15 @@ export const api = {
       basisLabel?: string;
       basisDate?: string;
       message?: string;
+      dividendTotal?: number;
+      dividendCount?: number;
     }>(`/portfolio/${id}/since`),
   getPortfolioFeedback: (items: { code: string; name: string; weight: number; category: string }[]) =>
     fetcher<{
       feedback: string;
       actions: { category: string; label: string }[];
+      tags: string[];
+      snippet: string;
     }>('/portfolio/feedback', {
       method: 'POST',
       body: JSON.stringify({ items }),
@@ -114,19 +132,7 @@ export const api = {
 
   // Public (인증 불필요)
   getTopPortfolios: (limit = 20, sort: 'latest' | 'return' | 'mdd' | 'dividend' = 'latest') =>
-    fetcher<{
-      name: string;
-      slug: string;
-      items: { code: string; name: string; weight: number }[];
-      returnRate: number | null;
-      mdd: number | null;
-      sinceReturn?: number | null;
-      sinceMdd?: number | null;
-      weightedDividendYield?: number | null;
-      feedbackSnippet: string | null;
-      tags: string[];
-      createdAt: string;
-    }[]>(`/portfolio/public/top?limit=${limit}&sort=${sort}`),
+    fetcher<GalleryPortfolio[]>(`/portfolio/public/top?limit=${limit}&sort=${sort}`),
 
   getPublicSince: (slug: string) =>
     fetcher<{
@@ -136,6 +142,8 @@ export const api = {
       basisLabel?: string;
       basisDate?: string;
       message?: string;
+      dividendTotal?: number;
+      dividendCount?: number;
     }>(`/portfolio/public/${slug}/since`),
 
   getPortfolioTags: () =>
@@ -200,8 +208,8 @@ export const api = {
       createdAt: string;
     }>('/user/me'),
 
-  updateMe: (data: Record<string, any>) =>
-    fetcher<any>('/user/me', {
+  updateMe: (data: Record<string, string | boolean | null>) =>
+    fetcher<{ ok: boolean }>('/user/me', {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),

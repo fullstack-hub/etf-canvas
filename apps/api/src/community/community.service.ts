@@ -93,19 +93,15 @@ export class CommunityService {
     if (!post || post.isHidden) throw new NotFoundException();
 
     if (userId) {
-      await this.prisma.postView
-        .upsert({
-          where: { postId_userId: { postId: id, userId } },
-          create: { postId: id, userId },
-          update: {},
-        })
-        .then(async (v) => {
-          // 신규 조회일 때만 increment
-          if (v.createdAt.getTime() >= Date.now() - 1000) {
-            await this.prisma.post.update({ where: { id }, data: { viewCount: { increment: 1 } } });
-          }
-        })
-        .catch(() => {});
+      const existingView = await this.prisma.postView.findUnique({
+        where: { postId_userId: { postId: id, userId } },
+      });
+      if (!existingView) {
+        await this.prisma.$transaction([
+          this.prisma.postView.create({ data: { postId: id, userId } }),
+          this.prisma.post.update({ where: { id }, data: { viewCount: { increment: 1 } } }),
+        ]).catch(() => {});
+      }
     }
 
     let liked = false;
@@ -124,14 +120,18 @@ export class CommunityService {
     const user = await this.prisma.user.findUnique({ where: { keycloakId: userId } });
     if (!user?.nickname) throw new BadRequestException('닉네임을 먼저 설정해주세요');
 
-    let categoryId = 1; // general
+    let category;
     if (data.portfolioId) {
       const portfolio = await this.prisma.portfolio.findFirst({
         where: { id: data.portfolioId, userId },
       });
       if (!portfolio) throw new BadRequestException('포트폴리오를 찾을 수 없습니다');
-      categoryId = 2; // portfolio-review
+      category = await this.prisma.postCategory.findFirst({ where: { slug: 'portfolio-review' } });
+    } else {
+      category = await this.prisma.postCategory.findFirst({ where: { slug: 'general' } });
     }
+    if (!category) throw new BadRequestException('카테고리를 찾을 수 없습니다');
+    const categoryId = category.id;
 
     return this.prisma.post.create({
       data: {
@@ -269,7 +269,7 @@ export class CommunityService {
   }
 
   async deleteComment(commentId: string, userId: string) {
-    const comment = await this.prisma.comment.findUnique({ where: { id: commentId } });
+    const comment = await this.prisma.comment.findFirst({ where: { id: commentId, isDeleted: false } });
     if (!comment) throw new NotFoundException();
     if (comment.authorId !== userId) throw new ForbiddenException();
 

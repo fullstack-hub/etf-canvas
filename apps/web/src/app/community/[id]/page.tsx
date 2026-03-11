@@ -4,6 +4,10 @@ import { CommunityPostPage } from './community-post-page';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
+function safeJsonLd(obj: object): string {
+  return JSON.stringify(obj).replace(/</g, '\\u003c');
+}
+
 interface PostData {
   id: string;
   title: string;
@@ -42,11 +46,11 @@ export async function generateMetadata(
   return {
     title,
     description,
-    alternates: { canonical: `https://etfcanva.com/community/${id}` },
+    alternates: { canonical: `https://etf-canvas.com/community/${id}` },
     openGraph: {
       title,
       description,
-      url: `https://etfcanva.com/community/${id}`,
+      url: `https://etf-canvas.com/community/${id}`,
       siteName: 'ETF Canvas',
       type: 'article',
     },
@@ -67,8 +71,8 @@ export default async function PostPage({
   const data = await getPost(id);
   if (!data) notFound();
 
-  // JSON-LD: 서버 데이터에서 생성된 안전한 문자열 (sanitized server data)
-  const jsonLd = JSON.stringify({
+  // JSON-LD: safeJsonLd로 </script> 패턴 이스케이프 (XSS 방지)
+  const jsonLd = safeJsonLd({
     '@context': 'https://schema.org',
     '@type': 'DiscussionForumPosting',
     headline: data.title,
@@ -79,7 +83,7 @@ export default async function PostPage({
       { '@type': 'InteractionCounter', interactionType: 'https://schema.org/LikeAction', userInteractionCount: data.likeCount },
       { '@type': 'InteractionCounter', interactionType: 'https://schema.org/CommentAction', userInteractionCount: data.commentCount },
     ],
-    url: `https://etfcanva.com/community/${id}`,
+    url: `https://etf-canvas.com/community/${id}`,
   });
 
   return (

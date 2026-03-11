@@ -5,6 +5,9 @@ export class NaverUserinfoProxyController {
   @Get()
   async proxy(@Headers('authorization') auth: string) {
     if (!auth) throw new HttpException('missing authorization', 401);
+    if (!auth.startsWith('Bearer ') || auth.length < 20) {
+      throw new HttpException('invalid authorization format', 401);
+    }
 
     const resp = await fetch('https://openapi.naver.com/v1/nid/me', {
       headers: { Authorization: auth },

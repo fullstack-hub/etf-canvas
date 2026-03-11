@@ -271,6 +271,13 @@ export class EtfService {
     const cached = await this.redis.getJson<SimulateResult>(cacheKey);
     if (cached) return cached;
 
+    // ETF 이름을 DB에서 조회
+    const etfNames = await this.prisma.etf.findMany({
+      where: { code: { in: req.codes } },
+      select: { code: true, name: true },
+    });
+    const nameMap = new Map(etfNames.map((e) => [e.code, e.name]));
+
     const allPricesRaw = await Promise.all(
       req.codes.map((code) => this.getDailyPrices(code, req.period)),
     );
@@ -385,7 +392,7 @@ export class EtfService {
         }
         return {
           code,
-          name: code,
+          name: nameMap.get(code) || code,
           weight: req.weights[i],
           returnRate,
           maxDrawdown: Math.round(etfMdd * 100) / 100,

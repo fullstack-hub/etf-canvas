@@ -2,10 +2,8 @@
 
 import { useState } from 'react';
 import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import { useCanvasStore } from '@/lib/store';
 import { useReturnColors } from '@/lib/return-colors';
 import { SnapshotSection } from '@/components/snapshot-section';
 import { SinceStatsHero } from '@/components/since-stats-hero';
@@ -43,8 +41,6 @@ const SORT_OPTIONS = [
 export function PortfolioList() {
   const { data: session, status: sessionStatus } = useSession();
   const queryClient = useQueryClient();
-  const router = useRouter();
-  const { addToCanvas, clearCanvas } = useCanvasStore();
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [sort, setSort] = useState<string>('latest');
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -66,18 +62,6 @@ export function PortfolioList() {
     }
   };
 
-  const handleLoad = (portfolio: Portfolio) => {
-    clearCanvas();
-    for (const item of portfolio.items) {
-      addToCanvas({
-        code: item.code,
-        name: item.name,
-        categories: item.category ? [item.category] : [],
-      } as any);
-    }
-    router.push('/');
-  };
-
   if (isLoading || sessionStatus === 'loading') {
     return (
       <div className="flex-1 flex items-center justify-center">
@@ -93,8 +77,11 @@ export function PortfolioList() {
       {/* Left Panel: Master List */}
       <div className="w-full md:w-[350px] lg:w-[400px] flex flex-col border-r border-border/50 h-full shrink-0">
         <div className="p-5 pb-4 border-b border-border/30 bg-card/30 backdrop-blur-sm z-10 sticky top-0">
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-lg font-bold tracking-tight">포트폴리오 보관함</h2>
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center gap-2">
+              <FolderOpen className="w-5 h-5 text-primary" />
+              <h2 className="text-lg font-bold tracking-tight">포트폴리오 보관함</h2>
+            </div>
             <div className="flex items-center gap-1 bg-muted/50 rounded-lg p-1">
               {SORT_OPTIONS.map((opt) => (
                 <button
@@ -111,6 +98,7 @@ export function PortfolioList() {
               ))}
             </div>
           </div>
+          <p className="text-xs text-muted-foreground">저장한 포트폴리오를 관리하세요</p>
         </div>
 
         <div className="flex-1 overflow-auto p-4 space-y-3">
@@ -148,7 +136,6 @@ export function PortfolioList() {
         ) : (
           <PortfolioDetailPanel
             portfolio={selectedPortfolio}
-            onLoad={() => handleLoad(selectedPortfolio)}
             onDelete={() => handleDelete(selectedPortfolio.id)}
             deleting={deletingId === selectedPortfolio.id}
           />
@@ -293,8 +280,8 @@ function PortfolioListItem({ portfolio: p, isActive, onClick }: { portfolio: Por
   );
 }
 
-function PortfolioDetailPanel({ portfolio: p, onLoad, onDelete, deleting }: {
-  portfolio: Portfolio; onLoad: () => void; onDelete: () => void; deleting: boolean;
+function PortfolioDetailPanel({ portfolio: p, onDelete, deleting }: {
+  portfolio: Portfolio; onDelete: () => void; deleting: boolean;
 }) {
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);

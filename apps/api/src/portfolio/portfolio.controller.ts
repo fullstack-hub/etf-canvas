@@ -13,18 +13,15 @@ import {
 import { ApiBearerAuth } from '@nestjs/swagger';
 import { PortfolioService } from './portfolio.service';
 import { JwtGuard } from '../auth/jwt.guard';
+import { AdminGuard } from '../auth/admin.guard';
+import { FeedbackRequestDto, AutoSaveDto, CreatePortfolioDto, RenamePortfolioDto } from './portfolio.dto';
 
 @Controller('portfolio')
 export class PortfolioController {
   constructor(private readonly svc: PortfolioService) {}
 
   @Post('feedback')
-  feedback(
-    @Body() body: { items: { code: string; name: string; weight: number; category: string }[] },
-  ) {
-    if (!Array.isArray(body?.items) || body.items.length === 0) {
-      return { feedback: '피드백을 생성할 수 없어요.', actions: [] };
-    }
+  feedback(@Body() body: FeedbackRequestDto) {
     return this.svc.feedback(body.items);
   }
 
@@ -63,6 +60,7 @@ export class PortfolioController {
   }
 
   @Post('backfill-snapshots')
+  @UseGuards(AdminGuard)
   backfillSnapshots() {
     return this.svc.backfillSnapshots();
   }
@@ -70,24 +68,14 @@ export class PortfolioController {
   @Post('auto-save')
   @UseGuards(JwtGuard)
   @ApiBearerAuth('jwt')
-  autoSave(
-    @Req() req: any,
-    @Body() body: {
-      items: { code: string; name: string; weight: number; category?: string }[];
-      feedback: { feedback: string; actions: { category: string; label: string }[]; tags: string[]; snippet: string } | null;
-      totalAmount?: number;
-    },
-  ) {
+  autoSave(@Req() req: any, @Body() body: AutoSaveDto) {
     return this.svc.autoSave(req.userId, body.items, body.feedback, body.totalAmount);
   }
 
   @Post()
   @UseGuards(JwtGuard)
   @ApiBearerAuth('jwt')
-  create(
-    @Req() req: any,
-    @Body() body: { name: string; items: { code: string; name: string; weight: number; category?: string }[]; feedback?: { feedback: string; actions: { category: string; label: string }[]; tags: string[]; snippet: string } | null; totalAmount?: number },
-  ) {
+  create(@Req() req: any, @Body() body: CreatePortfolioDto) {
     return this.svc.create(req.userId, body.name, body.items, body.feedback || null, body.totalAmount);
   }
 
@@ -118,7 +106,7 @@ export class PortfolioController {
   rename(
     @Req() req: any,
     @Param('id') id: string,
-    @Body() body: { name: string },
+    @Body() body: RenamePortfolioDto,
   ) {
     return this.svc.rename(req.userId, id, body.name);
   }

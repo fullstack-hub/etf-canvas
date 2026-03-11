@@ -54,8 +54,15 @@ export class UserService {
   }
 
   async withdraw(keycloakId: string) {
-    await this.prisma.portfolio.deleteMany({ where: { userId: keycloakId } });
-    await this.prisma.user.delete({ where: { keycloakId } });
+    await this.prisma.$transaction([
+      // 커뮤니티 글/댓글의 authorId를 null로 설정 (보존)
+      this.prisma.post.updateMany({ where: { authorId: keycloakId }, data: { authorId: null } }),
+      this.prisma.comment.updateMany({ where: { authorId: keycloakId }, data: { authorId: null } }),
+      // 포트폴리오 삭제
+      this.prisma.portfolio.deleteMany({ where: { userId: keycloakId } }),
+      // 유저 삭제
+      this.prisma.user.delete({ where: { keycloakId } }),
+    ]);
     return { ok: true };
   }
 }

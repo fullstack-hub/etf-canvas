@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 export const metadata: Metadata = {
   title: '개인정보처리방침 — ETF Canvas',
   description: 'ETF Canvas 개인정보처리방침. 수집하는 개인정보, 이용 목적, 보유 기간 등을 안내합니다.',
-  alternates: { canonical: 'https://etfcanva.com/privacy' },
+  alternates: { canonical: 'https://etf-canvas.com/privacy' },
 };
 
 export default function PrivacyPage() {

@@ -1,11 +1,12 @@
 import { NestFactory } from '@nestjs/core';
+import { ValidationPipe } from '@nestjs/common';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 
-// BigInt → Number 자동 직렬화 (Fastify JSON.stringify 에러 방지)
+// BigInt → String 자동 직렬화 (Fastify JSON.stringify 에러 + 정밀도 손실 방지)
 (BigInt.prototype as any).toJSON = function () {
-  return Number(this);
+  return this.toString();
 };
 
 async function bootstrap() {
@@ -13,7 +14,8 @@ async function bootstrap() {
     AppModule,
     new FastifyAdapter(),
   );
-  app.enableCors({ origin: true, methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'] });
+  app.enableCors({ origin: ['https://etf-canvas.com', 'http://localhost:3000'], methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'] });
+  app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
 
   if (process.env.NODE_ENV !== 'production') {
     const config = new DocumentBuilder()

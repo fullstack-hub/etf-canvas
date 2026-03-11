@@ -7,9 +7,9 @@ import { useCanvasStore } from '@/lib/store';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   AreaChart, Area, ComposedChart, Bar, Line, XAxis, YAxis, Tooltip,
-  ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell, Legend,
+  ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell,
 } from 'recharts';
-import { Sparkles, TrendingUp, Info, Maximize2, Minimize2 } from 'lucide-react';
+import { Sparkles, TrendingUp, Maximize2, Minimize2 } from 'lucide-react';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -143,9 +143,10 @@ export function PerformancePanel() {
     return map[value] || 365;
   };
 
+  const [now] = useState(() => Date.now());
   const isTimeframeAvailable = (value: string): boolean => {
     if (!latestListedDate) return true;
-    const daysSinceListed = Math.ceil((Date.now() - latestListedDate.getTime()) / 86400000);
+    const daysSinceListed = Math.ceil((now - latestListedDate.getTime()) / 86400000);
     return daysSinceListed >= periodToDays(value);
   };
 
@@ -196,11 +197,13 @@ export function PerformancePanel() {
   })();
 
   const baseAmount = totalAmount || 10000000;
-  const expenseAmount = synthExpense != null ? Math.round(baseAmount * synthExpense / 100) : null;
+  const currentValue = synthReturn != null ? baseAmount * (1 + synthReturn / 100) : baseAmount;
+  const periodDays = periodToDays(timeframe.value);
+  const expenseAmount = synthExpense != null ? currentValue * synthExpense / 100 * (periodDays / 365) : null;
   const fmtExpenseAmount = (n: number) =>
     n >= 100_000_000 ? `${(n / 100_000_000).toFixed(1)}억`
-    : n >= 10_000 ? `${Math.round(n / 10_000).toLocaleString()}만`
-    : `${n.toLocaleString()}`;
+    : n >= 10_000 ? `${(n / 10_000).toFixed(1).replace(/\.0$/, '')}만`
+    : `${Math.round(n).toLocaleString()}`;
   const fmtExpenseRate = (v: number) => v.toFixed(3).replace(/0$/, '');
   const chartData = simData?.dailyValues?.map(d => {
     const [y, m, dd] = d.date.split('-');
@@ -450,29 +453,14 @@ export function PerformancePanel() {
                   <div className="flex items-center justify-between w-full mb-2 shrink-0">
                     <h3 className="text-[14px] font-extrabold text-foreground/80">자산 구성</h3>
                     {synthExpense != null && expenseAmount != null && (
-                      <span className="text-[11px] text-muted-foreground group/exptip relative cursor-help">
-                        운용보수 <span className="font-semibold text-foreground">{fmtExpenseAmount(expenseAmount)}원({fmtExpenseRate(synthExpense)}%)</span>
-                        <div className="absolute top-full right-0 mt-1 z-50 px-3 py-2 rounded-lg border bg-popover shadow-lg text-[11px] text-left w-[220px] hidden group-hover/exptip:block animate-in fade-in zoom-in-95 duration-100">
-                          <p className="font-medium mb-1">종합 운용보수 (가중평균)</p>
-                          <p className="text-muted-foreground">각 ETF의 총보수를 포트폴리오 비중으로 가중 합산한 연간 운용보수에요.</p>
-                        </div>
-                      </span>
+                      <ExpenseLabel expense={synthExpense} expenseAmount={expenseAmount} timeframeLabel={timeframe.label} periodDays={periodDays} fmtAmount={fmtExpenseAmount} fmtRate={fmtExpenseRate} />
                     )}
                   </div>
                   <CategoryPie comparingCodes={comparing} selected={selected} weights={weights} />
                 </div>
                 <div className="rounded-xl border border-border/70 bg-muted/5 p-3 flex flex-col min-h-0">
                   <div className="flex items-center justify-between mb-2 shrink-0">
-                    <div className="flex items-center gap-1.5 group/divtip relative">
-                      <h3 className="text-[14px] font-extrabold text-foreground/80">분배금 내역 추이</h3>
-                      <span className="text-muted-foreground/40 cursor-help">
-                        <Info className="w-3 h-3" />
-                      </span>
-                      <div className="absolute top-full left-0 mt-1 z-50 px-3 py-2 rounded-lg border bg-popover shadow-lg text-[11px] text-left w-[220px] hidden group-hover/divtip:block animate-in fade-in zoom-in-95 duration-100">
-                        <p className="font-medium mb-1">주당 분배금 × 비중 가중 합산</p>
-                        <p className="text-muted-foreground">각 ETF의 월별 분배율(%)을 포트폴리오 비중으로 가중 합산한 값이에요. 누적 라인은 선택 기간 내 총 분배율이에요.</p>
-                      </div>
-                    </div>
+                    <DividendTitle />
                     <div className="flex flex-col items-end gap-0.5 text-[9px] text-muted-foreground">
                       <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-blue-500 inline-block" /> 분배율{dividendData.length > 0 ? ` (평균 ${(dividendData.reduce((s, d) => s + d.rate, 0) / dividendData.length).toFixed(2)}%)` : ''}</span>
                       <span className="flex items-center gap-1"><span className="w-3 h-[1.5px] bg-amber-500 inline-block rounded" /> 누적{dividendData.length > 0 ? ` (${dividendData[dividendData.length - 1].cumRate}%)` : ''}</span>
@@ -536,13 +524,7 @@ export function PerformancePanel() {
                   <div className="flex items-center justify-between w-full mb-2 shrink-0">
                     <h3 className="text-[14px] font-extrabold text-foreground/80">자산 구성</h3>
                     {synthExpense != null && expenseAmount != null && (
-                      <span className="text-[11px] text-muted-foreground group/exptip relative cursor-help">
-                        운용보수 <span className="font-semibold text-foreground">{fmtExpenseAmount(expenseAmount)}원({fmtExpenseRate(synthExpense)}%)</span>
-                        <div className="absolute top-full right-0 mt-1 z-50 px-3 py-2 rounded-lg border bg-popover shadow-lg text-[11px] text-left w-[220px] hidden group-hover/exptip:block animate-in fade-in zoom-in-95 duration-100">
-                          <p className="font-medium mb-1">종합 운용보수 (가중평균)</p>
-                          <p className="text-muted-foreground">각 ETF의 총보수를 포트폴리오 비중으로 가중 합산한 연간 운용보수에요.</p>
-                        </div>
-                      </span>
+                      <ExpenseLabel expense={synthExpense} expenseAmount={expenseAmount} timeframeLabel={timeframe.label} periodDays={periodDays} fmtAmount={fmtExpenseAmount} fmtRate={fmtExpenseRate} />
                     )}
                   </div>
                   <CategoryPie comparingCodes={comparing} selected={selected} weights={weights} />
@@ -550,16 +532,7 @@ export function PerformancePanel() {
 
                 <div className="rounded-xl border border-border/70 bg-muted/5 p-3 flex flex-col min-h-0">
                   <div className="flex items-center justify-between mb-2 shrink-0">
-                    <div className="flex items-center gap-1.5 group/divtip relative">
-                      <h3 className="text-[14px] font-extrabold text-foreground/80">분배금 내역 추이</h3>
-                      <span className="text-muted-foreground/40 cursor-help">
-                        <Info className="w-3 h-3" />
-                      </span>
-                      <div className="absolute top-full left-0 mt-1 z-50 px-3 py-2 rounded-lg border bg-popover shadow-lg text-[11px] text-left w-[220px] hidden group-hover/divtip:block animate-in fade-in zoom-in-95 duration-100">
-                        <p className="font-medium mb-1">주당 분배금 × 비중 가중 합산</p>
-                        <p className="text-muted-foreground">각 ETF의 월별 분배율(%)을 포트폴리오 비중으로 가중 합산한 값이에요. 누적 라인은 선택 기간 내 총 분배율이에요.</p>
-                      </div>
-                    </div>
+                    <DividendTitle />
                     <div className="flex flex-col items-end gap-0.5 text-[9px] text-muted-foreground">
                       <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-blue-500 inline-block" /> 분배율{dividendData.length > 0 ? ` (평균 ${(dividendData.reduce((s, d) => s + d.rate, 0) / dividendData.length).toFixed(2)}%)` : ''}</span>
                       <span className="flex items-center gap-1"><span className="w-3 h-[1.5px] bg-amber-500 inline-block rounded" /> 누적{dividendData.length > 0 ? ` (${dividendData[dividendData.length - 1].cumRate}%)` : ''}</span>
@@ -780,5 +753,57 @@ function DividendChart({ data }: { data: { month: string; rate: number; cumRate:
           </ComposedChart>
         </ResponsiveContainer>
     </div>
+  );
+}
+
+function DividendTitle() {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="relative">
+      <h3
+        className="text-[14px] font-extrabold text-foreground/80 border-b border-dashed border-muted-foreground/30 cursor-help"
+        onMouseEnter={() => setShow(true)}
+        onMouseLeave={() => setShow(false)}
+      >
+        분배금 내역 추이
+      </h3>
+      {show && (
+        <div className="absolute top-full left-0 mt-1 z-50 px-3 py-2 rounded-lg border bg-popover shadow-lg text-[11px] text-left w-[220px] animate-in fade-in zoom-in-95 duration-100">
+          <p className="font-medium mb-1">주당 분배금 × 비중 가중 합산</p>
+          <p className="text-muted-foreground">각 ETF의 월별 분배율(%)을 포트폴리오 비중으로 가중 합산한 값이에요. 누적 라인은 선택 기간 내 총 분배율이에요.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ExpenseLabel({ expense, expenseAmount, timeframeLabel, periodDays, fmtAmount, fmtRate }: {
+  expense: number;
+  expenseAmount: number;
+  timeframeLabel: string;
+  periodDays: number;
+  fmtAmount: (n: number) => string;
+  fmtRate: (v: number) => string;
+}) {
+  const [show, setShow] = useState(false);
+  return (
+    <span className="text-[11px] text-muted-foreground relative">
+      <span
+        className="border-b border-dashed border-muted-foreground/30 cursor-help"
+        onMouseEnter={() => setShow(true)}
+        onMouseLeave={() => setShow(false)}
+      >
+        운용보수
+      </span>
+      {' '}<span className="font-semibold text-foreground">{fmtAmount(expenseAmount)}원({fmtRate(expense)}%)</span>
+      {show && (
+        <div className="absolute top-full right-0 mt-1 z-50 px-3 py-2 rounded-lg border bg-popover shadow-lg text-[11px] text-left w-[260px] animate-in fade-in zoom-in-95 duration-100">
+          <p className="font-medium mb-1">종합 운용보수 (가중평균)</p>
+          <p className="text-muted-foreground mb-2">각 ETF의 총보수를 포트폴리오 비중으로 가중 합산한 연간 운용보수에요. 운용보수는 수익률에서 이미 차감된 비용이에요.</p>
+          <p className="font-medium mb-1">{timeframeLabel} 기간 계산식</p>
+          <p className="text-muted-foreground font-mono">평가금 × {fmtRate(expense)}% × ({periodDays}/365)</p>
+        </div>
+      )}
+    </span>
   );
 }

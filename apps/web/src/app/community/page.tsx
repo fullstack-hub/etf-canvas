@@ -8,11 +8,11 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 export const metadata: Metadata = {
   title: '커뮤니티 — ETF Canvas',
   description: 'ETF Canvas 커뮤니티에서 투자 아이디어와 포트폴리오를 공유하세요.',
-  alternates: { canonical: 'https://etfcanva.com/community' },
+  alternates: { canonical: 'https://etf-canvas.com/community' },
   openGraph: {
     title: '커뮤니티 — ETF Canvas',
     description: 'ETF Canvas 커뮤니티에서 투자 아이디어와 포트폴리오를 공유하세요.',
-    url: 'https://etfcanva.com/community',
+    url: 'https://etf-canvas.com/community',
     siteName: 'ETF Canvas',
   },
 };

@@ -1,25 +1,9 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, Req, UseGuards, CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth } from '@nestjs/swagger';
-import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { CommunityService } from './community.service';
 import { JwtGuard } from '../auth/jwt.guard';
-
-const KEYCLOAK_ISSUER = process.env.KEYCLOAK_ISSUER!;
-const JWKS = createRemoteJWKSet(new URL(`${KEYCLOAK_ISSUER}/protocol/openid-connect/certs`));
-
-@Injectable()
-class OptionalJwtGuard implements CanActivate {
-  async canActivate(context: ExecutionContext): Promise<boolean> {
-    const req = context.switchToHttp().getRequest();
-    const auth: string | undefined = req.headers?.authorization;
-    if (!auth?.startsWith('Bearer ')) return true;
-    try {
-      const { payload } = await jwtVerify(auth.slice(7), JWKS, { issuer: KEYCLOAK_ISSUER });
-      req.userId = payload.sub;
-    } catch {}
-    return true;
-  }
-}
+import { OptionalJwtGuard } from '../auth/optional-jwt.guard';
+import { CreatePostDto, UpdatePostDto, CreateCommentDto } from './community.dto';
 
 @Controller('community')
 export class CommunityController {
@@ -59,14 +43,14 @@ export class CommunityController {
   @Post('posts')
   @UseGuards(JwtGuard)
   @ApiBearerAuth('jwt')
-  createPost(@Req() req: any, @Body() body: { title: string; content: string; portfolioId?: string }) {
+  createPost(@Req() req: any, @Body() body: CreatePostDto) {
     return this.svc.createPost(req.userId, body);
   }
 
   @Patch('posts/:id')
   @UseGuards(JwtGuard)
   @ApiBearerAuth('jwt')
-  updatePost(@Param('id') id: string, @Req() req: any, @Body() body: { title?: string; content?: string }) {
+  updatePost(@Param('id') id: string, @Req() req: any, @Body() body: UpdatePostDto) {
     return this.svc.updatePost(id, req.userId, body);
   }
 
@@ -93,7 +77,7 @@ export class CommunityController {
   @Post('posts/:id/comments')
   @UseGuards(JwtGuard)
   @ApiBearerAuth('jwt')
-  createComment(@Param('id') id: string, @Req() req: any, @Body() body: { content: string; parentId?: string }) {
+  createComment(@Param('id') id: string, @Req() req: any, @Body() body: CreateCommentDto) {
     return this.svc.createComment(id, req.userId, body);
   }
 

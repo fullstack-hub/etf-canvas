@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { AppShell } from '@/components/app-shell';
 import { PortfolioCard } from '@/components/portfolio-card';
+import type { GalleryPortfolio } from '@/lib/api';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
@@ -12,7 +13,7 @@ async function getByTag(tag: string) {
       cache: 'no-store',
     });
     if (!res.ok) return null;
-    return res.json();
+    return res.json() as Promise<GalleryPortfolio[]>;
   } catch { return null; }
 }
 
@@ -27,7 +28,7 @@ export async function generateMetadata(
     openGraph: {
       title: `#${decoded} 포트폴리오 — ETF Canvas`,
       description: `${decoded} 관련 ETF 포트폴리오 모음`,
-      url: `https://etfcanva.com/gallery/${tag}`,
+      url: `https://etf-canvas.com/gallery/${tag}`,
       siteName: 'ETF Canvas',
     },
   };
@@ -57,7 +58,7 @@ export default async function TagPage({
             <p className="text-muted-foreground text-sm py-12 text-center">해당 태그의 포트폴리오가 없습니다.</p>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {portfolios.map((p: any) => (
+              {portfolios.map((p) => (
                 <PortfolioCard key={p.slug} {...p} />
               ))}
             </div>

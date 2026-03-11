@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware';
 import { toast } from 'sonner';
 import type { ETFSummary } from '@etf-canvas/shared';
 
-const DEFAULT_AMOUNT = 5_000_000; // 종목당 기본 500만원
+const INITIAL_DEFAULT_AMOUNT = 5_000_000; // 종목당 초기 기본 500만원
 
 /** amounts → weights 자동 계산 */
 function deriveWeights(amounts: Record<string, number>, comparing: string[]): Record<string, number> {
@@ -20,6 +20,8 @@ interface CanvasStore {
   // Settings
   colorConvention: 'kr' | 'us';
   setColorConvention: (v: 'kr' | 'us') => void;
+  defaultAmount: number;
+  setDefaultAmount: (v: number) => void;
 
   // View
   currentView: 'canvas' | 'portfolio' | 'gallery' | 'settings' | 'mypage' | 'community';
@@ -75,6 +77,8 @@ interface CanvasStore {
 export const useCanvasStore = create<CanvasStore>()(persist((set, get) => ({
   colorConvention: 'kr' as const,
   setColorConvention: (v) => set({ colorConvention: v }),
+  defaultAmount: INITIAL_DEFAULT_AMOUNT,
+  setDefaultAmount: (v) => set({ defaultAmount: v }),
 
   currentView: 'canvas',
   setCurrentView: (view) => set({ currentView: view, communityPostId: null, ...(view !== 'canvas' ? { feedbackMinimized: true } : {}) }),
@@ -104,7 +108,7 @@ export const useCanvasStore = create<CanvasStore>()(persist((set, get) => ({
     const newSelected = [...selected, etf];
     const newComparing = [...comparing, etf.code];
     // 새 ETF에 기본 금액 부여, 기존 유지
-    const newAmounts = { ...get().amounts, [etf.code]: DEFAULT_AMOUNT };
+    const newAmounts = { ...get().amounts, [etf.code]: get().defaultAmount };
     const newWeights = deriveWeights(newAmounts, newComparing);
     set({ selected: newSelected, comparing: newComparing, amounts: newAmounts, weights: newWeights, synthesized: false });
   },
@@ -132,7 +136,7 @@ export const useCanvasStore = create<CanvasStore>()(persist((set, get) => ({
     } else {
       // 추가: 새 ETF에 기본 금액, 기존 유지
       const newComparing = [...comparing, code];
-      const newAmounts = { ...amounts, [code]: DEFAULT_AMOUNT };
+      const newAmounts = { ...amounts, [code]: get().defaultAmount };
       const newWeights = deriveWeights(newAmounts, newComparing);
       set({ comparing: newComparing, amounts: newAmounts, weights: newWeights, synthesized: false });
     }

@@ -71,7 +71,7 @@ export function MypageView() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: (data: Record<string, any>) => api.updateMe(data),
+    mutationFn: (data: Record<string, string | boolean | null>) => api.updateMe(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['user-me'] });
     },
@@ -84,7 +84,7 @@ export function MypageView() {
   const [editingNickname, setEditingNickname] = useState(false);
   const [nicknameInput, setNicknameInput] = useState('');
 
-  const handleFieldUpdate = (field: string, value: any) => {
+  const handleFieldUpdate = (field: string, value: string | boolean | null) => {
     updateMutation.mutate({ [field]: value });
   };
 
@@ -131,7 +131,7 @@ export function MypageView() {
     );
   }
 
-  const providerKey = me.provider || (session as any)?.idp || null;
+  const providerKey = me.provider || session?.idp || null;
   const provider = providerKey ? PROVIDER_MAP[providerKey] : null;
   const initial = (me.nickname || me.name || session?.user?.name || 'U').charAt(0).toUpperCase();
 

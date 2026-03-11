@@ -7,18 +7,7 @@ import Link from 'next/link';
 import { Heart, MessageCircle, Trash2, Clock, MoreHorizontal } from 'lucide-react';
 import { api } from '@/lib/api';
 import type { CommunityComment } from '@/lib/api';
-
-function timeAgo(dateStr: string) {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const m = Math.floor(diff / 60000);
-  if (m < 1) return '방금';
-  if (m < 60) return `${m}분 전`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}시간 전`;
-  const d = Math.floor(h / 24);
-  if (d < 30) return `${d}일 전`;
-  return new Date(dateStr).toLocaleDateString('ko-KR');
-}
+import { timeAgo } from '@/lib/utils';
 
 export function CommunityCommentItem({
   comment,
@@ -90,7 +79,7 @@ export function CommunityCommentItem({
     replyMutation.mutate(replyText.trim());
   };
 
-  const isAuthor = session?.user && comment.author.keycloakId === (session.user as any).id;
+  const isAuthor = session?.user && comment.author.keycloakId === session.user.id;
   const isPostAuthor = comment.author.keycloakId === postAuthorId;
   const badges: string[] = [];
   if (comment.author.showInvestExp && comment.author.investExp) badges.push(comment.author.investExp);
