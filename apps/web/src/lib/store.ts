@@ -24,6 +24,8 @@ interface CanvasStore {
   // View
   currentView: 'canvas' | 'portfolio' | 'gallery' | 'settings' | 'mypage' | 'community';
   setCurrentView: (view: 'canvas' | 'portfolio' | 'gallery' | 'settings' | 'mypage' | 'community') => void;
+  communityPostId: string | null;
+  setCommunityPostId: (id: string | null) => void;
 
   // ETF selection (left panel)
   selectedEtfCode: string | null;
@@ -75,7 +77,9 @@ export const useCanvasStore = create<CanvasStore>()(persist((set, get) => ({
   setColorConvention: (v) => set({ colorConvention: v }),
 
   currentView: 'canvas',
-  setCurrentView: (view) => set({ currentView: view, ...(view !== 'canvas' ? { feedbackMinimized: true } : {}) }),
+  setCurrentView: (view) => set({ currentView: view, communityPostId: null, ...(view !== 'canvas' ? { feedbackMinimized: true } : {}) }),
+  communityPostId: null,
+  setCommunityPostId: (id) => set({ communityPostId: id }),
 
   selectedEtfCode: null,
   selectEtf: (code) => set({ selectedEtfCode: code }),

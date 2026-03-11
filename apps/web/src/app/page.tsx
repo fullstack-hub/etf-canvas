@@ -25,12 +25,19 @@ export default function HomePage() {
   const { performanceExpanded, synthesized, currentView, feedbackEnabled, feedbackLoading, feedbackText, feedbackActions, setBrowseCategory, setCurrentView } = useCanvasStore();
   const authed = useIsAuthed();
 
+  const { setCommunityPostId } = useCanvasStore();
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('view') === 'canvas') {
       setCurrentView('canvas');
     }
-  }, [setCurrentView]);
+    if (params.get('view') === 'community') {
+      setCurrentView('community');
+      const postId = params.get('post');
+      if (postId) setCommunityPostId(postId);
+    }
+  }, [setCurrentView, setCommunityPostId]);
 
   if (!authed) return <LandingPage />;
 

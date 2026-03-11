@@ -85,6 +85,7 @@ export class CommunityService {
       include: {
         author: { select: AUTHOR_SELECT },
         category: { select: { slug: true, name: true } },
+        portfolio: { select: { name: true, slug: true, items: true, returnRate: true, tags: true } },
       },
     });
     if (!post || post.isHidden) throw new NotFoundException();

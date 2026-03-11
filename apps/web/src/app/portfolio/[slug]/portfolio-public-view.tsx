@@ -2,9 +2,8 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
-import { ArrowLeft } from 'lucide-react';
+
 import { IconSidebar } from '@/components/icon-sidebar';
 import { AttributePanel } from '@/components/attribute-panel';
 import { SnapshotSection } from '@/components/snapshot-section';
@@ -26,7 +25,7 @@ interface PortfolioData {
 }
 
 export function PortfolioPublicView({ data }: { data: PortfolioData }) {
-  const router = useRouter();
+
   const [period, setPeriod] = useState('1y');
 
   return (
@@ -36,13 +35,6 @@ export function PortfolioPublicView({ data }: { data: PortfolioData }) {
         <div className="max-w-5xl mx-auto px-6 md:px-8 lg:px-10 py-8 flex flex-col gap-8 pb-10">
           {/* 헤더 */}
           <div className="border-b pb-4">
-            <button
-              onClick={() => router.back()}
-              className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-3"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              뒤로가기
-            </button>
             <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-foreground">{data.name}</h1>
             <p className="text-sm text-muted-foreground mt-2 flex items-center gap-2 font-medium">
               저장일: {new Date(data.createdAt).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}

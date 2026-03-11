@@ -92,6 +92,8 @@ model Portfolio {
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @default(now()) @map("updated_at") @updatedAt
 
+  posts Post[]
+
   @@index([userId])
   @@index([userId, id])
   @@index([userId, isDraft])
@@ -179,11 +181,12 @@ model Post {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  author   User         @relation(fields: [authorId], references: [keycloakId])
-  category PostCategory @relation(fields: [categoryId], references: [id])
-  comments Comment[]
-  likes    PostLike[]
-  views    PostView[]
+  author    User         @relation(fields: [authorId], references: [keycloakId])
+  category  PostCategory @relation(fields: [categoryId], references: [id])
+  portfolio Portfolio?   @relation(fields: [portfolioId], references: [id])
+  comments  Comment[]
+  likes     PostLike[]
+  views     PostView[]
 
   @@index([categoryId, createdAt(sort: Desc)])
   @@index([createdAt(sort: Desc)])

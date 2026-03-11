@@ -271,6 +271,7 @@ export interface CommunityPostDetail extends Omit<CommunityPost, 'contentPreview
   content: string;
   liked: boolean;
   author: CommunityPost['author'] & { keycloakId: string };
+  portfolio: { name: string; slug: string; items: { code: string; name: string; weight: number }[]; returnRate: number | null; tags: string[] } | null;
 }
 
 export interface CommunityComment {
