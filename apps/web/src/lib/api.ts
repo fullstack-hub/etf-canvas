@@ -178,4 +178,34 @@ export const api = {
     const qs = params.toString();
     return fetcher<{ total: number; filtered: number }>(`/etf/count${qs ? `?${qs}` : ''}`);
   },
+
+  // User
+  getMe: () =>
+    fetcher<{
+      id: string;
+      keycloakId: string;
+      nickname: string | null;
+      name: string | null;
+      phone: string | null;
+      age: string | null;
+      gender: string | null;
+      investExp: string | null;
+      investStyle: string | null;
+      showAge: boolean;
+      showGender: boolean;
+      showInvestExp: boolean;
+      showInvestStyle: boolean;
+      thirdPartyConsent: boolean;
+      provider: string | null;
+      createdAt: string;
+    }>('/user/me'),
+
+  updateMe: (data: Record<string, any>) =>
+    fetcher<any>('/user/me', {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
+  withdrawMe: () =>
+    fetcher<{ ok: boolean }>('/user/me', { method: 'DELETE' }),
 };

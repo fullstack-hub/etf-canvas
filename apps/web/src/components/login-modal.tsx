@@ -54,6 +54,14 @@ export function LoginModal({ onClose }: { onClose: () => void }) {
             Google로 로그인
           </button>
         </div>
+
+        <p className="text-[11px] text-muted-foreground/60 text-center mt-4 leading-relaxed">
+          계속하면{' '}
+          <a href="/terms" target="_blank" className="underline hover:text-muted-foreground">이용약관</a>,{' '}
+          <a href="/privacy" target="_blank" className="underline hover:text-muted-foreground">개인정보처리방침</a>,{' '}
+          <a href="/privacy#third-party" target="_blank" className="underline hover:text-muted-foreground">제3자 정보제공</a>에
+          동의한 것으로 간주합니다.
+        </p>
       </div>
     </div>
   );

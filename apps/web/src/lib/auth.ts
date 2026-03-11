@@ -17,6 +17,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.idToken = account.id_token;
         token.expiresAt = account.expires_at! * 1000;
         token.provider = account.provider;
+        // Keycloak brokered IDP (kakao, naver, google) from access token
+        try {
+          const payload = JSON.parse(Buffer.from(account.access_token!.split('.')[1], 'base64').toString());
+          if (payload.identity_provider) token.idp = payload.identity_provider;
+        } catch { /* ignore */ }
       }
       if (profile) {
         token.name = profile.name ?? profile.preferred_username;
@@ -55,6 +60,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       session.user.name = token.name;
       session.user.image = token.picture as string | undefined;
       (session as any).accessToken = token.accessToken;
+      (session as any).idp = token.idp;
       (session as any).error = token.error;
       return session;
     },

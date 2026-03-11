@@ -155,8 +155,8 @@ export function PriceChart({ data, compact }: Props) {
           tickFormatter={(v: number) => v.toLocaleString()}
         />
         <Tooltip
-          formatter={(value: number) => [value.toLocaleString() + '원', '종가']}
-          labelFormatter={(label: string) => label}
+          formatter={(value) => [Number(value).toLocaleString() + '원', '종가']}
+          labelFormatter={(label) => String(label)}
         />
         <Line type="monotone" dataKey="close" stroke="hsl(var(--primary))" dot={false} strokeWidth={2} />
       </LineChart>

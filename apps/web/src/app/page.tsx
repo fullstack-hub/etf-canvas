@@ -9,6 +9,7 @@ import { PerformancePanel } from '@/components/performance-panel';
 import { PortfolioList } from '@/components/portfolio-list';
 import { GalleryView } from '@/components/gallery-view';
 import { SettingsView } from '@/components/settings-view';
+import { MypageView } from '@/components/mypage-view';
 import { useCanvasStore } from '@/lib/store';
 
 function useIsAuthed() {
@@ -38,7 +39,9 @@ export default function HomePage() {
         <IconSidebar />
         {currentView === 'canvas' && <LeftPanel />}
         <div className="flex-1 flex min-w-0 bg-background">
-          {currentView === 'settings' ? (
+          {currentView === 'mypage' ? (
+            <MypageView />
+          ) : currentView === 'settings' ? (
             <SettingsView />
           ) : currentView === 'portfolio' ? (
             <PortfolioList />

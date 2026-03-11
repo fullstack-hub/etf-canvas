@@ -6,7 +6,7 @@ export async function GET(req: NextRequest) {
 
   const issuer = process.env.KEYCLOAK_ISSUER!;
   const clientId = process.env.KEYCLOAK_CLIENT_ID!;
-  const origin = req.nextUrl.origin;
+  const origin = process.env.AUTH_URL || req.nextUrl.origin;
 
   const url = new URL(`${issuer}/protocol/openid-connect/logout`);
   if (token?.idToken) url.searchParams.set('id_token_hint', token.idToken as string);

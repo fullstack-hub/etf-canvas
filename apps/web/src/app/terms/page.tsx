@@ -30,13 +30,18 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="text-base font-semibold text-foreground mb-2">5. 서비스 변경 및 중단</h2>
+            <h2 className="text-base font-semibold text-foreground mb-2">5. 회원 탈퇴</h2>
+            <p>이용자는 마이페이지에서 언제든지 회원 탈퇴를 할 수 있습니다. 탈퇴 시 저장된 모든 포트폴리오 및 개인정보가 즉시 삭제되며, 이 작업은 되돌릴 수 없습니다.</p>
+          </section>
+
+          <section>
+            <h2 className="text-base font-semibold text-foreground mb-2">6. 서비스 변경 및 중단</h2>
             <p>서비스 제공자는 운영상 필요한 경우 서비스의 전부 또는 일부를 변경하거나 중단할 수 있습니다.</p>
           </section>
 
           <section>
-            <h2 className="text-base font-semibold text-foreground mb-2">6. 시행일</h2>
-            <p>본 약관은 2026년 3월 7일부터 시행됩니다.</p>
+            <h2 className="text-base font-semibold text-foreground mb-2">7. 시행일</h2>
+            <p>본 약관은 2026년 3월 11일부터 시행됩니다.</p>
           </section>
         </div>
       </div>

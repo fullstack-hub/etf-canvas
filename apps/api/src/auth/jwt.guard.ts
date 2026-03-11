@@ -15,6 +15,7 @@ export class JwtGuard implements CanActivate {
     try {
       const { payload } = await jwtVerify(token, JWKS, { issuer: KEYCLOAK_ISSUER });
       req.userId = payload.sub;
+      req.provider = (payload as any).identity_provider ?? null;
       return true;
     } catch {
       throw new UnauthorizedException();

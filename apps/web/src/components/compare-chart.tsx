@@ -32,7 +32,7 @@ export function CompareChart({ datasets }: Props) {
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis dataKey="date" tickFormatter={(d: string) => d.slice(5)} tick={{ fontSize: 12 }} />
         <YAxis tickFormatter={(v: number) => `${v}%`} tick={{ fontSize: 12 }} />
-        <Tooltip formatter={(value: number) => [`${value}%`, '']} />
+        <Tooltip formatter={(value) => [`${value}%`, '']} />
         <Legend />
         {datasets.map((ds, i) => (
           <Line

@@ -4,6 +4,7 @@ import { RedisModule } from './redis/redis.module';
 import { NaverModule } from './naver/naver.module';
 import { EtfModule } from './etf/etf.module';
 import { PortfolioModule } from './portfolio/portfolio.module';
+import { UserModule } from './user/user.module';
 import { NaverUserinfoProxyController } from './auth/naver-userinfo-proxy.controller';
 
 @Controller()
@@ -21,6 +22,7 @@ class HealthController {
     NaverModule,
     EtfModule,
     PortfolioModule,
+    UserModule,
   ],
   controllers: [HealthController, NaverUserinfoProxyController],
 })

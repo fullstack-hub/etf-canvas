@@ -1,18 +1,17 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSession, signOut } from 'next-auth/react';
+import { useSession } from 'next-auth/react';
 import { usePathname, useRouter } from 'next/navigation';
-import { Layers, LogOut, User, FolderOpen, Trophy, Sun, Moon, Settings } from 'lucide-react';
+import { Layers, User, FolderOpen, Trophy, Sun, Moon, Settings } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { LoginModal } from '@/components/login-modal';
 import { useCanvasStore } from '@/lib/store';
 
 export function IconSidebar() {
   const { data: session } = useSession();
-  const { currentView, setCurrentView, clearCanvas } = useCanvasStore();
+  const { currentView, setCurrentView } = useCanvasStore();
   const [showLogin, setShowLogin] = useState(false);
-  const [showMenu, setShowMenu] = useState(false);
   const { setTheme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -20,7 +19,7 @@ export function IconSidebar() {
   const router = useRouter();
   const isHome = pathname === '/';
 
-  const navigate = (view: 'canvas' | 'gallery' | 'portfolio' | 'settings') => {
+  const navigate = (view: 'canvas' | 'gallery' | 'portfolio' | 'settings' | 'mypage') => {
     if (isHome) {
       setCurrentView(view);
     } else {
@@ -83,55 +82,20 @@ export function IconSidebar() {
           {/* 유저 / 로그인 */}
           <div className="relative">
             {session?.user ? (
-              <>
-                <button
-                  onClick={() => setShowMenu(!showMenu)}
-                  className="w-9 h-9 rounded-lg flex items-center justify-center overflow-hidden hover:ring-2 hover:ring-ring/30 transition-all"
-                  title={session.user.name || '프로필'}
-                >
-                  {session.user.image ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={session.user.image} alt="" width={36} height={36} className="rounded-lg object-cover" />
-                  ) : (
-                    <div className="w-9 h-9 rounded-lg bg-primary/15 text-primary flex items-center justify-center text-[10px] font-bold">
-                      My
-                    </div>
-                  )}
-                </button>
-
-                {showMenu && (
-                  <>
-                    <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
-                    <div className="absolute bottom-0 left-12 ml-1 z-50 w-40 rounded-lg border bg-popover shadow-lg py-1 animate-in fade-in slide-in-from-left-2 duration-150">
-                      <div className="px-3 py-2 border-b">
-                        <p className="text-xs font-medium truncate">{session.user.name}</p>
-                        <p className="text-[10px] text-muted-foreground truncate">{session.user.email}</p>
-                      </div>
-                      <button
-                        onClick={() => { setShowMenu(false); }}
-                        className="flex items-center gap-2 w-full px-3 py-1.5 text-xs hover:bg-muted transition-colors text-left"
-                      >
-                        <User className="w-3.5 h-3.5 text-muted-foreground" />
-                        마이페이지
-                      </button>
-                      <button
-                        onClick={async () => {
-                          setShowMenu(false);
-                          clearCanvas();
-                          const res = await fetch('/api/auth/logout');
-                          const { logoutUrl } = await res.json();
-                          await signOut({ redirect: false });
-                          window.location.href = logoutUrl;
-                        }}
-                        className="flex items-center gap-2 w-full px-3 py-1.5 text-xs hover:bg-destructive/10 text-destructive transition-colors text-left"
-                      >
-                        <LogOut className="w-3.5 h-3.5" />
-                        로그아웃
-                      </button>
-                    </div>
-                  </>
+              <button
+                onClick={() => navigate('mypage')}
+                className={`w-9 h-9 rounded-lg flex items-center justify-center overflow-hidden transition-all ${currentView === 'mypage' ? 'ring-2 ring-primary' : 'hover:ring-2 hover:ring-ring/30'}`}
+                title={session.user.name || '마이페이지'}
+              >
+                {session.user.image ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={session.user.image} alt="" width={36} height={36} className="rounded-lg object-cover" />
+                ) : (
+                  <div className="w-9 h-9 rounded-lg bg-primary/15 text-primary flex items-center justify-center text-[10px] font-bold">
+                    My
+                  </div>
                 )}
-              </>
+              </button>
             ) : (
               <button
                 onClick={() => setShowLogin(true)}
