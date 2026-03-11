@@ -25,7 +25,7 @@ interface PortfolioData {
 async function getPortfolio(slug: string): Promise<PortfolioData | null> {
   try {
     const res = await fetch(`${API_BASE}/portfolio/public/${slug}`, {
-      next: { revalidate: 3600 },
+      cache: 'no-store',
     });
     if (!res.ok) return null;
     return res.json();

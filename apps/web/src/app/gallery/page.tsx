@@ -19,7 +19,7 @@ export const metadata: Metadata = {
 
 async function getTop() {
   try {
-    const res = await fetch(`${API_BASE}/portfolio/public/top?limit=20`, { next: { revalidate: 3600 } });
+    const res = await fetch(`${API_BASE}/portfolio/public/top?limit=20`, { cache: 'no-store' });
     if (!res.ok) return [];
     return res.json();
   } catch { return []; }
@@ -27,7 +27,7 @@ async function getTop() {
 
 async function getTags() {
   try {
-    const res = await fetch(`${API_BASE}/portfolio/public/tags`, { next: { revalidate: 3600 } });
+    const res = await fetch(`${API_BASE}/portfolio/public/tags`, { cache: 'no-store' });
     if (!res.ok) return [];
     return res.json();
   } catch { return []; }

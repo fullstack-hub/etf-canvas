@@ -1,12 +1,16 @@
 import { Controller, Get, Post, Param, Query, Body, UseGuards } from '@nestjs/common';
 import { ApiSecurity } from '@nestjs/swagger';
 import { EtfService } from './etf.service';
+import { PortfolioService } from '../portfolio/portfolio.service';
 import { AdminGuard } from '../auth/admin.guard';
 import type { CompareRequest, SimulateRequest, ETFSortBy } from '@etf-canvas/shared';
 
 @Controller('etf')
 export class EtfController {
-  constructor(private etfService: EtfService) {}
+  constructor(
+    private etfService: EtfService,
+    private portfolioService: PortfolioService,
+  ) {}
 
   @Get('search')
   search(
@@ -39,8 +43,15 @@ export class EtfController {
   @Post('seed')
   @UseGuards(AdminGuard)
   @ApiSecurity('api-key')
-  seed() {
-    return this.etfService.seed();
+  async seed() {
+    const count = await this.etfService.seed();
+    // 갤러리 캐시 워밍 (수익률/MDD/분배금 TOP)
+    await Promise.all([
+      this.portfolioService.getTop(6, 'return'),
+      this.portfolioService.getTop(6, 'mdd'),
+      this.portfolioService.getTop(6, 'dividend'),
+    ]);
+    return count;
   }
 
   @Get(':code')

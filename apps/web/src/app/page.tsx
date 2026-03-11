@@ -38,12 +38,12 @@ export default function HomePage() {
         <IconSidebar />
         {currentView === 'canvas' && <LeftPanel />}
         <div className="flex-1 flex min-w-0 bg-background">
-          {currentView === 'portfolio' ? (
+          {currentView === 'settings' ? (
+            <SettingsView />
+          ) : currentView === 'portfolio' ? (
             <PortfolioList />
           ) : currentView === 'gallery' ? (
             <GalleryView />
-          ) : currentView === 'settings' ? (
-            <SettingsView />
           ) : (
             <div className="flex-1 flex flex-col min-w-0 min-h-0">
               {!(performanceExpanded && synthesized) && <CanvasPanel />}

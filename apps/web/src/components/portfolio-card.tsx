@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { useReturnColors } from '@/lib/return-colors';
 
 interface Props {
   name: string;
@@ -18,6 +19,7 @@ interface Props {
 }
 
 export function PortfolioCard({ name, slug, items, feedbackSnippet, tags, createdAt, sinceReturn: sinceReturnProp, sinceMdd: sinceMddProp, showMdd }: Props) {
+  const rc = useReturnColors();
   const top3 = [...items].sort((a, b) => b.weight - a.weight).slice(0, 3);
   const date = new Date(createdAt).toLocaleDateString('ko-KR');
 
@@ -50,7 +52,7 @@ export function PortfolioCard({ name, slug, items, feedbackSnippet, tags, create
           )
         ) : (
           realReturn != null ? (
-            <span className={`text-sm font-bold ml-2 shrink-0 ${realReturn >= 0 ? 'text-red-500' : 'text-blue-500'}`}>
+            <span className={`text-sm font-bold ml-2 shrink-0 ${rc.cls(realReturn >= 0)}`}>
               {realReturn >= 0 ? '+' : ''}{realReturn.toFixed(1)}%
             </span>
           ) : (

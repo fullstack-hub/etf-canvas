@@ -3,6 +3,7 @@
 import { useTheme } from 'next-themes';
 import { useEffect, useState } from 'react';
 import { Sun, Moon, Monitor } from 'lucide-react';
+import { useCanvasStore } from '@/lib/store';
 
 const THEME_OPTIONS = [
   { value: 'light', label: '라이트', icon: Sun, description: '밝은 화면' },
@@ -12,6 +13,7 @@ const THEME_OPTIONS = [
 
 export function SettingsView() {
   const { theme, setTheme } = useTheme();
+  const { colorConvention, setColorConvention } = useCanvasStore();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => setMounted(true), []);
@@ -53,6 +55,47 @@ export function SettingsView() {
                   </div>
                   <p className="text-[11px] text-muted-foreground/70">{description}</p>
 
+                  {isActive && (
+                    <div className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-primary" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* 상승/하락 색상 */}
+        <section className="mt-10">
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">상승/하락 색상</h2>
+          <div className="grid grid-cols-2 gap-3">
+            {([
+              { value: 'kr' as const, label: '한국식', upColor: 'bg-red-500', downColor: 'bg-blue-500', upLabel: '상승', downLabel: '하락' },
+              { value: 'us' as const, label: '미국식', upColor: 'bg-green-500', downColor: 'bg-red-500', upLabel: '상승', downLabel: '하락' },
+            ]).map(({ value, label, upColor, downColor, upLabel, downLabel }) => {
+              const isActive = colorConvention === value;
+              return (
+                <button
+                  key={value}
+                  onClick={() => setColorConvention(value)}
+                  className={`group relative flex flex-col items-center gap-3 rounded-xl border-2 p-5 transition-all
+                    ${isActive
+                      ? 'border-primary bg-primary/5 shadow-sm'
+                      : 'border-transparent bg-muted/40 hover:bg-muted/70 hover:border-border'
+                    }`}
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-1.5">
+                      <span className={`w-4 h-4 rounded-full ${upColor}`} />
+                      <span className="text-xs text-muted-foreground">{upLabel}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className={`w-4 h-4 rounded-full ${downColor}`} />
+                      <span className="text-xs text-muted-foreground">{downLabel}</span>
+                    </div>
+                  </div>
+                  <span className={`text-sm font-medium ${isActive ? 'text-foreground' : 'text-muted-foreground'}`}>
+                    {label}
+                  </span>
                   {isActive && (
                     <div className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-primary" />
                   )}

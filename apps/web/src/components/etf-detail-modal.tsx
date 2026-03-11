@@ -9,6 +9,7 @@ import {
   CartesianGrid, Tooltip,
 } from 'recharts';
 import { X, TrendingUp, Globe, Building2, Percent, Target, DollarSign, Calendar, BarChart3 } from 'lucide-react';
+import { useReturnColors } from '@/lib/return-colors';
 import type { ETFSummary } from '@etf-canvas/shared';
 
 const PERIODS = ['1m', '3m', '1y', 'ytd', '3y'] as const;
@@ -34,6 +35,7 @@ interface Props {
 }
 
 export function EtfDetailModal({ etf, onClose }: Props) {
+  const rc = useReturnColors();
   const [period, setPeriod] = useState<string>('1y');
 
   useEffect(() => {
@@ -103,7 +105,7 @@ export function EtfDetailModal({ etf, onClose }: Props) {
             <InfoBadge
               icon={<TrendingUp className="w-3.5 h-3.5" />}
               label={etf.oneYearEarnRate != null ? `${etf.oneYearEarnRate > 0 ? '+' : ''}${etf.oneYearEarnRate.toFixed(1)}%` : '-'}
-              valueColor={etf.oneYearEarnRate != null && etf.oneYearEarnRate > 0 ? 'text-red-500' : etf.oneYearEarnRate != null && etf.oneYearEarnRate < 0 ? 'text-blue-500' : undefined}
+              valueColor={etf.oneYearEarnRate != null && etf.oneYearEarnRate > 0 ? rc.upClass : etf.oneYearEarnRate != null && etf.oneYearEarnRate < 0 ? rc.downClass : undefined}
               sublabel="1Y 수익률"
             />
             <InfoBadge icon={<Percent className="w-3.5 h-3.5" />} label={expenseRatio != null ? `${(expenseRatio * 100).toFixed(3)}%` : '-'} sublabel="운용보수" />

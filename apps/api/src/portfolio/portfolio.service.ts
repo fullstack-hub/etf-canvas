@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Inject, forwardRef } from '@nestjs/common';
 import { createHash, randomUUID } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { EtfService } from '../etf/etf.service';
@@ -22,7 +22,7 @@ export interface PortfolioSnapshot {
 export class PortfolioService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly etfService: EtfService,
+    @Inject(forwardRef(() => EtfService)) private readonly etfService: EtfService,
     private readonly redis: RedisService,
     private readonly gemini: GeminiService,
   ) {}
@@ -414,6 +414,27 @@ export class PortfolioService {
       ? Math.round((Math.pow(1 + totalReturn / 100, 365 / calendarDays) - 1) * 10000) / 100
       : totalReturn;
 
+    // 저장일 이후 수령한 분배금 계산
+    let dividendTotal = 0;
+    let dividendCount = 0;
+    try {
+      const allDividends = await Promise.all(
+        codes.map((code) => this.etfService.getDividends(code)),
+      );
+      for (let i = 0; i < codes.length; i++) {
+        const divs = allDividends[i].filter((d) => d.date >= saveDateStr);
+        if (divs.length === 0) continue;
+        // 보유 수량 = 투자금 × (비중/100) / 매수 기준가
+        const shares = etfAmounts[i] / basePrices[i];
+        for (const d of divs) {
+          dividendTotal += Math.round(shares * d.amount);
+          dividendCount++;
+        }
+      }
+    } catch {
+      // 분배금 조회 실패 시 무시
+    }
+
     const result = {
       totalReturn,
       annualizedReturn,
@@ -422,6 +443,8 @@ export class PortfolioService {
       daysSinceSave,
       basisLabel: cutoff.basisLabel,
       basisDate: cutoff.basisDate,
+      dividendTotal,
+      dividendCount,
     };
 
     await this.redis.setJson(cacheKey, result, cutoff.ttl);
@@ -479,9 +502,14 @@ export class PortfolioService {
   }
 
   async getPublic(slug: string) {
+    const cutoff = getMarketDataCutoff();
+    const cacheKey = `portfolio:public:${slug}:${cutoff.cacheKey}`;
+    const cached = await this.redis.getJson<any>(cacheKey);
+    if (cached) return cached;
+
     const p = await this.prisma.portfolio.findUnique({ where: { slug } });
     if (!p) throw new NotFoundException();
-    return {
+    const result = {
       name: p.name,
       slug: p.slug,
       items: p.items,
@@ -495,9 +523,11 @@ export class PortfolioService {
       totalAmount: Number(p.totalAmount),
       createdAt: p.createdAt,
     };
+    await this.redis.setJson(cacheKey, result, cutoff.ttl);
+    return result;
   }
 
-  async getTop(limit: number, sort: 'latest' | 'return' | 'mdd' = 'latest') {
+  async getTop(limit: number, sort: 'latest' | 'return' | 'mdd' | 'dividend' = 'latest') {
     const select = {
       name: true,
       slug: true,
@@ -516,6 +546,10 @@ export class PortfolioService {
         orderBy: { createdAt: 'desc' },
         take: Math.min(limit, 50),
       });
+    }
+
+    if (sort === 'dividend') {
+      return this.getTopByDividend(limit, select);
     }
 
     // 수익률/MDD 정렬: computeSince 기반 + Redis 캐시
@@ -554,6 +588,58 @@ export class PortfolioService {
       sinceMdd,
     }));
     await this.redis.setJson(cacheKey, result, cutoff.ttl);
+    return result;
+  }
+
+  private async getTopByDividend(limit: number, select: Record<string, true>) {
+    const cacheKey = `gallery:top:dividend:${limit}`;
+    const cached = await this.redis.getJson<any[]>(cacheKey);
+    if (cached) return cached;
+
+    const portfolios: any[] = await this.prisma.portfolio.findMany({
+      where: { isDraft: false },
+      select: { id: true, ...select },
+    });
+
+    // 모든 포트폴리오의 ETF 코드 수집
+    const allCodes = new Set<string>();
+    for (const p of portfolios) {
+      const items = p.items as any[];
+      for (const item of items) {
+        if (item.code) allCodes.add(item.code);
+      }
+    }
+
+    // ETF dividendYield 일괄 조회
+    const etfs = await this.prisma.etf.findMany({
+      where: { code: { in: [...allCodes] } },
+      select: { code: true, dividendYield: true },
+    });
+    const yieldMap = new Map<string, number>();
+    for (const etf of etfs) {
+      yieldMap.set(etf.code, etf.dividendYield ? Number(etf.dividendYield) : 0);
+    }
+
+    // 포트폴리오별 가중평균 분배수익률 계산
+    const withDividend = portfolios.map((p: any) => {
+      const items = p.items as { code: string; weight: number }[];
+      const totalWeight = items.reduce((sum, i) => sum + (i.weight || 0), 0);
+      if (totalWeight === 0) return { ...p, weightedDividendYield: 0 };
+
+      const weightedYield = items.reduce((sum, i) => {
+        const dy = yieldMap.get(i.code) || 0;
+        return sum + dy * ((i.weight || 0) / totalWeight);
+      }, 0);
+      return { ...p, weightedDividendYield: Math.round(weightedYield * 100) / 100 };
+    }).filter((p) => p.weightedDividendYield > 0);
+
+    withDividend.sort((a, b) => b.weightedDividendYield - a.weightedDividendYield);
+
+    const result = withDividend.slice(0, Math.min(limit, 50)).map(({ id, weightedDividendYield, ...rest }) => ({
+      ...rest,
+      weightedDividendYield,
+    }));
+    await this.redis.setJson(cacheKey, result, 3600); // 1시간 캐시
     return result;
   }
 
@@ -611,6 +697,7 @@ export class PortfolioService {
     const p = await this.prisma.portfolio.findFirst({ where: { id, userId } });
     if (!p) throw new NotFoundException();
     await this.prisma.portfolio.delete({ where: { id } });
+    await this.redis.del(`portfolio:public:${p.slug}`);
     return { ok: true };
   }
 }

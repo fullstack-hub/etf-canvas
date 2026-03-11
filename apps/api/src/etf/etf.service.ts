@@ -486,10 +486,61 @@ export class EtfService {
 
   async seed(): Promise<number> {
     const count = await this.naver.seedAllEtfs();
-    // 시딩 후 가격 캐시만 초기화 (DB에서 다시 읽도록)
-    // daily_synced는 유지 — 네이버 중복 fetch 방지
+    // 시딩 후 캐시 초기화 (카테고리 변경 등 반영)
+    await this.redis.deletePattern('etf:search:*');
+    await this.redis.deletePattern('etf:count:*');
+    await this.redis.deletePattern('etf:detail:*');
     await this.redis.deletePattern('etf:prices:v4:*');
+    await this.redis.deletePattern('etf:daily_synced:*');
+    await this.redis.deletePattern('portfolio:since:*');
+    await this.redis.deletePattern('gallery:top:*');
+
+    // 저장된 포트폴리오의 ETF 일별 가격 미리 sync
+    await this.syncPortfolioEtfPrices();
+
     return count;
+  }
+
+  /** 저장된 포트폴리오에 포함된 ETF들의 일별 가격을 네이버에서 미리 가져옴 */
+  private async syncPortfolioEtfPrices(): Promise<void> {
+    const portfolios = await this.prisma.portfolio.findMany({
+      where: { isDraft: false },
+      select: { items: true, createdAt: true },
+    });
+
+    // 모든 포트폴리오의 ETF 코드 수집 (중복 제거)
+    const codeSet = new Set<string>();
+    let oldestDate = new Date();
+    for (const p of portfolios) {
+      const items = p.items as { code: string }[];
+      for (const item of items) {
+        if (item.code) codeSet.add(item.code);
+      }
+      if (p.createdAt < oldestDate) oldestDate = p.createdAt;
+    }
+
+    if (codeSet.size === 0) return;
+
+    // 가장 오래된 포트폴리오부터 지금까지 일수 + 여유분
+    const daysSinceOldest = Math.ceil((Date.now() - oldestDate.getTime()) / 86400_000) + 5;
+    const codes = [...codeSet];
+    this.logger.log(`포트폴리오 ETF ${codes.length}개 일별가격 sync (${daysSinceOldest}일)...`);
+
+    // 동시 5개씩 병렬 fetch (네이버 부하 방지)
+    for (let i = 0; i < codes.length; i += 5) {
+      const batch = codes.slice(i, i + 5);
+      await Promise.all(
+        batch.map(async (code) => {
+          try {
+            await this.fetchAndStoreDailyPricesFromNaver(code, daysSinceOldest);
+          } catch (e) {
+            this.logger.warn(`ETF ${code} 일별가격 sync 실패: ${e}`);
+          }
+        }),
+      );
+    }
+
+    this.logger.log(`포트폴리오 ETF 일별가격 sync 완료`);
   }
 
   /**

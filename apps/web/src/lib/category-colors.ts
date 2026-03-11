@@ -1,14 +1,14 @@
 /** 카테고리별 색상 (Tailwind class + hex) — 단일 소스 */
 export const CATEGORY_COLORS: Record<string, { bar: string; bg: string; dot: string; hex: string }> = {
-  '국내 대표지수': { bar: 'bg-blue-500', bg: 'bg-blue-50 dark:bg-blue-950', dot: 'bg-blue-500', hex: '#3b82f6' },
-  '해외 대표지수': { bar: 'bg-teal-500', bg: 'bg-teal-50 dark:bg-teal-950', dot: 'bg-teal-500', hex: '#14b8a6' },
-  '섹터/테마': { bar: 'bg-violet-500', bg: 'bg-violet-50 dark:bg-violet-950', dot: 'bg-violet-500', hex: '#8b5cf6' },
-  '액티브': { bar: 'bg-fuchsia-500', bg: 'bg-fuchsia-50 dark:bg-fuchsia-950', dot: 'bg-fuchsia-500', hex: '#d946ef' },
-  '채권': { bar: 'bg-lime-500', bg: 'bg-lime-50 dark:bg-lime-950', dot: 'bg-lime-500', hex: '#84cc16' },
-  '혼합': { bar: 'bg-cyan-500', bg: 'bg-cyan-50 dark:bg-cyan-950', dot: 'bg-cyan-500', hex: '#06b6d4' },
-  '원자재': { bar: 'bg-amber-500', bg: 'bg-amber-50 dark:bg-amber-950', dot: 'bg-amber-500', hex: '#f59e0b' },
-  '레버리지/인버스': { bar: 'bg-rose-500', bg: 'bg-rose-50 dark:bg-rose-950', dot: 'bg-rose-500', hex: '#f43f5e' },
-  _default: { bar: 'bg-gray-400', bg: 'bg-gray-50 dark:bg-gray-900', dot: 'bg-gray-400', hex: '#9ca3af' },
+  '국내 대표지수': { bar: 'bg-blue-500', bg: 'bg-blue-500', dot: 'bg-blue-500', hex: '#3b82f6' },
+  '해외 대표지수': { bar: 'bg-teal-500', bg: 'bg-teal-500', dot: 'bg-teal-500', hex: '#14b8a6' },
+  '섹터/테마': { bar: 'bg-violet-500', bg: 'bg-violet-500', dot: 'bg-violet-500', hex: '#8b5cf6' },
+  '액티브': { bar: 'bg-fuchsia-500', bg: 'bg-fuchsia-500', dot: 'bg-fuchsia-500', hex: '#d946ef' },
+  '채권': { bar: 'bg-lime-500', bg: 'bg-lime-500', dot: 'bg-lime-500', hex: '#84cc16' },
+  '혼합': { bar: 'bg-cyan-500', bg: 'bg-cyan-500', dot: 'bg-cyan-500', hex: '#06b6d4' },
+  '원자재': { bar: 'bg-amber-500', bg: 'bg-amber-500', dot: 'bg-amber-500', hex: '#f59e0b' },
+  '레버리지/인버스': { bar: 'bg-rose-500', bg: 'bg-rose-500', dot: 'bg-rose-500', hex: '#f43f5e' },
+  _default: { bar: 'bg-gray-400', bg: 'bg-gray-400', dot: 'bg-gray-400', hex: '#9ca3af' },
 };
 
 export function getCatColor(category?: string) {
@@ -19,3 +19,4 @@ export function getCatColor(category?: string) {
 export function getCatHex(category?: string): string {
   return getCatColor(category).hex;
 }
+

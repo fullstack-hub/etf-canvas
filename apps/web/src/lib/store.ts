@@ -17,6 +17,10 @@ function deriveWeights(amounts: Record<string, number>, comparing: string[]): Re
 }
 
 interface CanvasStore {
+  // Settings
+  colorConvention: 'kr' | 'us';
+  setColorConvention: (v: 'kr' | 'us') => void;
+
   // View
   currentView: 'canvas' | 'portfolio' | 'gallery' | 'settings';
   setCurrentView: (view: 'canvas' | 'portfolio' | 'gallery' | 'settings') => void;
@@ -67,6 +71,9 @@ interface CanvasStore {
 }
 
 export const useCanvasStore = create<CanvasStore>()(persist((set, get) => ({
+  colorConvention: 'kr' as const,
+  setColorConvention: (v) => set({ colorConvention: v }),
+
   currentView: 'canvas',
   setCurrentView: (view) => set({ currentView: view, ...(view !== 'canvas' ? { feedbackMinimized: true } : {}) }),
 

@@ -31,8 +31,10 @@ export interface MarketDataCutoff {
 /**
  * 현재 시각 기준 시세 데이터 경계 계산
  *
- * - 18시 전: cutoff = 오늘(KST) → date < today → 어제까지 포함
- * - 18시 후: cutoff = 내일(KST) → date < tomorrow → 오늘까지 포함
+ * - 16시 전: cutoff = 오늘(KST) → date < today → 어제까지 포함
+ * - 16시 후: cutoff = 내일(KST) → date < tomorrow → 오늘까지 포함
+ *
+ * 캐시 키는 basisDate(최신 종가 날짜) 기준 → 16시~다음날 16시 동일 키
  */
 export function getMarketDataCutoff(): MarketDataCutoff {
   const now = Date.now();
@@ -41,44 +43,38 @@ export function getMarketDataCutoff(): MarketDataCutoff {
   const kstTodayStr = kst.toISOString().slice(0, 10);
   const isPostClose = kstHour >= DATA_CUTOFF_HOUR_KST;
 
+  // 다음 16시(KST) UTC 타임스탬프 → TTL 계산용
+  const next16 = new Date(kstTodayStr + 'T00:00:00.000Z');
+  next16.setUTCHours(DATA_CUTOFF_HOUR_KST);
+  if (isPostClose) next16.setUTCDate(next16.getUTCDate() + 1);
+  const next16Utc = next16.getTime() - 9 * 3600_000;
+  const ttl = Math.max(60, Math.floor((next16Utc - now) / 1000));
+
   if (isPostClose) {
-    // 18시 후: 오늘 종가 포함
+    // 16시 후: 오늘 종가 포함, 다음날 16시까지 캐시
     const tomorrowDate = new Date(kstTodayStr + 'T00:00:00.000Z');
     tomorrowDate.setUTCDate(tomorrowDate.getUTCDate() + 1);
 
-    // 어제(KST) 날짜: 마지막 거래일 찾기는 복잡하므로 오늘을 기준일로 표시
-    // TTL: KST 자정까지 (자정에 todayStr이 바뀌므로 캐시 키 자동 갱신)
-    const kstMidnight = new Date(kstTodayStr + 'T00:00:00.000Z');
-    kstMidnight.setUTCDate(kstMidnight.getUTCDate() + 1);
-    const midnightUtc = kstMidnight.getTime() - 9 * 3600_000;
-
     return {
       cutoffDate: tomorrowDate,
-      cacheKey: `${kstTodayStr}:post`,
+      cacheKey: kstTodayStr,
       basisDate: kstTodayStr,
       basisLabel: '오늘 종가 기준',
-      ttl: Math.max(60, Math.floor((midnightUtc - now) / 1000)),
+      ttl,
       isPostClose: true,
     };
   } else {
-    // 18시 전: 어제 종가까지만
+    // 16시 전: 어제 종가까지만, 오늘 16시까지 캐시
     const todayDate = new Date(kstTodayStr + 'T00:00:00.000Z');
-
-    // 어제(KST) 날짜
     const yesterdayKst = new Date(kst.getTime() - 86400_000);
     const yesterdayStr = yesterdayKst.toISOString().slice(0, 10);
 
-    // TTL: 18시(KST)까지
-    const cutoffTime = new Date(kstTodayStr + 'T00:00:00.000Z');
-    cutoffTime.setUTCHours(DATA_CUTOFF_HOUR_KST);
-    const cutoffUtc = cutoffTime.getTime() - 9 * 3600_000;
-
     return {
       cutoffDate: todayDate,
-      cacheKey: `${kstTodayStr}:pre`,
+      cacheKey: yesterdayStr,
       basisDate: yesterdayStr,
       basisLabel: '어제 종가 기준',
-      ttl: Math.max(60, Math.floor((cutoffUtc - now) / 1000)),
+      ttl,
       isPostClose: false,
     };
   }
@@ -91,11 +87,11 @@ export function getNaverFetchCutoffDate(): string {
   const kstTodayStr = kst.toISOString().slice(0, 10);
 
   if (kstHour >= DATA_CUTOFF_HOUR_KST) {
-    // 18시 후: 오늘 데이터 포함 → 내일 날짜를 cutoff으로
+    // 16시 후: 오늘 데이터 포함 → 내일 날짜를 cutoff으로
     const tomorrow = new Date(kstTodayStr + 'T00:00:00.000Z');
     tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
     return tomorrow.toISOString().slice(0, 10);
   }
-  // 18시 전: 오늘 데이터 제외
+  // 16시 전: 오늘 데이터 제외
   return kstTodayStr;
 }

@@ -357,8 +357,8 @@ function EtfCard({
       ref={cardRef}
       className={`group relative rounded-lg overflow-visible select-none cursor-pointer transition-[box-shadow,border-color,opacity] duration-200
         ${isComparing
-          ? 'shadow-md ring-1 ring-foreground/70'
-          : 'shadow-sm hover:shadow-md border border-border/50 hover:border-border'
+          ? 'shadow-md'
+          : 'shadow-sm hover:shadow-md'
         }
         ${dimmed ? 'opacity-65 hover:opacity-95' : ''}`}
       onClick={() => {
@@ -368,7 +368,7 @@ function EtfCard({
     >
       {/* Header */}
       <div className={`flex items-center justify-between px-2.5 h-7 rounded-t-lg ${catColor.bg}`}>
-        <span className="text-[10px] font-semibold truncate text-foreground/70">
+        <span className="text-[10px] font-semibold truncate text-white">
           {cat || ''}
         </span>
         <button
@@ -376,14 +376,15 @@ function EtfCard({
             e.stopPropagation();
             onToggleCompare();
           }}
-          className={`w-4 h-4 rounded-full border-[1.5px] flex items-center justify-center transition-colors shrink-0
+          className={`w-5 h-5 rounded-full border-[1.5px] flex items-center justify-center transition-colors shrink-0
             ${isComparing
-              ? 'bg-foreground border-foreground text-background'
-              : 'border-muted-foreground/30 hover:border-muted-foreground/60 disabled:opacity-20'
+              ? 'bg-white border-white'
+              : 'border-white/40 hover:border-white/70 disabled:opacity-20'
             }`}
+          style={isComparing ? { color: catColor.hex } : undefined}
           title={isComparing ? '선택 해제' : '합성 대상 선택'}
         >
-          {isComparing && <Check className="w-2.5 h-2.5" strokeWidth={3} />}
+          {isComparing && <Check className="w-3 h-3" strokeWidth={3} />}
         </button>
       </div>
 
@@ -424,21 +425,19 @@ function EtfCard({
         </div>
       </div>
 
-      {/* Amount controls (only when comparing) */}
-      {isComparing && (
-        <div
-          className="bg-card border-t px-2.5 py-2 rounded-b-lg space-y-1"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="flex items-center gap-1.5">
-            <span className="text-[10px] font-medium text-muted-foreground/70 shrink-0 tabular-nums w-[40px]">
-              {weight.toFixed(1)}%
-            </span>
-            <AmountInput value={amount / 10000} onChange={(v) => onAmountChange(v * 10000)} />
-            <span className="text-[10px] text-muted-foreground shrink-0">만원</span>
-          </div>
+      {/* Amount controls */}
+      <div
+        className="bg-card border-t px-2.5 py-2 rounded-b-lg space-y-1"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center gap-1.5">
+          <span className="text-[10px] font-medium text-muted-foreground/70 shrink-0 tabular-nums w-[40px]">
+            {isComparing ? `${weight.toFixed(1)}%` : '—'}
+          </span>
+          <AmountInput value={amount / 10000} onChange={(v) => onAmountChange(v * 10000)} />
+          <span className="text-[10px] text-muted-foreground shrink-0">만원</span>
         </div>
-      )}
+      </div>
 
       {/* Context menu — portaled to body to escape grid stacking */}
       {ctxMenu && typeof window !== 'undefined' && createPortal(

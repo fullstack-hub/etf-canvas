@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useCanvasStore } from '@/lib/store';
 import { X, Loader2 } from 'lucide-react';
+import { useReturnColors } from '@/lib/return-colors';
 import { Button } from '@/components/ui/button';
 import type { ETFSummary } from '@etf-canvas/shared';
 
@@ -14,6 +15,7 @@ interface Props {
 }
 
 export function SimilarEtfModal({ etf, onClose }: Props) {
+  const rc = useReturnColors();
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
   const { replaceOnCanvas } = useCanvasStore();
 
@@ -126,9 +128,9 @@ export function SimilarEtfModal({ etf, onClose }: Props) {
                       </td>
                       <td className={`py-2.5 text-right tabular-nums ${
                         c.threeMonthEarnRate != null && c.threeMonthEarnRate > 0
-                          ? 'text-red-500'
+                          ? rc.upClass
                           : c.threeMonthEarnRate != null && c.threeMonthEarnRate < 0
-                          ? 'text-blue-500'
+                          ? rc.downClass
                           : 'text-muted-foreground'
                       }`}>
                         {c.threeMonthEarnRate != null

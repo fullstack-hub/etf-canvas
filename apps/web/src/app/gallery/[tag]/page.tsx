@@ -8,7 +8,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 async function getByTag(tag: string) {
   try {
     const res = await fetch(`${API_BASE}/portfolio/public/by-tag/${encodeURIComponent(tag)}`, {
-      next: { revalidate: 3600 },
+      cache: 'no-store',
     });
     if (!res.ok) return null;
     return res.json();

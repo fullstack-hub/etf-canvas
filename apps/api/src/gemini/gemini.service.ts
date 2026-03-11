@@ -17,6 +17,9 @@ const VALID_CATEGORIES = [
   '채권', '혼합', '원자재', '레버리지/인버스',
 ];
 
+const MAX_TAG_LEN = 10;
+const MAX_TAGS = 5;
+
 export const FALLBACK_MSG = '피드백을 생성할 수 없어요.';
 const FALLBACK: FeedbackResult = { feedback: FALLBACK_MSG, actions: [], tags: [], snippet: '' };
 
@@ -72,10 +75,15 @@ JSON으로만 응답해:
   "feedback": "3~5문장 한국어 피드백 (포트폴리오 구성 분석 + 현재 시장 상황과의 관계)",
   "actions": [{ "category": "정확한 카테고리명", "label": "{카테고리명} ETF 조회하기" }],
   "tags": ["고배당", "미국주식", "성장주"],
-  "snippet": "이 포트폴리오의 핵심 특징을 1문장으로 요약"
+  "snippet": "포트폴리오 핵심 특징 요약 (50자 내외)"
 }
-tags 규칙: 투자전략(고배당, 성장주, 인컴), 지역(미국주식, 국내, 일본), 자산(채권, 금, 원자재), 테마(AI, 반도체, 인플레이션방어) 중 2~5개
-snippet 규칙: 검색엔진 노출용 1줄 요약, 50자 내외`;
+tags 규칙:
+- 포트폴리오 특성을 나타내는 한국어 해시태그를 2~5개 생성해.
+- ETF 이름, 카테고리, 투자 전략을 분석해서 적절한 태그를 자유롭게 만들어.
+- 태그는 짧고 직관적으로 (2~5글자 권장). 예: 고배당, AI, 반도체, 월배당, 미국주식, 성장주, 채권, 분산투자
+- ETF 이름에 "월배당", "배당", "인컴", "커버드콜", "프리미엄" 등이 포함되면 월배당/고배당/인컴 태그를 적극 고려해.
+- 참고 태그 예시: 고배당, 성장주, 인컴, 가치주, 배당성장, 월배당, 미국주식, 국내, 일본, 중국, 글로벌, 채권, 금, 원자재, AI, 반도체, 2차전지, 바이오, 친환경, 방산, 우주항공, 대형주, 중소형주, 분산투자, 레버리지, 인버스
+snippet 규칙: 포트폴리오 핵심 특징 요약, 50자 내외`;
 
     for (const model of [GEMINI_PRIMARY, GEMINI_FALLBACK_MODEL]) {
       try {
@@ -112,7 +120,9 @@ snippet 규칙: 검색엔진 노출용 1줄 요약, 50자 내외`;
           actions: (Array.isArray(raw.actions) ? raw.actions : []).filter(
             (a: any) => typeof a?.category === 'string' && VALID_CATEGORIES.includes(a.category) && typeof a?.label === 'string' && a.label,
           ),
-          tags: (Array.isArray(raw.tags) ? raw.tags : []).filter((t: any) => typeof t === 'string').slice(0, 5),
+          tags: (Array.isArray(raw.tags) ? raw.tags : [])
+            .filter((t: any) => typeof t === 'string' && t.length > 0 && t.length <= MAX_TAG_LEN)
+            .slice(0, MAX_TAGS),
           snippet: typeof raw.snippet === 'string' ? raw.snippet.slice(0, 100) : '',
         };
 

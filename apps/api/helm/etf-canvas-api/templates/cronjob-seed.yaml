@@ -39,10 +39,13 @@ spec:
                     --max-time 300 2>&1)
                   EXIT_CODE=$?
 
+                  # JSON 특수문자 escape
+                  SAFE=$(printf '%s' "$RESULT" | sed 's/\\/\\\\/g; s/"/\\"/g' | tr '\n' ' ')
+
                   if [ $EXIT_CODE -eq 0 ]; then
-                    PAYLOAD="{\"content\":\"✅ **ETF 시딩 완료**\n${RESULT}\"}"
+                    PAYLOAD="{\"content\":\"✅ **ETF 시딩 완료**\n${SAFE}\"}"
                   else
-                    PAYLOAD="{\"content\":\"❌ **ETF 시딩 실패** (exit: ${EXIT_CODE})\n${RESULT}\"}"
+                    PAYLOAD="{\"content\":\"❌ **ETF 시딩 실패** (exit: ${EXIT_CODE})\n${SAFE}\"}"
                   fi
 
                   curl -sf -H "Content-Type: application/json" \

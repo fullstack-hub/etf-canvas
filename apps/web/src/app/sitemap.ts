@@ -11,8 +11,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   try {
     const [slugsRes, tagsRes] = await Promise.all([
-      fetch(`${API_BASE}/portfolio/public/slugs`, { next: { revalidate: 3600 } }),
-      fetch(`${API_BASE}/portfolio/public/tags`, { next: { revalidate: 3600 } }),
+      fetch(`${API_BASE}/portfolio/public/slugs`, { cache: 'no-store' }),
+      fetch(`${API_BASE}/portfolio/public/tags`, { cache: 'no-store' }),
     ]);
 
     if (slugsRes.ok) {

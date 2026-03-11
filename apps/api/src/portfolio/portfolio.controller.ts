@@ -35,7 +35,7 @@ export class PortfolioController {
 
   @Get('public/top')
   getTop(@Query('limit') limit?: string, @Query('sort') sort?: string) {
-    const validSort = ['latest', 'return', 'mdd'].includes(sort || '') ? sort as 'latest' | 'return' | 'mdd' : 'latest';
+    const validSort = ['latest', 'return', 'mdd', 'dividend'].includes(sort || '') ? sort as 'latest' | 'return' | 'mdd' | 'dividend' : 'latest';
     return this.svc.getTop(Number(limit) || 20, validSort);
   }
 

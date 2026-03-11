@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { Loader2, ChevronDown } from 'lucide-react';
+import { useReturnColors } from '@/lib/return-colors';
 
 export const PERIODS = [
   { key: '1m', label: '1개월' },
@@ -19,6 +20,7 @@ export function SnapshotSection({ items, period, onPeriodChange, totalAmount: to
   onPeriodChange: (p: string) => void;
   totalAmount?: number;
 }) {
+  const rc = useReturnColors();
   const totalAmount = (totalAmountProp && !isNaN(totalAmountProp)) ? totalAmountProp : 100000000;
   const [expanded, setExpanded] = useState(false);
   const nameMap = new Map(items.map(i => [i.code, i.name]));
@@ -91,13 +93,13 @@ export function SnapshotSection({ items, period, onPeriodChange, totalAmount: to
           <div className="grid grid-cols-4 gap-3">
             <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
               <p className="text-xs text-muted-foreground mb-1">수익률</p>
-              <p className={`text-2xl font-bold tabular-nums ${simData.totalReturn >= 0 ? 'text-red-500' : 'text-blue-500'}`}>
+              <p className={`text-2xl font-bold tabular-nums ${rc.cls(simData.totalReturn >= 0)}`}>
                 {simData.totalReturn >= 0 ? '+' : ''}{simData.totalReturn.toFixed(2)}%
               </p>
             </div>
             <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
               <p className="text-xs text-muted-foreground mb-1">연환산</p>
-              <p className={`text-2xl font-bold tabular-nums ${(simData.annualizedReturn ?? 0) >= 0 ? 'text-red-500' : 'text-blue-500'}`}>
+              <p className={`text-2xl font-bold tabular-nums ${rc.cls((simData.annualizedReturn ?? 0) >= 0)}`}>
                 {(simData.annualizedReturn ?? 0) >= 0 ? '+' : ''}{(simData.annualizedReturn ?? 0).toFixed(2)}%
               </p>
             </div>
@@ -141,7 +143,7 @@ export function SnapshotSection({ items, period, onPeriodChange, totalAmount: to
                             <p className="text-[11px] text-muted-foreground">{etf.code}</p>
                           </td>
                           <td className="text-right px-4 py-2.5 tabular-nums text-muted-foreground">{etf.weight}%</td>
-                          <td className={`text-right px-4 py-2.5 font-bold tabular-nums ${etf.returnRate >= 0 ? 'text-red-500' : 'text-blue-500'}`}>
+                          <td className={`text-right px-4 py-2.5 font-bold tabular-nums ${rc.cls(etf.returnRate >= 0)}`}>
                             {etf.returnRate >= 0 ? '+' : ''}{etf.returnRate.toFixed(2)}%
                           </td>
                           <td className="text-right px-4 py-2.5 tabular-nums">{etf.maxDrawdown != null ? `${etf.maxDrawdown.toFixed(1)}%` : '-'}</td>

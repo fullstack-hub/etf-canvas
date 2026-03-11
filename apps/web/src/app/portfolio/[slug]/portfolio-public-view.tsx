@@ -49,6 +49,19 @@ export function PortfolioPublicView({ data }: { data: PortfolioData }) {
               <span className="inline-block w-1.5 h-1.5 rounded-full bg-muted-foreground/30" />
               {data.items.length}개 종목 구성
             </p>
+            {data.tags.length > 0 && (
+              <div className="flex gap-1.5 flex-wrap mt-2">
+                {data.tags.map((tag) => (
+                  <Link
+                    key={tag}
+                    href={`/gallery/${encodeURIComponent(tag)}`}
+                    className="px-2 py-0.5 rounded-md bg-muted text-[11px] text-muted-foreground hover:bg-muted/80 transition-colors"
+                  >
+                    #{tag}
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* 실전 시뮬레이션 + 성과 지표 */}
@@ -71,21 +84,6 @@ export function PortfolioPublicView({ data }: { data: PortfolioData }) {
 
           {/* 구성 종목 */}
           <HoldingsSection items={data.items} />
-
-          {/* 태그 */}
-          {data.tags.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {data.tags.map((tag) => (
-                <Link
-                  key={tag}
-                  href={`/gallery/${encodeURIComponent(tag)}`}
-                  className="px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium hover:bg-primary/20 transition-colors"
-                >
-                  #{tag}
-                </Link>
-              ))}
-            </div>
-          )}
 
           {/* CTA */}
           <section className="text-center py-8 border-t">

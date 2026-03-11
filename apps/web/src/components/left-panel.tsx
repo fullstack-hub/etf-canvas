@@ -11,6 +11,7 @@ import {
   ChevronUp, ChevronDown, BarChart3, Globe, Crosshair,
   FileText, Gem, ArrowUpDown, Blend, Zap, Sparkles, X,
 } from 'lucide-react';
+import { useReturnColors } from '@/lib/return-colors';
 import type { ETFSummary, ETFSortBy } from '@etf-canvas/shared';
 
 const CATEGORY_STYLES: Record<string, { active: string; icon: string }> = {
@@ -38,6 +39,7 @@ const categories = [
 ];
 
 export function LeftPanel() {
+  const rc = useReturnColors();
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [category, setCategory] = useState('국내 대표지수');
@@ -272,16 +274,26 @@ export function LeftPanel() {
       {selectedEtfCode && selectedDetail && (() => {
         const selEtf = selectedEtf;
         const periodLabel = chartPeriod === '3m' ? '3M' : '1Y';
-        const rate = chartPeriod === '3m'
+        let rate = chartPeriod === '3m'
           ? selEtf?.threeMonthEarnRate ?? null
           : selEtf?.oneYearEarnRate ?? null;
+
+        // API에서 수익률을 주지 않았지만 렌더링된 차트 데이터가 존재한다면 자체 계산 (신규 상장 ETF 등)
+        if (rate === null && selectedPrices && selectedPrices.length > 0) {
+          const first = selectedPrices[0].close;
+          const last = selectedPrices[selectedPrices.length - 1].close;
+          if (first > 0) {
+            rate = ((last - first) / first) * 100;
+          }
+        }
+
         return (
           <div className="border-t px-3 py-2">
             <p className="text-xs font-bold text-foreground leading-tight">{selectedDetail.name}</p>
             <p className="text-[10px] text-muted-foreground mt-0.5">
               {periodLabel} 수익률{' '}
               {rate !== null ? (
-                <span className={`font-bold ${rate > 0 ? 'text-red-500' : rate < 0 ? 'text-blue-500' : ''}`}>
+                <span className={`font-bold ${rate > 0 ? rc.upClass : rate < 0 ? rc.downClass : ''}`}>
                   {rate > 0 ? '+' : ''}{rate.toFixed(1)}%
                 </span>
               ) : '-'}
@@ -388,10 +400,11 @@ function EtfListItem({
 }
 
 function ReturnRateLabel({ rate }: { rate: number | null }) {
+  const rc = useReturnColors();
   return (
     <span className={`text-xs shrink-0 text-right tabular-nums ${
-      rate != null && rate > 0 ? 'text-red-500'
-      : rate != null && rate < 0 ? 'text-blue-500'
+      rate != null && rate > 0 ? rc.upClass
+      : rate != null && rate < 0 ? rc.downClass
       : 'text-muted-foreground'
     }`}>
       {rate != null ? `${rate.toFixed(1)}%` : '-'}

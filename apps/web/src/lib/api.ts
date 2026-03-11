@@ -113,7 +113,7 @@ export const api = {
     }),
 
   // Public (인증 불필요)
-  getTopPortfolios: (limit = 20, sort: 'latest' | 'return' | 'mdd' = 'latest') =>
+  getTopPortfolios: (limit = 20, sort: 'latest' | 'return' | 'mdd' | 'dividend' = 'latest') =>
     fetcher<{
       name: string;
       slug: string;
@@ -122,6 +122,7 @@ export const api = {
       mdd: number | null;
       sinceReturn?: number | null;
       sinceMdd?: number | null;
+      weightedDividendYield?: number | null;
       feedbackSnippet: string | null;
       tags: string[];
       createdAt: string;

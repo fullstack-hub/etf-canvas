@@ -1,7 +1,8 @@
 'use client';
 
-import { XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area, CartesianGrid, LineChart, Line } from 'recharts';
+import { XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area, CartesianGrid, LineChart, Line, ReferenceLine } from 'recharts';
 import type { ETFDailyPrice } from '@etf-canvas/shared';
+import { useReturnColors } from '@/lib/return-colors';
 
 interface Props {
   data: ETFDailyPrice[];
@@ -11,39 +12,78 @@ interface Props {
 export function PriceChart({ data, compact }: Props) {
   if (!data.length) return <div className="text-muted-foreground text-center py-8 text-sm">데이터 없음</div>;
 
+  const rc = useReturnColors();
+
   if (compact) {
     const basePrice = data[0].close;
     const lastPrice = data[data.length - 1].close;
     const isPositive = lastPrice >= basePrice;
-    const lineColor = isPositive ? '#ef4444' : '#3b82f6';
+    const lineColor = rc.hex(isPositive);
     const gradId = isPositive ? 'areaGrad-pos' : 'areaGrad-neg';
     const chartData = data.map((d) => ({
       date: d.date,
       value: Math.round(((d.close - basePrice) / basePrice) * 10000) / 100,
     }));
 
-    // X축 균등 4분할 tick (시작, 1/4, 2/4, 3/4, 끝)
+    // X축: 데이터 기간에 따라 월 단위 or 균등 분할
     const len = chartData.length;
-    const xTicks = [0, Math.round(len / 4), Math.round(len / 2), Math.round((len * 3) / 4), len - 1]
-      .map(i => chartData[Math.min(i, len - 1)].date);
+    const spanMonths = (() => {
+      const first = chartData[0].date.split('-');
+      const last = chartData[len - 1].date.split('-');
+      return (Number(last[0]) - Number(first[0])) * 12 + Number(last[1]) - Number(first[1]);
+    })();
+    const xTicks = (() => {
+      const seen = new Set<string>();
+      const ticks: string[] = [];
+      // 월 건너뛰기: 6개월 이상이면 2개월마다, 아니면 매월
+      const skip = spanMonths >= 6 ? 2 : 1;
+      let count = 0;
+      chartData.forEach(d => {
+        const m = d.date.slice(0, 7);
+        if (!seen.has(m)) {
+          seen.add(m);
+          if (count % skip === 0) ticks.push(d.date);
+          count++;
+        }
+      });
+      return ticks;
+    })();
 
     // Y축 틱
     const vals = chartData.map(d => d.value);
     const rawMin = Math.min(...vals);
     const rawMax = Math.max(...vals);
-    const range = rawMax - rawMin || 10;
-    const step = Math.max(10, Math.ceil(range / 4 / 10) * 10);
-    const yMin = Math.floor(rawMin / step) * step;
-    const yMax = Math.ceil(rawMax / step) * step;
-    const yTicks: number[] = [];
-    for (let v = yMin; v <= yMax; v += step) yTicks.push(v);
-    if (yTicks[yTicks.length - 1] < rawMax) yTicks.push(yTicks[yTicks.length - 1] + step);
+    const visualMin = Math.min(0, rawMin);
+    const visualMax = Math.max(0, rawMax);
+    const visualRange = visualMax - visualMin || 1;
 
-    // 날짜 포맷: YY.MM.DD
-    const fmtDate = (d: string) => {
-      const [y, m, dd] = d.split('-');
-      return `${y.slice(2)}.${m}.${dd}`;
-    };
+    const nice = [1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500];
+    const boundUnit = nice.find(s => visualRange / s <= 20) ?? 10;
+    
+    const domainMin = Math.floor(visualMin / boundUnit) * boundUnit;
+    const domainMax = Math.ceil(visualMax / boundUnit) * boundUnit;
+    
+    const roughStep = (domainMax - domainMin) / 2;
+    const step = nice.find(s => s >= roughStep) ?? 10;
+
+    const yTicks: number[] = [];
+    const minTickMultiplier = Math.ceil(domainMin / step);
+    const maxTickMultiplier = Math.floor(domainMax / step);
+    
+    for (let i = minTickMultiplier; i <= maxTickMultiplier; i++) {
+      yTicks.push(i * step);
+    }
+    
+    // 0%는 언제나 표시되도록 억지라도 추가
+    if (!yTicks.includes(0) && domainMin <= 0 && domainMax >= 0) {
+      yTicks.push(0);
+      yTicks.sort((a, b) => a - b);
+    }
+    
+    const pad = visualRange * 0.05 || 2;
+    const yDomain: [number, number] = [domainMin - pad, domainMax + pad];
+
+    const fmtDate = (d: string) => `${Number(d.split('-')[1])}월`;
 
     return (
       <ResponsiveContainer width="100%" height="100%">
@@ -69,9 +109,11 @@ export function PriceChart({ data, compact }: Props) {
             tick={{ fontSize: 10, fill: '#666' }}
             tickFormatter={(val) => `${Math.round(val)}%`}
             ticks={yTicks}
-            domain={[yTicks[0], yTicks[yTicks.length - 1]]}
+            domain={yDomain}
             width={38}
+            interval={0}
           />
+          <ReferenceLine y={0} stroke="currentColor" strokeOpacity={0.2} strokeDasharray="3 3" />
           <Tooltip
             content={({ active, payload }) => {
               if (!active || !payload?.length) return null;

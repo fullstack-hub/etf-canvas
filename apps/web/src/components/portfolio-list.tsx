@@ -3,6 +3,7 @@ import { useSession } from 'next-auth/react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useCanvasStore } from '@/lib/store';
+import { useReturnColors } from '@/lib/return-colors';
 import { SnapshotSection } from '@/components/snapshot-section';
 import { SinceStatsHero } from '@/components/since-stats-hero';
 import { HoldingsSection } from '@/components/holdings-section';
@@ -26,6 +27,7 @@ type Portfolio = {
   totalAmount: number;
   feedbackText: string | null;
   feedbackActions: { category: string; label: string }[] | null;
+  tags?: string[];
   createdAt: string;
 };
 
@@ -153,6 +155,7 @@ export function PortfolioList() {
 }
 
 function PortfolioListItem({ portfolio: p, isActive, onClick }: { portfolio: Portfolio; isActive: boolean; onClick: () => void }) {
+  const rc = useReturnColors();
   const timeframes = [
     { label: '1M', value: '1m' },
     { label: '3M', value: '3m' },
@@ -251,13 +254,13 @@ function PortfolioListItem({ portfolio: p, isActive, onClick }: { portfolio: Por
             <div className="grid grid-cols-4 gap-3">
               <div>
                 <div className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider">수익률</div>
-                <div className={`text-[14px] font-bold tabular-nums tracking-tight mt-0.5 ${isPositive ? 'text-red-500' : 'text-blue-500'}`}>
+                <div className={`text-[14px] font-bold tabular-nums tracking-tight mt-0.5 ${rc.cls(isPositive)}`}>
                   {simData.totalReturn >= 0 ? '+' : ''}{simData.totalReturn.toFixed(1)}%
                 </div>
               </div>
               <div>
                 <div className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider">연환산</div>
-                <div className={`text-[14px] font-bold tabular-nums tracking-tight mt-0.5 ${simData.annualizedReturn >= 0 ? 'text-red-500' : 'text-blue-500'}`}>
+                <div className={`text-[14px] font-bold tabular-nums tracking-tight mt-0.5 ${rc.cls(simData.annualizedReturn >= 0)}`}>
                   {simData.annualizedReturn >= 0 ? '+' : ''}{simData.annualizedReturn.toFixed(1)}%
                 </div>
               </div>
@@ -347,6 +350,13 @@ function PortfolioDetailPanel({ portfolio: p, onLoad, onDelete, deleting }: {
             <span className="inline-block w-1.5 h-1.5 rounded-full bg-muted-foreground/30" />
             {p.items.length}개 종목 구성
           </p>
+          {p.tags && p.tags.length > 0 && (
+            <div className="flex gap-1.5 flex-wrap mt-2">
+              {p.tags.map((tag) => (
+                <span key={tag} className="px-2 py-0.5 rounded-md bg-muted text-[11px] text-muted-foreground">#{tag}</span>
+              ))}
+            </div>
+          )}
         </div>
         <button
           onClick={onDelete}
