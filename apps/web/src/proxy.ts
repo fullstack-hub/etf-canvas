@@ -1,15 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 
-export const runtime = 'nodejs';
-
 const COOKIE_NAME = 'etf-canvas-auth';
 
 function hmacToken(password: string): string {
   return crypto.createHmac('sha256', password).update('etf-canvas-auth').digest('hex');
 }
 
-export function middleware(req: NextRequest) {
+export function proxy(req: NextRequest) {
   const password = process.env.SITE_PASSWORD;
   if (!password) return NextResponse.next();
 
