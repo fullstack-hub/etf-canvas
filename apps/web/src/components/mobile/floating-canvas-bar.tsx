@@ -11,7 +11,7 @@ export function FloatingCanvasBar() {
   if (selected.length === 0) return null;
 
   return (
-    <div className="sticky bottom-[calc(56px+env(safe-area-inset-bottom)+16px)] mx-4 z-40">
+    <div className="fixed bottom-[calc(56px+env(safe-area-inset-bottom)+16px)] left-4 right-4 z-40">
       <button
         onClick={() => setCanvasSegment('compose')}
         className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-primary text-primary-foreground shadow-lg"

@@ -77,10 +77,11 @@ export function MobileDiscoverSegment() {
             value={search}
             onChange={(e) => handleSearchChange(e.target.value)}
             placeholder="ETF 검색"
+            aria-label="ETF 검색"
             className="w-full h-10 pl-9 pr-9 rounded-lg bg-muted text-sm outline-none placeholder:text-muted-foreground"
           />
           {search && (
-            <button onClick={() => handleSearchChange('')} className="absolute right-3 top-1/2 -translate-y-1/2">
+            <button onClick={() => handleSearchChange('')} aria-label="검색어 지우기" className="absolute right-3 top-1/2 -translate-y-1/2">
               <X className="w-4 h-4 text-muted-foreground" />
             </button>
           )}
