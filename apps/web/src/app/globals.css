@@ -155,3 +155,17 @@
   0%, 100% { opacity: 0.4; transform: scale(0.9) rotate(0deg); }
   50% { opacity: 1; transform: scale(1.2) rotate(15deg); }
 }
+
+/* Mobile utilities */
+.pb-safe-bottom {
+  padding-bottom: calc(56px + env(safe-area-inset-bottom));
+}
+
+.scroll-x-hide {
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scroll-x-hide::-webkit-scrollbar {
+  display: none;
+}
