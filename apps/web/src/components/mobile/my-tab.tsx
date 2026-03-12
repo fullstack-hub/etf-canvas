@@ -1,12 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import { useSession } from 'next-auth/react';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
-import { FolderOpen, Settings, UserCog, ChevronRight } from 'lucide-react';
+import { FolderOpen, Settings, UserCog, ChevronRight, Sun, Moon } from 'lucide-react';
+import { useTheme } from 'next-themes';
 import { api } from '@/lib/api';
 import { LoginModal } from '@/components/login-modal';
+
+const subscribe = () => () => {};
+const useMounted = () => useSyncExternalStore(subscribe, () => true, () => false);
 
 export function MobileMyTab() {
   const { data: session } = useSession();
@@ -14,20 +18,53 @@ export function MobileMyTab() {
 
   if (!session?.user) {
     return (
-      <div className="flex flex-col items-center justify-center h-full gap-4">
-        <p className="text-sm text-muted-foreground">로그인하고 시작하세요</p>
-        <button
-          onClick={() => setShowLogin(true)}
-          className="px-6 py-3 rounded-xl bg-primary text-primary-foreground font-medium"
-        >
-          로그인
-        </button>
+      <div className="flex flex-col h-full">
+        <div className="flex-1 flex flex-col items-center justify-center gap-4">
+          <p className="text-sm text-muted-foreground">로그인하고 시작하세요</p>
+          <button
+            onClick={() => setShowLogin(true)}
+            className="px-6 py-3 rounded-xl bg-primary text-primary-foreground font-medium"
+          >
+            로그인
+          </button>
+        </div>
+        <div className="px-4 pb-6">
+          <div className="rounded-2xl border bg-card overflow-hidden">
+            <Link href="/settings" className="flex items-center justify-between px-4 py-3.5 border-b">
+              <div className="flex items-center gap-3">
+                <Settings className="w-5 h-5 text-muted-foreground" />
+                <span className="text-sm font-medium">설정</span>
+              </div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            </Link>
+            <ThemeToggle />
+          </div>
+        </div>
         {showLogin && <LoginModal onClose={() => setShowLogin(false)} />}
       </div>
     );
   }
 
   return <AuthedMyTab user={session.user} />;
+}
+
+function ThemeToggle() {
+  const { setTheme, resolvedTheme } = useTheme();
+  const mounted = useMounted();
+  const isDark = mounted && resolvedTheme === 'dark';
+
+  return (
+    <button
+      onClick={() => setTheme(isDark ? 'light' : 'dark')}
+      className="flex items-center justify-between px-4 py-3.5 w-full"
+    >
+      <div className="flex items-center gap-3">
+        {isDark ? <Sun className="w-5 h-5 text-muted-foreground" /> : <Moon className="w-5 h-5 text-muted-foreground" />}
+        <span className="text-sm font-medium">{isDark ? '라이트 모드' : '다크 모드'}</span>
+      </div>
+      <ChevronRight className="w-4 h-4 text-muted-foreground" />
+    </button>
+  );
 }
 
 function AuthedMyTab({ user }: { user: NonNullable<NonNullable<ReturnType<typeof useSession>['data']>['user']> }) {
@@ -68,7 +105,7 @@ function AuthedMyTab({ user }: { user: NonNullable<NonNullable<ReturnType<typeof
           <Link
             key={item.href}
             href={item.href}
-            className={`flex items-center justify-between px-4 py-3.5 ${i < menuItems.length - 1 ? 'border-b' : ''}`}
+            className="flex items-center justify-between px-4 py-3.5 border-b"
           >
             <div className="flex items-center gap-3">
               <item.icon className="w-5 h-5 text-muted-foreground" />
@@ -84,6 +121,7 @@ function AuthedMyTab({ user }: { user: NonNullable<NonNullable<ReturnType<typeof
             </div>
           </Link>
         ))}
+        <ThemeToggle />
       </div>
     </div>
   );
