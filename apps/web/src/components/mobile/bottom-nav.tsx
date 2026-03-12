@@ -23,7 +23,6 @@ export function MobileBottomNav() {
   const getIsActive = (tabId: typeof tabs[number]['id']) => {
     if (tabId === 'gallery') return pathname.startsWith('/gallery');
     if (tabId === 'community') return pathname.startsWith('/community');
-    if (tabId === 'my') return pathname === '/mypage' || pathname === '/settings' || pathname === '/portfolio';
     if (pathname === '/') return activeTab === tabId;
     return false;
   };
@@ -36,7 +35,8 @@ export function MobileBottomNav() {
           const isActive = getIsActive(tab.id);
           const Icon = tab.icon;
 
-          if (tab.id === 'home' || tab.id === 'canvas') {
+          // 홈, 캔버스, 마이: / 페이지 내 상태 전환
+          if (tab.id === 'home' || tab.id === 'canvas' || tab.id === 'my') {
             return (
               <button
                 key={tab.id}
@@ -45,12 +45,18 @@ export function MobileBottomNav() {
                   isActive ? 'text-primary' : 'text-muted-foreground'
                 }`}
               >
-                <Icon className="w-5 h-5" />
+                {tab.id === 'my' && session?.user?.image ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={session.user.image} alt="" className={`w-5 h-5 rounded-full object-cover ${isActive ? 'ring-2 ring-primary' : ''}`} />
+                ) : (
+                  <Icon className="w-5 h-5" />
+                )}
                 <span className="text-[10px] font-medium">{tab.label}</span>
               </button>
             );
           }
 
+          // 갤러리, 커뮤니티: 별도 라우트 이동
           return (
             <Link
               key={tab.id}
@@ -60,12 +66,7 @@ export function MobileBottomNav() {
                 isActive ? 'text-primary' : 'text-muted-foreground'
               }`}
             >
-              {tab.id === 'my' && session?.user?.image ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={session.user.image} alt="" className={`w-5 h-5 rounded-full object-cover ${isActive ? 'ring-2 ring-primary' : ''}`} />
-              ) : (
-                <Icon className="w-5 h-5" />
-              )}
+              <Icon className="w-5 h-5" />
               <span className="text-[10px] font-medium">{tab.label}</span>
             </Link>
           );
