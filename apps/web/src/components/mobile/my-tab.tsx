@@ -27,11 +27,10 @@ export function MobileMyTab() {
     );
   }
 
-  return <AuthedMyTab session={session} />;
+  return <AuthedMyTab user={session.user} />;
 }
 
-function AuthedMyTab({ session }: { session: NonNullable<ReturnType<typeof useSession>['data']> }) {
-  const user = session.user;
+function AuthedMyTab({ user }: { user: NonNullable<NonNullable<ReturnType<typeof useSession>['data']>['user']> }) {
   const { data: portfolios } = useQuery({
     queryKey: ['portfolios', 'latest'],
     queryFn: () => api.listPortfolios('latest'),
@@ -49,17 +48,17 @@ function AuthedMyTab({ session }: { session: NonNullable<ReturnType<typeof useSe
     <div className="px-4 py-6 space-y-6">
       <div className="rounded-2xl border bg-card p-5">
         <div className="flex items-center gap-4">
-          {user?.image ? (
+          {user.image ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={user.image} alt="" className="w-14 h-14 rounded-full object-cover" />
           ) : (
             <div className="w-14 h-14 rounded-full bg-primary/15 text-primary flex items-center justify-center text-lg font-bold">
-              {user?.name?.charAt(0) || 'U'}
+              {user.name?.charAt(0) || 'U'}
             </div>
           )}
           <div>
-            <p className="font-bold">{user?.name || '사용자'}</p>
-            <p className="text-xs text-muted-foreground">{user?.email}</p>
+            <p className="font-bold">{user.name || '사용자'}</p>
+            <p className="text-xs text-muted-foreground">{user.email}</p>
           </div>
         </div>
       </div>
