@@ -46,7 +46,7 @@ export default function RootLayout({
         <VersionCheck />
         <Providers>
           {children}
-          <Footer />
+          <div className="hidden md:block"><Footer /></div>
           <Toaster position="top-center" toastOptions={{ style: { width: 'fit-content', minWidth: 'unset' } }} />
         </Providers>
       </body>

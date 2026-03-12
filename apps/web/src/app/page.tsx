@@ -6,7 +6,10 @@ import { LeftPanel } from '@/components/left-panel';
 import { CanvasPanel, FloatingFeedback } from '@/components/canvas-panel';
 import { AttributePanel } from '@/components/attribute-panel';
 import { PerformancePanel } from '@/components/performance-panel';
+import { MobileBottomNav } from '@/components/mobile/bottom-nav';
 import { useCanvasStore } from '@/lib/store';
+import { useIsMobile } from '@/lib/use-is-mobile';
+import { useMobileUIStore } from '@/lib/mobile-ui-store';
 
 function useIsAuthed() {
   const [authed, setAuthed] = useState(false);
@@ -18,8 +21,11 @@ function useIsAuthed() {
 export default function HomePage() {
   const { performanceExpanded, synthesized, feedbackEnabled, feedbackLoading, feedbackText, feedbackActions, setBrowseCategory } = useCanvasStore();
   const authed = useIsAuthed();
+  const isMobile = useIsMobile();
 
   if (!authed) return <LandingPage />;
+
+  if (isMobile) return <MobileHome />;
 
   return (
     <>
@@ -34,7 +40,6 @@ export default function HomePage() {
           <AttributePanel />
         </div>
       </div>
-      {/* Floating feedback — loading + result */}
       {feedbackEnabled && synthesized && (feedbackLoading || feedbackText) && (
         <FloatingFeedback
           loading={feedbackLoading}
@@ -47,10 +52,28 @@ export default function HomePage() {
   );
 }
 
+function MobileHome() {
+  const { activeTab } = useMobileUIStore();
+
+  return (
+    <div className="h-[100dvh] flex flex-col">
+      <div className="flex-1 overflow-y-auto pb-safe-bottom">
+        {activeTab === 'home' && (
+          <div className="p-4 text-center text-muted-foreground">홈 탭 (구현 예정)</div>
+        )}
+        {activeTab === 'canvas' && (
+          <div className="p-4 text-center text-muted-foreground">캔버스 탭 (구현 예정)</div>
+        )}
+      </div>
+      <MobileBottomNav />
+    </div>
+  );
+}
+
 function LandingPage() {
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
-      <header className="px-6 py-4 flex items-center justify-between border-b">
+      <header className="px-4 md:px-6 py-4 flex items-center justify-between border-b">
         <div className="flex items-center gap-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logo.svg" alt="ETF Canvas" width={28} height={28} />
@@ -64,10 +87,10 @@ function LandingPage() {
         </a>
       </header>
 
-      <main className="flex-1 flex items-center justify-center">
+      <main className="flex-1 flex items-center justify-center px-4">
         <div className="text-center space-y-3">
-          <h1 className="text-3xl font-bold tracking-tight">나만의 ETF 포트폴리오를 그리다</h1>
-          <p className="text-muted-foreground">ETF를 골라 담고, 비중을 조절하고, 성과를 시뮬레이션하세요</p>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">나만의 ETF 포트폴리오를 그리다</h1>
+          <p className="text-muted-foreground text-sm md:text-base">ETF를 골라 담고, 비중을 조절하고, 성과를 시뮬레이션하세요</p>
         </div>
       </main>
     </div>
