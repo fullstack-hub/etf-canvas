@@ -1,6 +1,6 @@
 'use client';
 
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { Home, Trophy, Layers, MessageSquare, User } from 'lucide-react';
@@ -16,6 +16,7 @@ const tabs = [
 
 export function MobileBottomNav() {
   const pathname = usePathname();
+  const router = useRouter();
   const { data: session } = useSession();
   const { activeTab, setActiveTab } = useMobileUIStore();
 
@@ -39,7 +40,7 @@ export function MobileBottomNav() {
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => { setActiveTab(tab.id); if (pathname !== '/') router.push('/'); }}
                 className={`flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors ${
                   isActive ? 'text-primary' : 'text-muted-foreground'
                 }`}
