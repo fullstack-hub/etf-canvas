@@ -83,7 +83,8 @@ export function MobilePerformanceSegment() {
               <XAxis dataKey="date" tick={false} axisLine={false} />
               <YAxis tickFormatter={(v) => `${v.toFixed(0)}%`} tick={{ fontSize: 10 }} width={40} axisLine={false} />
               <Tooltip
-                formatter={(value) => [`${Number(value).toFixed(2)}%`, '수익률']}
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                formatter={(value: any) => [`${Number(value).toFixed(2)}%`, '수익률']}
                 contentStyle={{ fontSize: 12, borderRadius: 8 }}
               />
               <Area type="monotone" dataKey="value" stroke="hsl(var(--primary))" fill="url(#mobileGrowthGrad)" strokeWidth={1.5} />

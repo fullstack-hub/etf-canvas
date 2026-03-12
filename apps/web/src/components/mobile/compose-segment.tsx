@@ -35,7 +35,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 export function MobileComposeSegment() {
   const { data: session } = useSession();
-  const { selected, comparing, amounts, weights, synthesized, removeFromCanvas, setAmount, clearCanvas, synthesize, setFeedbackLoading, setFeedback, pendingSynthesize, setPendingSynthesize } = useCanvasStore();
+  const { selected, comparing, amounts, weights, synthesized, removeFromCanvas, setAmount, clearCanvas, synthesize, setFeedbackLoading, setFeedback, setPendingSynthesize } = useCanvasStore();
   const { setCanvasSegment, showSaveModal, setShowSaveModal } = useMobileUIStore();
   const [showLogin, setShowLogin] = useState(false);
 
