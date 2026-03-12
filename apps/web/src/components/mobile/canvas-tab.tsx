@@ -3,6 +3,8 @@
 import { useMobileUIStore } from '@/lib/mobile-ui-store';
 import { SegmentedControl } from '@/components/mobile/segmented-control';
 import { MobileDiscoverSegment } from '@/components/mobile/discover-segment';
+import { MobileComposeSegment } from '@/components/mobile/compose-segment';
+import { MobilePerformanceSegment } from '@/components/mobile/performance-segment';
 
 const SEGMENTS = [
   { id: 'discover' as const, label: '탐색' },
@@ -21,12 +23,8 @@ export function MobileCanvasTab() {
 
       <div className="flex-1 min-h-0">
         {canvasSegment === 'discover' && <MobileDiscoverSegment />}
-        {canvasSegment === 'compose' && (
-          <div className="p-4 text-center text-muted-foreground">조합 세그먼트 (구현 예정)</div>
-        )}
-        {canvasSegment === 'performance' && (
-          <div className="p-4 text-center text-muted-foreground">실적 세그먼트 (구현 예정)</div>
-        )}
+        {canvasSegment === 'compose' && <MobileComposeSegment />}
+        {canvasSegment === 'performance' && <MobilePerformanceSegment />}
       </div>
     </div>
   );
