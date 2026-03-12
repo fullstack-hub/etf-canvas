@@ -32,9 +32,11 @@ const CATEGORY_STYLES: Record<string, string> = {
 interface Props {
   etf: ETFSummary;
   onClose: () => void;
+  mode?: 'modal' | 'inline';
+  onAddToCanvas?: (etf: ETFSummary) => void;
 }
 
-export function EtfDetailModal({ etf, onClose }: Props) {
+export function EtfDetailModal({ etf, onClose, mode = 'modal', onAddToCanvas }: Props) {
   const rc = useReturnColors();
   const [period, setPeriod] = useState<string>('1y');
 
@@ -63,6 +65,155 @@ export function EtfDetailModal({ etf, onClose }: Props) {
   const country = etf.categories.some((c) => c === '해외 대표지수') ? '해외' : '한국';
   const expenseRatio = detail?.expenseRatio ?? etf.expenseRatio;
 
+  const content = (
+    <>
+      {/* Title */}
+      <div className={mode === 'inline' ? 'pb-4' : 'px-6 pt-6 pb-4'}>
+        <h2 className="text-xl font-bold pr-8">{etf.name}</h2>
+        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+          <InfoBadge
+            label={etf.categories[0] || '-'}
+            className={CATEGORY_STYLES[etf.categories[0]] || 'bg-muted/30 border-border'}
+          />
+          <InfoBadge icon={<span className="text-sm leading-none">{country === '한국' ? '🇰🇷' : '🌍'}</span>} label={country} />
+          <InfoBadge label={etf.code} />
+        </div>
+      </div>
+
+      {/* (1) Info badges */}
+      <div className={mode === 'inline' ? 'pb-4' : 'px-6 pb-4'}>
+        <div className={`flex gap-2 items-center ${mode === 'inline' ? 'flex-wrap' : ''}`}>
+          <InfoBadge icon={<Building2 className="w-3.5 h-3.5" />} label={etf.issuer || '-'} sublabel="운용사" />
+          <InfoBadge icon={<Target className="w-3.5 h-3.5" />} label={detail?.benchmark || '-'} sublabel="벤치마크" />
+          <InfoBadge icon={<Building2 className="w-3.5 h-3.5" />} label={etf.aum ? (etf.aum >= 10000 ? `${(etf.aum / 10000).toFixed(1)}조` : `${etf.aum.toLocaleString()}억`) : '-'} sublabel="AUM" />
+          <InfoBadge icon={<Calendar className="w-3.5 h-3.5" />} label={detail?.listedDate || etf.listedDate || '-'} sublabel="설정일" />
+          <InfoBadge
+            icon={<TrendingUp className="w-3.5 h-3.5" />}
+            label={etf.oneYearEarnRate != null ? `${etf.oneYearEarnRate > 0 ? '+' : ''}${etf.oneYearEarnRate.toFixed(1)}%` : '-'}
+            valueColor={etf.oneYearEarnRate != null && etf.oneYearEarnRate > 0 ? rc.upClass : etf.oneYearEarnRate != null && etf.oneYearEarnRate < 0 ? rc.downClass : undefined}
+            sublabel="1Y 수익률"
+          />
+          <InfoBadge icon={<Percent className="w-3.5 h-3.5" />} label={expenseRatio != null ? `${(expenseRatio * 100).toFixed(3)}%` : '-'} sublabel="운용보수" />
+          <InfoBadge icon={<DollarSign className="w-3.5 h-3.5" />} label={etf.dividendYield != null && etf.dividendYield > 0 ? `${etf.dividendYield.toFixed(2)}%` : '-'} sublabel="분배금" />
+          <InfoBadge
+            icon={<BarChart3 className="w-3.5 h-3.5" />}
+            label={(() => {
+              if (etf.price && etf.nav) {
+                const rate = ((etf.price - etf.nav) / etf.nav) * 100;
+                return `${rate > 0 ? '+' : ''}${rate.toFixed(2)}%`;
+              }
+              return '-';
+            })()}
+            sublabel="괴리율"
+            valueColor={(() => {
+              if (etf.price && etf.nav) {
+                const rate = ((etf.price - etf.nav) / etf.nav) * 100;
+                return Math.abs(rate) > 1 ? 'text-amber-500' : undefined;
+              }
+              return undefined;
+            })()}
+          />
+        </div>
+      </div>
+
+      {/* (2) Price chart */}
+      <div className={mode === 'inline' ? 'pb-4' : 'px-6 pb-4'}>
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-sm font-bold">수익률 차트</h3>
+          <div className="flex gap-1">
+            {PERIODS.map((p) => (
+              <button
+                key={p}
+                onClick={() => setPeriod(p)}
+                className={`text-[11px] px-2 py-0.5 rounded font-medium transition-colors ${
+                  period === p
+                    ? 'bg-foreground text-background'
+                    : 'text-muted-foreground hover:bg-muted'
+                }`}
+              >
+                {PERIOD_LABELS[p]}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="h-52">
+          {prices && prices.length > 0 ? (
+            <PriceChart data={prices} compact />
+          ) : (
+            <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
+              로딩 중...
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* (3) Dividend chart */}
+      {dividends && dividends.length > 0 && (
+        <div className={mode === 'inline' ? 'pb-4' : 'px-6 pb-4'}>
+          <DividendDetailChart dividends={dividends} period={period} />
+        </div>
+      )}
+
+      {/* (4) Top holdings */}
+      <div className={mode === 'inline' ? 'pb-6' : 'px-6 pb-6'}>
+        <h3 className="text-sm font-bold mb-2">
+          상위 {Math.min(detail?.holdings?.length || 0, 10)}개 종목 및 비중(%)
+        </h3>
+        {detail?.holdings && detail.holdings.length > 0 ? (
+          <>
+            <div className="grid grid-cols-2 gap-x-6 gap-y-0">
+              {(() => {
+                const palette = ['#3b82f6','#14b8a6','#8b5cf6','#d946ef','#84cc16','#06b6d4','#f59e0b','#f43f5e','#22c55e','#6366f1'];
+                const top10 = detail.holdings.slice(0, 10);
+                const maxWeight = Math.max(...top10.map(h => h.weight));
+                return top10.map((h, i) => (
+                  <div
+                    key={h.stockCode || i}
+                    className="relative flex justify-between py-1.5 text-sm border-b border-border/40 overflow-hidden"
+                  >
+                    <div
+                      className="absolute inset-y-0 left-0 rounded-r"
+                      style={{
+                        width: `${(h.weight / maxWeight) * 100}%`,
+                        backgroundColor: `color-mix(in srgb, ${palette[i % palette.length]} 20%, transparent)`,
+                      }}
+                    />
+                    <span className="relative truncate flex-1">{h.stockName || h.stockCode}</span>
+                    <span className="relative text-muted-foreground tabular-nums ml-2">{h.weight.toFixed(1)}%</span>
+                  </div>
+                ));
+              })()}
+            </div>
+            <div className="text-[11px] text-muted-foreground/60 mt-2 space-y-0.5">
+              <p>* 구성종목, 주식수 및 구성비중은 전일 기준이에요.</p>
+              <p>* 일부 유형의 ETF는 그 특성상 주식수 및 구성비중 제공이 어려울 수 있어요.</p>
+            </div>
+          </>
+        ) : (
+          <p className="text-sm text-muted-foreground">보유 종목 정보가 없어요.</p>
+        )}
+      </div>
+    </>
+  );
+
+  if (mode === 'inline') {
+    return (
+      <div className="p-4 space-y-0">
+        {content}
+        {onAddToCanvas && (
+          <div className="sticky bottom-0 p-4 border-t bg-background/95 backdrop-blur">
+            <button
+              onClick={() => { onAddToCanvas(etf); onClose(); }}
+              className="w-full h-11 rounded-xl bg-primary text-primary-foreground font-medium text-sm"
+            >
+              캔버스에 추가하기
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={onClose}>
       {/* Dark overlay */}
@@ -82,132 +233,7 @@ export function EtfDetailModal({ etf, onClose }: Props) {
           <X className="w-5 h-5" />
         </button>
 
-        {/* Title */}
-        <div className="px-6 pt-6 pb-4">
-          <h2 className="text-xl font-bold pr-8">{etf.name}</h2>
-          <div className="flex items-center gap-1.5 mt-1">
-            <InfoBadge
-              label={etf.categories[0] || '-'}
-              className={CATEGORY_STYLES[etf.categories[0]] || 'bg-muted/30 border-border'}
-            />
-            <InfoBadge icon={<span className="text-sm leading-none">{country === '한국' ? '🇰🇷' : '🌍'}</span>} label={country} />
-            <InfoBadge label={etf.code} />
-          </div>
-        </div>
-
-        {/* (1) Info badges */}
-        <div className="px-6 pb-4">
-          <div className="flex gap-2 items-center">
-            <InfoBadge icon={<Building2 className="w-3.5 h-3.5" />} label={etf.issuer || '-'} sublabel="운용사" />
-            <InfoBadge icon={<Target className="w-3.5 h-3.5" />} label={detail?.benchmark || '-'} sublabel="벤치마크" />
-            <InfoBadge icon={<Building2 className="w-3.5 h-3.5" />} label={etf.aum ? (etf.aum >= 10000 ? `${(etf.aum / 10000).toFixed(1)}조` : `${etf.aum.toLocaleString()}억`) : '-'} sublabel="AUM" />
-            <InfoBadge icon={<Calendar className="w-3.5 h-3.5" />} label={detail?.listedDate || etf.listedDate || '-'} sublabel="설정일" />
-            <InfoBadge
-              icon={<TrendingUp className="w-3.5 h-3.5" />}
-              label={etf.oneYearEarnRate != null ? `${etf.oneYearEarnRate > 0 ? '+' : ''}${etf.oneYearEarnRate.toFixed(1)}%` : '-'}
-              valueColor={etf.oneYearEarnRate != null && etf.oneYearEarnRate > 0 ? rc.upClass : etf.oneYearEarnRate != null && etf.oneYearEarnRate < 0 ? rc.downClass : undefined}
-              sublabel="1Y 수익률"
-            />
-            <InfoBadge icon={<Percent className="w-3.5 h-3.5" />} label={expenseRatio != null ? `${(expenseRatio * 100).toFixed(3)}%` : '-'} sublabel="운용보수" />
-            <InfoBadge icon={<DollarSign className="w-3.5 h-3.5" />} label={etf.dividendYield != null && etf.dividendYield > 0 ? `${etf.dividendYield.toFixed(2)}%` : '-'} sublabel="분배금" />
-            <InfoBadge
-              icon={<BarChart3 className="w-3.5 h-3.5" />}
-              label={(() => {
-                if (etf.price && etf.nav) {
-                  const rate = ((etf.price - etf.nav) / etf.nav) * 100;
-                  return `${rate > 0 ? '+' : ''}${rate.toFixed(2)}%`;
-                }
-                return '-';
-              })()}
-              sublabel="괴리율"
-              valueColor={(() => {
-                if (etf.price && etf.nav) {
-                  const rate = ((etf.price - etf.nav) / etf.nav) * 100;
-                  return Math.abs(rate) > 1 ? 'text-amber-500' : undefined;
-                }
-                return undefined;
-              })()}
-            />
-          </div>
-        </div>
-
-        {/* (2) Price chart */}
-        <div className="px-6 pb-4">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-bold">수익률 차트</h3>
-            <div className="flex gap-1">
-              {PERIODS.map((p) => (
-                <button
-                  key={p}
-                  onClick={() => setPeriod(p)}
-                  className={`text-[11px] px-2 py-0.5 rounded font-medium transition-colors ${
-                    period === p
-                      ? 'bg-foreground text-background'
-                      : 'text-muted-foreground hover:bg-muted'
-                  }`}
-                >
-                  {PERIOD_LABELS[p]}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="h-52">
-            {prices && prices.length > 0 ? (
-              <PriceChart data={prices} compact />
-            ) : (
-              <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
-                로딩 중...
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* (3) Dividend chart */}
-        {dividends && dividends.length > 0 && (
-          <div className="px-6 pb-4">
-            <DividendDetailChart dividends={dividends} period={period} />
-          </div>
-        )}
-
-        {/* (4) Top holdings */}
-        <div className="px-6 pb-6">
-          <h3 className="text-sm font-bold mb-2">
-            상위 {Math.min(detail?.holdings?.length || 0, 10)}개 종목 및 비중(%)
-          </h3>
-          {detail?.holdings && detail.holdings.length > 0 ? (
-            <>
-              <div className="grid grid-cols-2 gap-x-6 gap-y-0">
-                {(() => {
-                  const palette = ['#3b82f6','#14b8a6','#8b5cf6','#d946ef','#84cc16','#06b6d4','#f59e0b','#f43f5e','#22c55e','#6366f1'];
-                  const top10 = detail.holdings.slice(0, 10);
-                  const maxWeight = Math.max(...top10.map(h => h.weight));
-                  return top10.map((h, i) => (
-                    <div
-                      key={h.stockCode || i}
-                      className="relative flex justify-between py-1.5 text-sm border-b border-border/40 overflow-hidden"
-                    >
-                      <div
-                        className="absolute inset-y-0 left-0 rounded-r"
-                        style={{
-                          width: `${(h.weight / maxWeight) * 100}%`,
-                          backgroundColor: `color-mix(in srgb, ${palette[i % palette.length]} 20%, transparent)`,
-                        }}
-                      />
-                      <span className="relative truncate flex-1">{h.stockName || h.stockCode}</span>
-                      <span className="relative text-muted-foreground tabular-nums ml-2">{h.weight.toFixed(1)}%</span>
-                    </div>
-                  ));
-                })()}
-              </div>
-              <div className="text-[11px] text-muted-foreground/60 mt-2 space-y-0.5">
-                <p>* 구성종목, 주식수 및 구성비중은 전일 기준이에요.</p>
-                <p>* 일부 유형의 ETF는 그 특성상 주식수 및 구성비중 제공이 어려울 수 있어요.</p>
-              </div>
-            </>
-          ) : (
-            <p className="text-sm text-muted-foreground">보유 종목 정보가 없어요.</p>
-          )}
-        </div>
+        {content}
       </div>
     </div>
   );

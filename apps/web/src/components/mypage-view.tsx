@@ -120,7 +120,7 @@ export function MypageView() {
   if (isLoading || !me) {
     return (
       <div className="flex-1 overflow-auto">
-        <div className="max-w-xl mx-auto px-6 py-10">
+        <div className="max-w-xl mx-auto px-4 md:px-6 py-10">
           <div className="animate-pulse space-y-6">
             <div className="h-36 bg-card rounded-2xl" />
             <div className="h-20 bg-card rounded-2xl" />
@@ -137,7 +137,7 @@ export function MypageView() {
 
   return (
     <div className="flex-1 overflow-auto">
-      <div className="max-w-xl mx-auto px-6 py-10 space-y-5">
+      <div className="max-w-xl mx-auto px-4 md:px-6 py-10 space-y-5">
 
         {/* ── Profile Hero ── */}
         <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-card via-card to-accent/30 border border-border/50 p-6">

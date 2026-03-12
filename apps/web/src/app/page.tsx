@@ -9,6 +9,9 @@ import { PerformancePanel } from '@/components/performance-panel';
 import { MobileBottomNav } from '@/components/mobile/bottom-nav';
 import { MobileHomeTab } from '@/components/mobile/home-tab';
 import { MobileCanvasTab } from '@/components/mobile/canvas-tab';
+import { MobileGalleryTab } from '@/components/mobile/gallery-tab';
+import { MobileMyTab } from '@/components/mobile/my-tab';
+import { EtfDetailSheet } from '@/components/mobile/etf-detail-sheet';
 import { useCanvasStore } from '@/lib/store';
 import { useIsMobile } from '@/lib/use-is-mobile';
 import { useMobileUIStore } from '@/lib/mobile-ui-store';
@@ -61,9 +64,12 @@ function MobileHome() {
     <div className="h-[100dvh] flex flex-col">
       <div className="flex-1 overflow-y-auto pb-safe-bottom">
         {activeTab === 'home' && <MobileHomeTab />}
+        {activeTab === 'gallery' && <MobileGalleryTab />}
         {activeTab === 'canvas' && <MobileCanvasTab />}
+        {activeTab === 'my' && <MobileMyTab />}
       </div>
       <MobileBottomNav />
+      <EtfDetailSheet />
     </div>
   );
 }

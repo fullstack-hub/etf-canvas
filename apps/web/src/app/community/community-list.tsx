@@ -146,6 +146,29 @@ export function CommunityList({ initialCategories, initialPosts, initialWeeklyBe
             </div>
           </div>
 
+          {/* Mobile Weekly Best */}
+          <div className="md:hidden">
+            {weeklyBest && weeklyBest.length > 0 && (
+              <div className="mb-4">
+                <h3 className="text-sm font-bold mb-2 px-1">주간 베스트</h3>
+                <div className="flex gap-3 scroll-x-hide -mx-4 px-4">
+                  {weeklyBest.map((p, i) => (
+                    <Link key={p.id} href={`/community/${p.id}`} className="w-48 shrink-0 rounded-xl border bg-card p-3">
+                      <div className="flex items-center gap-1 mb-1">
+                        <span className="text-xs font-bold text-primary">#{i + 1}</span>
+                      </div>
+                      <p className="text-xs font-medium truncate">{p.title}</p>
+                      <div className="flex gap-2 mt-1 text-[10px] text-muted-foreground">
+                        <span>♥ {p.likeCount}</span>
+                        <span>💬 {p.commentCount}</span>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Post List */}
           {isLoading ? (
             <div>

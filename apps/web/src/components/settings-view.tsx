@@ -38,7 +38,7 @@ export function SettingsView() {
         {/* 화면 모드 */}
         <section className="rounded-2xl border border-border/60 bg-card p-6 mb-6">
           <h2 className="text-[13px] font-semibold mb-5">화면 모드</h2>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             {([
               { value: 'light', label: '라이트', icon: Sun, desc: '밝은 화면' },
               { value: 'dark', label: '다크', icon: Moon, desc: '어두운 화면' },
