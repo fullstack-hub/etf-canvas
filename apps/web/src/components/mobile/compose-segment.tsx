@@ -138,15 +138,9 @@ export function MobileComposeSegment() {
                   >
                     <Minus className="w-3.5 h-3.5" />
                   </button>
-                  <input
-                    type="text"
-                    value={formatAmount(amounts[etf.code] || 0)}
-                    onChange={(e) => {
-                      const raw = e.target.value.replace(/[^0-9]/g, '');
-                      setAmount(etf.code, Number(raw));
-                    }}
-                    className="flex-1 h-8 rounded-lg bg-muted text-center text-sm font-medium outline-none"
-                  />
+                  <span className="flex-1 h-8 rounded-lg bg-muted flex items-center justify-center text-sm font-medium">
+                    {formatAmount(amounts[etf.code] || 0)}원
+                  </span>
                   <button
                     onClick={() => setAmount(etf.code, (amounts[etf.code] || 0) + 1000000)}
                     className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center"

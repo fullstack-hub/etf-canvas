@@ -36,15 +36,18 @@ export function MobilePerformanceSegment() {
     );
   }
 
+  // API returns absolute monetary values in dailyValues — convert to % return
+  const baseAmount = totalAmount || 10_000_000;
   const chartData = simResult?.dailyValues?.map((v) => ({
     date: v.date,
-    value: ((v.value - 1) * 100),
+    value: Number((((v.value - baseAmount) / baseAmount) * 100).toFixed(2)),
   })) ?? [];
 
-  const totalReturn = (simResult?.totalReturn ?? 0) * 100;
-  const cagr = (simResult?.annualizedReturn ?? 0) * 100;
+  // API already returns percentage values (e.g., 12.34 = 12.34%)
+  const totalReturn = simResult?.totalReturn ?? 0;
+  const cagr = simResult?.annualizedReturn ?? 0;
   const mdd = simResult?.maxDrawdown ?? 0;
-  const volatility = (simResult?.volatility ?? 0) * 100;
+  const volatility = simResult?.volatility ?? 0;
 
   return (
     <div className="overflow-y-auto h-full px-4 py-3 space-y-4">
@@ -65,7 +68,7 @@ export function MobilePerformanceSegment() {
       <div className="grid grid-cols-2 gap-2">
         <MetricCard label="수익률" value={totalReturn} suffix="%" />
         <MetricCard label="연환산" value={cagr} suffix="%" />
-        <MetricCard label="MDD" value={mdd * 100} suffix="%" negative />
+        <MetricCard label="MDD" value={mdd} suffix="%" negative />
         <MetricCard label="변동성" value={volatility} suffix="%" neutral />
       </div>
 
