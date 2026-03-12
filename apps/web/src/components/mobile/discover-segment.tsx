@@ -10,16 +10,18 @@ import { FloatingCanvasBar } from '@/components/mobile/floating-canvas-bar';
 import type { ETFSummary } from '@etf-canvas/shared';
 
 const CATEGORIES = [
-  { id: '국내 대표지수', label: '국내대표' },
-  { id: '해외 대표지수', label: '해외' },
-  { id: '섹터/테마', label: '섹터' },
-  { id: '채권', label: '채권' },
-  { id: '원자재', label: '원자재' },
-  { id: '레버리지/인버스', label: '레버리지' },
-  { id: '혼합', label: '혼합' },
-  { id: '액티브', label: '액티브' },
-  { id: 'New', label: 'New' },
+  { id: '국내 대표지수', label: '국내대표', color: 'bg-blue-500' },
+  { id: '해외 대표지수', label: '해외', color: 'bg-red-500' },
+  { id: '섹터/테마', label: '섹터', color: 'bg-amber-500' },
+  { id: '채권', label: '채권', color: 'bg-emerald-500' },
+  { id: '원자재', label: '원자재', color: 'bg-orange-500' },
+  { id: '레버리지/인버스', label: '레버리지', color: 'bg-pink-500' },
+  { id: '혼합', label: '혼합', color: 'bg-violet-500' },
+  { id: '액티브', label: '액티브', color: 'bg-cyan-500' },
+  { id: 'New', label: 'New', color: 'bg-lime-500' },
 ];
+
+const CATEGORY_COLOR_MAP = Object.fromEntries(CATEGORIES.map((c) => [c.id, c.color]));
 
 const PAGE_SIZE = 30;
 
@@ -31,6 +33,8 @@ export function MobileDiscoverSegment() {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  useEffect(() => () => clearTimeout(debounceRef.current), []);
 
   const handleSearchChange = (value: string) => {
     setSearch(value);
@@ -129,11 +133,12 @@ function EtfListRow({ etf, isAdded, onAdd, onDetail }: {
 }) {
   return (
     <div className="flex items-center gap-3 px-4 py-3 border-b border-border/50">
+      <div className={`w-1 self-stretch rounded-full shrink-0 ${CATEGORY_COLOR_MAP[etf.categories[0]] || 'bg-muted-foreground/30'}`} />
       <button onClick={onDetail} className="flex-1 min-w-0 text-left">
         <p className="text-sm font-medium truncate">{etf.name}</p>
         <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
           <span>{etf.categories[0] || '-'}</span>
-          {etf.aum && <span>AUM {(etf.aum / 100000000).toFixed(1)}억</span>}
+          {etf.aum != null && <span>AUM {(etf.aum / 100000000).toFixed(1)}억</span>}
         </div>
       </button>
       <div className="text-right mr-2">
