@@ -7,6 +7,7 @@ import { CanvasPanel, FloatingFeedback } from '@/components/canvas-panel';
 import { AttributePanel } from '@/components/attribute-panel';
 import { PerformancePanel } from '@/components/performance-panel';
 import { MobileBottomNav } from '@/components/mobile/bottom-nav';
+import { MobileHomeTab } from '@/components/mobile/home-tab';
 import { useCanvasStore } from '@/lib/store';
 import { useIsMobile } from '@/lib/use-is-mobile';
 import { useMobileUIStore } from '@/lib/mobile-ui-store';
@@ -58,9 +59,7 @@ function MobileHome() {
   return (
     <div className="h-[100dvh] flex flex-col">
       <div className="flex-1 overflow-y-auto pb-safe-bottom">
-        {activeTab === 'home' && (
-          <div className="p-4 text-center text-muted-foreground">홈 탭 (구현 예정)</div>
-        )}
+        {activeTab === 'home' && <MobileHomeTab />}
         {activeTab === 'canvas' && (
           <div className="p-4 text-center text-muted-foreground">캔버스 탭 (구현 예정)</div>
         )}
