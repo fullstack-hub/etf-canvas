@@ -66,12 +66,12 @@ export function MobileGalleryTab() {
             </div>
             <div className="text-right">
               {p.returnRate != null && (
-                <span className={`text-sm font-bold ${rc.cls(p.returnRate >= 0)}`}>
-                  {p.returnRate >= 0 ? '+' : ''}{p.returnRate.toFixed(1)}%
+                <span className={`text-sm font-bold ${rc.cls(Number(p.returnRate) >= 0)}`}>
+                  {Number(p.returnRate) >= 0 ? '+' : ''}{Number(p.returnRate).toFixed(1)}%
                 </span>
               )}
               {activeSort === 'mdd' && p.mdd != null && (
-                <p className="text-xs text-muted-foreground">MDD {(p.mdd * 100).toFixed(1)}%</p>
+                <p className="text-xs text-muted-foreground">MDD {(Number(p.mdd) * 100).toFixed(1)}%</p>
               )}
             </div>
           </Link>

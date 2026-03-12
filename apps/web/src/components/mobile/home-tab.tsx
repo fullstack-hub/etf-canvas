@@ -87,7 +87,7 @@ export function MobileHomeTab() {
 
 function TopPortfolioCard({ portfolio, rank }: { portfolio: { name: string; slug: string; returnRate: number | null; items: { code: string; name: string; weight: number }[] }; rank: number }) {
   const rc = useReturnColors();
-  const returnRate = portfolio.returnRate;
+  const returnRate = portfolio.returnRate != null ? Number(portfolio.returnRate) : null;
 
   return (
     <Link
