@@ -571,7 +571,7 @@ export class PortfolioService {
     return result;
   }
 
-  async getTop(limit: number, sort: 'latest' | 'return' | 'mdd' | 'dividend' = 'latest') {
+  async getTop(limit: number, sort: 'latest' | 'return' | 'mdd' | 'dividend' = 'latest', maxAge = 0) {
     const select = {
       name: true,
       slug: true,
@@ -583,9 +583,14 @@ export class PortfolioService {
       createdAt: true,
     } as const;
 
+    const where: any = { isDraft: false };
+    if (maxAge > 0) {
+      where.createdAt = { gte: new Date(Date.now() - maxAge * 24 * 60 * 60 * 1000) };
+    }
+
     if (sort === 'latest') {
       return this.prisma.portfolio.findMany({
-        where: { isDraft: false },
+        where,
         select,
         orderBy: { createdAt: 'desc' },
         take: Math.min(limit, 50),
@@ -593,17 +598,17 @@ export class PortfolioService {
     }
 
     if (sort === 'dividend') {
-      return this.getTopByDividend(limit, select);
+      return this.getTopByDividend(limit, select, where);
     }
 
     // 수익률/MDD 정렬: computeSince 기반 + Redis 캐시
     const cutoff = getMarketDataCutoff();
-    const cacheKey = `gallery:top:${sort}:${limit}:${cutoff.cacheKey}`;
+    const cacheKey = `gallery:top:${sort}:${limit}:${maxAge}:${cutoff.cacheKey}`;
     const cached = await this.redis.getJson<any[]>(cacheKey);
     if (cached) return cached;
 
     const portfolios = await this.prisma.portfolio.findMany({
-      where: { isDraft: false },
+      where,
       select: { id: true, totalAmount: true, ...select },
     });
 
@@ -635,13 +640,13 @@ export class PortfolioService {
     return result;
   }
 
-  private async getTopByDividend(limit: number, select: Record<string, true>) {
-    const cacheKey = `gallery:top:dividend:${limit}`;
+  private async getTopByDividend(limit: number, select: Record<string, true>, where: any = { isDraft: false }) {
+    const cacheKey = `gallery:top:dividend:${limit}:${JSON.stringify(where)}`;
     const cached = await this.redis.getJson<any[]>(cacheKey);
     if (cached) return cached;
 
     const portfolios: any[] = await this.prisma.portfolio.findMany({
-      where: { isDraft: false },
+      where,
       select: { id: true, ...select },
     });
 

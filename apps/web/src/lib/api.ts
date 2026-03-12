@@ -131,8 +131,8 @@ export const api = {
     }),
 
   // Public (인증 불필요)
-  getTopPortfolios: (limit = 20, sort: 'latest' | 'return' | 'mdd' | 'dividend' = 'latest') =>
-    fetcher<GalleryPortfolio[]>(`/portfolio/public/top?limit=${limit}&sort=${sort}`),
+  getTopPortfolios: (limit = 20, sort: 'latest' | 'return' | 'mdd' | 'dividend' = 'latest', maxAge = 0) =>
+    fetcher<GalleryPortfolio[]>(`/portfolio/public/top?limit=${limit}&sort=${sort}${maxAge ? `&maxAge=${maxAge}` : ''}`),
 
   getPublicSince: (slug: string) =>
     fetcher<{

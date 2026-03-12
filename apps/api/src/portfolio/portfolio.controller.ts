@@ -34,9 +34,9 @@ export class PortfolioController {
   }
 
   @Get('public/top')
-  getTop(@Query('limit') limit?: string, @Query('sort') sort?: string) {
+  getTop(@Query('limit') limit?: string, @Query('sort') sort?: string, @Query('maxAge') maxAge?: string) {
     const validSort = ['latest', 'return', 'mdd', 'dividend'].includes(sort || '') ? sort as 'latest' | 'return' | 'mdd' | 'dividend' : 'latest';
-    return this.svc.getTop(Number(limit) || 20, validSort);
+    return this.svc.getTop(Number(limit) || 20, validSort, Number(maxAge) || 0);
   }
 
   @Get('public/tags')

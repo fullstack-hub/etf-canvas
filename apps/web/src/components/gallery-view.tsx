@@ -1,15 +1,30 @@
 'use client';
 
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api, type GalleryPortfolio } from '@/lib/api';
 import { Loader2, Trophy, TrendingUp, Shield, Coins } from 'lucide-react';
 import { useReturnColors } from '@/lib/return-colors';
 import Link from 'next/link';
 
+const AGE_FILTERS = [
+  { label: '전체', value: 0 },
+  { label: '최근 7일', value: 7 },
+  { label: '최근 30일', value: 30 },
+  { label: '최근 3개월', value: 90 },
+  { label: '최근 6개월', value: 180 },
+  { label: '최근 1년', value: 365 },
+] as const;
+
+function getDaysAgo(dateStr: string) {
+  const days = Math.floor((Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24));
+  if (days === 0) return '오늘';
+  return `${days}일 경과`;
+}
+
 function GalleryCard({ p, variant }: { p: GalleryPortfolio; variant: 'return' | 'mdd' | 'dividend' }) {
   const rc = useReturnColors();
   const top3 = [...p.items].sort((a, b) => b.weight - a.weight).slice(0, 3);
-  const date = new Date(p.createdAt).toLocaleDateString('ko-KR');
 
   const sinceReturn = p.sinceReturn;
   const sinceMdd = p.sinceMdd;
@@ -59,7 +74,7 @@ function GalleryCard({ p, variant }: { p: GalleryPortfolio; variant: 'return' | 
             <span key={tag} className="text-[10px] text-muted-foreground">#{tag}</span>
           ))}
         </div>
-        <span className="text-[10px] text-muted-foreground shrink-0">{date}</span>
+        <span className="text-[10px] text-muted-foreground shrink-0">{getDaysAgo(p.createdAt)}</span>
       </div>
     </Link>
   );
@@ -107,21 +122,23 @@ function ExpandableColumn({ items, variant, loading, icon, title }: {
 }
 
 export function GalleryView() {
+  const [maxAge, setMaxAge] = useState(0);
+
   const { data: topReturn, isLoading: loadingReturn } = useQuery({
-    queryKey: ['gallery-top', 'return'],
-    queryFn: () => api.getTopPortfolios(10, 'return'),
+    queryKey: ['gallery-top', 'return', maxAge],
+    queryFn: () => api.getTopPortfolios(10, 'return', maxAge),
     staleTime: 1000 * 60 * 5,
   });
 
   const { data: topMdd, isLoading: loadingMdd } = useQuery({
-    queryKey: ['gallery-top', 'mdd'],
-    queryFn: () => api.getTopPortfolios(10, 'mdd'),
+    queryKey: ['gallery-top', 'mdd', maxAge],
+    queryFn: () => api.getTopPortfolios(10, 'mdd', maxAge),
     staleTime: 1000 * 60 * 5,
   });
 
   const { data: topDividend, isLoading: loadingDividend } = useQuery({
-    queryKey: ['gallery-top', 'dividend'],
-    queryFn: () => api.getTopPortfolios(10, 'dividend'),
+    queryKey: ['gallery-top', 'dividend', maxAge],
+    queryFn: () => api.getTopPortfolios(10, 'dividend', maxAge),
     staleTime: 1000 * 60 * 5,
   });
 
@@ -139,6 +156,19 @@ export function GalleryView() {
             <h1 className="text-2xl font-bold">포트폴리오 갤러리</h1>
           </div>
           <p className="text-muted-foreground text-sm">ETF Canvas 사용자들이 만든 포트폴리오를 탐색하세요</p>
+          <div className="flex gap-2 mt-3">
+            {AGE_FILTERS.map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => setMaxAge(opt.value)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                  maxAge === opt.value ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {isEmpty ? (
