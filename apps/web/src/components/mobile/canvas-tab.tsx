@@ -9,7 +9,7 @@ import { MobilePerformanceSegment } from '@/components/mobile/performance-segmen
 const SEGMENTS = [
   { id: 'discover' as const, label: '탐색' },
   { id: 'compose' as const, label: '조합' },
-  { id: 'performance' as const, label: '실적' },
+  { id: 'performance' as const, label: '퍼포먼스' },
 ];
 
 export function MobileCanvasTab() {

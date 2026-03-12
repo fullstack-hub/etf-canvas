@@ -86,10 +86,10 @@ export function SinceStatsHero({ fetchKey, fetchFn, saveDate }: {
 
         {/* 오른쪽: 차트 (내부 카드) */}
         {data.dailyValues?.length > 1 && (
-          <div className="w-full md:w-[360px] shrink-0 flex items-center">
+          <div className="w-full md:w-[360px] shrink-0 flex items-center mt-5 md:mt-0">
             <div className="w-full rounded-2xl border border-border/40 bg-background/60 backdrop-blur-sm p-5 flex flex-col shadow-lg">
               <div className="flex items-center justify-between text-[12px] text-muted-foreground mb-2">
-                <span className="flex items-center gap-1.5">
+                <span className={`flex items-center gap-1.5 ${rc.cls(isPositive)}`}>
                   <Save className="w-4 h-4" />
                   저장 시점
                 </span>
@@ -97,9 +97,13 @@ export function SinceStatsHero({ fetchKey, fetchFn, saveDate }: {
                   {isPositive ? '+ ' : ''}{ret.toFixed(2)}%
                 </span>
               </div>
-              <div className="relative h-[140px] w-full">
-                <HeroChart dailyValues={data.dailyValues} isPositive={isPositive} />
-                <span className="absolute bottom-1 right-1 text-[12px] text-muted-foreground">{data.daysSinceSave}일</span>
+              <div className="h-[140px]">
+                <HeroChart
+                  dailyValues={data.dailyValues}
+                  isPositive={isPositive}
+                  startLabel={(() => { const d = saveDate.split('T')[0]; const [,m,dd] = d.split('-'); return `${Number(m)}/${Number(dd)}`; })()}
+                  endLabel={`${data.daysSinceSave}일`}
+                />
               </div>
             </div>
           </div>
@@ -109,11 +113,12 @@ export function SinceStatsHero({ fetchKey, fetchFn, saveDate }: {
   );
 }
 
-function HeroChart({ dailyValues, isPositive }: { dailyValues: { date: string; value: number }[]; isPositive: boolean }) {
+function HeroChart({ dailyValues, isPositive, startLabel, endLabel }: { dailyValues: { date: string; value: number }[]; isPositive: boolean; startLabel?: string; endLabel?: string }) {
   const rc = useReturnColors();
   const w = 400;
-  const h = 100;
+  const h = 115;
   const p = 5;
+  const chartBottom = 95;
 
   const values = dailyValues.map((d) => d.value);
   const min = Math.min(...values);
@@ -123,13 +128,13 @@ function HeroChart({ dailyValues, isPositive }: { dailyValues: { date: string; v
 
   const pointsArr = values.map((v, i) => {
     const x = p + (i / (values.length - 1)) * (w - p * 2);
-    const y = h - p - ((v - min) / range) * (h - p * 2);
+    const y = p + (1 - (v - min) / range) * (chartBottom - p * 2);
     return { x, y };
   });
 
   const points = pointsArr.map(pt => `${pt.x},${pt.y}`).join(' ');
-  const areaPoints = `${pointsArr[0].x},${h} ${points} ${pointsArr[pointsArr.length - 1].x},${h}`;
-  const baseY = h - p - ((firstVal - min) / range) * (h - p * 2);
+  const areaPoints = `${pointsArr[0].x},${chartBottom} ${points} ${pointsArr[pointsArr.length - 1].x},${chartBottom}`;
+  const baseY = p + (1 - (firstVal - min) / range) * (chartBottom - p * 2);
   const strokeColor = rc.hex(isPositive);
   const gradientId = `hero-gradient-${isPositive ? 'pos' : 'neg'}`;
 
@@ -141,13 +146,16 @@ function HeroChart({ dailyValues, isPositive }: { dailyValues: { date: string; v
           <stop offset="100%" stopColor={strokeColor} stopOpacity={0.05} />
         </linearGradient>
       </defs>
-      {/* 저장 시점 세로선 */}
-      <line x1={pointsArr[0].x} y1={0} x2={pointsArr[0].x} y2={h} stroke={strokeColor} strokeOpacity={0.5} strokeWidth={2} />
+      {/* 저장 시점 세로 점선 — 상단에서 첫 데이터포인트까지 */}
+      <line x1={pointsArr[0].x} y1={0} x2={pointsArr[0].x} y2={pointsArr[0].y} stroke={strokeColor} strokeOpacity={0.4} strokeWidth={1.5} strokeDasharray="4 3" />
       {/* 기준선 (점선) */}
       <line x1={0} y1={baseY} x2={w} y2={baseY} stroke="currentColor" strokeOpacity={0.12} strokeDasharray="4 4" strokeWidth={1.5} />
       <polygon fill={`url(#${gradientId})`} points={areaPoints} />
       <polyline fill="none" stroke={strokeColor} strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" points={points} />
       <circle cx={pointsArr[pointsArr.length - 1].x} cy={pointsArr[pointsArr.length - 1].y} r={5} fill="var(--background)" stroke={strokeColor} strokeWidth={2.5} />
+      {/* 하단 라벨 */}
+      {startLabel && <text x={pointsArr[0].x} y={h - 2} textAnchor="start" fill="currentColor" opacity={0.35} fontSize={14}>{startLabel}</text>}
+      {endLabel && <text x={pointsArr[pointsArr.length - 1].x} y={h - 2} textAnchor="end" fill="currentColor" opacity={0.35} fontSize={14}>{endLabel}</text>}
     </svg>
   );
 }

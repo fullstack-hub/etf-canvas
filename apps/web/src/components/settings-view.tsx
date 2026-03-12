@@ -23,9 +23,9 @@ export function SettingsView() {
 
   return (
     <div className="flex-1 overflow-auto">
-      <div className="max-w-3xl mx-auto px-6 py-10">
+      <div className="max-w-3xl mx-auto px-4 md:px-6 py-6 md:py-10">
         {/* Header */}
-        <div className="mb-10">
+        <div className="mb-6 md:mb-10">
           <div className="flex items-center gap-2.5 mb-1.5">
             <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
               <Settings className="w-4 h-4 text-primary" />
@@ -36,9 +36,9 @@ export function SettingsView() {
         </div>
 
         {/* 화면 모드 */}
-        <section className="rounded-2xl border border-border/60 bg-card p-6 mb-6">
+        <section className="rounded-2xl border border-border/60 bg-card p-4 md:p-6 mb-6">
           <h2 className="text-[13px] font-semibold mb-5">화면 모드</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
             {([
               { value: 'light', label: '라이트', icon: Sun, desc: '밝은 화면' },
               { value: 'dark', label: '다크', icon: Moon, desc: '어두운 화면' },
@@ -56,7 +56,7 @@ export function SettingsView() {
                   }`}
                 >
                   {/* Preview */}
-                  <div className="aspect-[3/2]">
+                  <div className="h-16 md:aspect-[3/2] md:h-auto">
                     <ThemePreview mode={value} />
                   </div>
                   {/* Label */}
@@ -79,9 +79,9 @@ export function SettingsView() {
         </section>
 
         {/* 상승/하락 색상 */}
-        <section className="rounded-2xl border border-border/60 bg-card p-6">
+        <section className="rounded-2xl border border-border/60 bg-card p-4 md:p-6">
           <h2 className="text-[13px] font-semibold mb-5">상승/하락 색상</h2>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
             {([
               { value: 'kr' as const, label: '국내 스타일', desc: '빨간색 상승 · 파란색 하락', upHex: '#ef4444', downHex: '#3b82f6' },
               { value: 'us' as const, label: '해외 스타일', desc: '초록색 상승 · 빨간색 하락', upHex: '#22c55e', downHex: '#ef4444' },
@@ -98,27 +98,27 @@ export function SettingsView() {
                   }`}
                 >
                   {/* Mini chart preview */}
-                  <div className="px-5 pt-5 pb-3 flex items-end justify-center gap-6">
-                    <div className="flex flex-col items-center gap-1.5">
-                      <div className="flex items-center gap-1">
-                        <TrendingUp className="w-4 h-4" style={{ color: upHex }} />
-                        <span className="text-sm font-bold tabular-nums" style={{ color: upHex }}>+2.45%</span>
+                  <div className="px-3 md:px-5 pt-4 md:pt-5 pb-3 flex items-end justify-center gap-3 md:gap-6">
+                    <div className="flex flex-col items-center gap-1">
+                      <div className="flex items-center gap-0.5">
+                        <TrendingUp className="w-3.5 h-3.5" style={{ color: upHex }} />
+                        <span className="text-xs md:text-sm font-bold tabular-nums" style={{ color: upHex }}>+2.45%</span>
                       </div>
                       <span className="text-[10px] text-muted-foreground">상승</span>
                     </div>
-                    <div className="flex flex-col items-center gap-1.5">
-                      <div className="flex items-center gap-1">
-                        <TrendingDown className="w-4 h-4" style={{ color: downHex }} />
-                        <span className="text-sm font-bold tabular-nums" style={{ color: downHex }}>-1.32%</span>
+                    <div className="flex flex-col items-center gap-1">
+                      <div className="flex items-center gap-0.5">
+                        <TrendingDown className="w-3.5 h-3.5" style={{ color: downHex }} />
+                        <span className="text-xs md:text-sm font-bold tabular-nums" style={{ color: downHex }}>-1.32%</span>
                       </div>
                       <span className="text-[10px] text-muted-foreground">하락</span>
                     </div>
                   </div>
                   {/* Label */}
-                  <div className={`flex items-center gap-2 px-4 py-3 border-t ${active ? 'bg-primary/5 border-primary/20' : 'bg-card border-border/40'}`}>
+                  <div className={`flex items-center gap-2 px-3 md:px-4 py-2.5 md:py-3 border-t ${active ? 'bg-primary/5 border-primary/20' : 'bg-card border-border/40'}`}>
                     <div className="text-left flex-1 min-w-0">
-                      <p className={`text-xs font-semibold ${active ? 'text-foreground' : 'text-muted-foreground'}`}>{label}</p>
-                      <p className="text-[10px] text-muted-foreground/60">{desc}</p>
+                      <p className={`text-[11px] md:text-xs font-semibold ${active ? 'text-foreground' : 'text-muted-foreground'}`}>{label}</p>
+                      <p className="text-[9px] md:text-[10px] text-muted-foreground/60 leading-tight">{desc}</p>
                     </div>
                     {active && (
                       <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center">
@@ -133,7 +133,7 @@ export function SettingsView() {
         </section>
 
         {/* 종목당 기본 투자금 */}
-        <section className="rounded-2xl border border-border/60 bg-card p-6 mt-6">
+        <section className="rounded-2xl border border-border/60 bg-card p-4 md:p-6 mt-6">
           <h2 className="text-[13px] font-semibold mb-1">종목당 기본 투자금</h2>
           <p className="text-[11px] text-muted-foreground mb-5">캔버스에 종목을 추가할 때 적용되는 기본 금액</p>
           <div className="flex flex-wrap gap-2">
@@ -143,7 +143,7 @@ export function SettingsView() {
                 <button
                   key={amount}
                   onClick={() => setDefaultAmount(amount)}
-                  className={`px-4 py-2.5 rounded-xl text-sm font-semibold tabular-nums transition-all duration-200 ${
+                  className={`px-3 md:px-4 py-2 md:py-2.5 rounded-xl text-xs md:text-sm font-semibold tabular-nums transition-all duration-200 ${
                     active
                       ? 'bg-primary text-primary-foreground shadow-md shadow-primary/20'
                       : 'bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground ring-1 ring-border/30'

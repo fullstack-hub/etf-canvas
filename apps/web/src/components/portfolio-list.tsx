@@ -10,7 +10,8 @@ import { SinceStatsHero } from '@/components/since-stats-hero';
 import { HoldingsSection } from '@/components/holdings-section';
 import { FeedbackSection } from '@/components/feedback-section';
 import { DividendSection } from '@/components/dividend-section';
-import { Loader2, FolderOpen, Trash2, TrendingUp, Pencil, Check, X } from 'lucide-react';
+import { Loader2, FolderOpen, Trash2, TrendingUp, Pencil, Check, X, ArrowLeft } from 'lucide-react';
+import { useIsMobile } from '@/lib/use-is-mobile';
 
 type PortfolioItem = { code: string; name: string; weight: number; category?: string };
 
@@ -70,38 +71,56 @@ export function PortfolioList() {
     );
   }
 
+  const isMobile = useIsMobile();
   const selectedPortfolio = portfolios?.find(p => p.id === selectedId) || null;
 
+  // 모바일: 상세 선택 시 상세만 표시
+  if (isMobile && selectedPortfolio) {
+    return (
+      <div className="flex-1 flex flex-col overflow-auto bg-background">
+        <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b px-4 py-3">
+          <button onClick={() => setSelectedId(null)} className="flex items-center gap-1.5 text-sm text-muted-foreground">
+            <ArrowLeft className="w-4 h-4" />
+            목록으로
+          </button>
+        </div>
+        <PortfolioDetailPanel
+          portfolio={selectedPortfolio}
+          onDelete={() => handleDelete(selectedPortfolio.id)}
+          deleting={deletingId === selectedPortfolio.id}
+        />
+      </div>
+    );
+  }
+
   return (
-    <div className="flex-1 flex flex-col md:flex-row overflow-hidden bg-background max-h-[calc(100vh-64px)]">
+    <div className="flex-1 flex flex-col md:flex-row md:overflow-hidden bg-background md:max-h-[calc(100vh-64px)]">
       {/* Left Panel: Master List */}
       <div className="w-full md:w-[350px] lg:w-[400px] flex flex-col border-r border-border/50 h-full shrink-0">
-        <div className="p-5 pb-4 border-b border-border/30 bg-card/30 backdrop-blur-sm z-10 sticky top-0">
-          <div className="flex items-center justify-between mb-1">
-            <div className="flex items-center gap-2">
-              <FolderOpen className="w-5 h-5 text-primary" />
-              <h2 className="text-lg font-bold tracking-tight">포트폴리오 보관함</h2>
-            </div>
-            <div className="flex items-center gap-1 bg-muted/50 rounded-lg p-1">
-              {SORT_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  onClick={() => setSort(opt.value)}
-                  className={`px-2.5 py-1.5 rounded-md text-[11px] font-semibold transition-all duration-200 ${
-                    sort === opt.value
-                      ? 'bg-background text-foreground shadow-sm ring-1 ring-border/50'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
+        <div className="p-5 pb-4 md:border-b border-border/30 bg-card/30 backdrop-blur-sm z-10 sticky top-0">
+          <div className="flex items-center gap-2 mb-1">
+            <FolderOpen className="w-5 h-5 text-primary" />
+            <h2 className="text-lg font-bold tracking-tight">포트폴리오 보관함</h2>
           </div>
-          <p className="text-xs text-muted-foreground">저장한 포트폴리오를 관리하세요</p>
+          <p className="text-xs text-muted-foreground mb-2">저장한 포트폴리오를 관리하세요</p>
+          <div className="flex items-center gap-1 bg-muted/50 rounded-lg p-1 w-fit ml-auto">
+            {SORT_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => setSort(opt.value)}
+                className={`px-2.5 py-1.5 rounded-md text-[11px] font-semibold transition-all duration-200 ${
+                  sort === opt.value
+                    ? 'bg-background text-foreground shadow-sm ring-1 ring-border/50'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div className="flex-1 overflow-auto p-4 space-y-3">
+        <div className="flex-1 overflow-auto p-4 pt-2 space-y-3">
           {(!portfolios || portfolios.length === 0) ? (
             <div className="flex flex-col items-center justify-center h-48 text-center text-muted-foreground rounded-2xl border border-dashed border-border/60 bg-muted/10">
               <FolderOpen className="w-10 h-10 opacity-20 mb-3 text-primary" />

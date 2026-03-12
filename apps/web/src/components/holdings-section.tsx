@@ -25,13 +25,16 @@ export function HoldingsSection({ items }: { items: Item[] }) {
             <div key={item.code} className="relative rounded-lg border overflow-hidden">
               <div className="absolute inset-y-0 left-0" style={{ width: `${item.weight}%`, backgroundColor: `color-mix(in srgb, ${c.hex} 15%, transparent)` }} />
               <div className="relative flex items-center justify-between p-3">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 min-w-0">
                   <span className={`w-2.5 h-2.5 rounded-full ${c.dot} shrink-0`} />
-                  <span className="font-medium text-sm">{item.name}</span>
-                  <span className="text-xs text-muted-foreground">{item.code}</span>
-                  {item.category && <span className="text-xs text-muted-foreground">{item.category}</span>}
+                  <div className="min-w-0">
+                    <span className="font-medium text-sm block truncate">{item.name}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {item.code}{item.category ? ` · ${item.category}` : ''}
+                    </span>
+                  </div>
                 </div>
-                <span className="font-bold text-sm">{item.weight.toFixed(1)}%</span>
+                <span className="font-bold text-sm shrink-0 ml-2">{item.weight.toFixed(1)}%</span>
               </div>
             </div>
           );

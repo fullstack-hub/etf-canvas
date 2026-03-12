@@ -2,7 +2,10 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { ArrowLeft } from 'lucide-react';
 import { api } from '@/lib/api';
+import { useIsMobile } from '@/lib/use-is-mobile';
 
 import { IconSidebar } from '@/components/icon-sidebar';
 import { AttributePanel } from '@/components/attribute-panel';
@@ -27,6 +30,69 @@ interface PortfolioData {
 export function PortfolioPublicView({ data }: { data: PortfolioData }) {
 
   const [period, setPeriod] = useState('1y');
+  const isMobile = useIsMobile();
+  const router = useRouter();
+
+  if (isMobile) {
+    return (
+      <div className="min-h-[100dvh] bg-background">
+        <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b px-4 py-3">
+          <button onClick={() => router.back()} className="flex items-center gap-1.5 text-sm text-muted-foreground">
+            <ArrowLeft className="w-4 h-4" />
+            목록으로
+          </button>
+        </div>
+        <div className="px-4 py-5 flex flex-col gap-6 pb-10">
+          {/* 헤더 */}
+          <div className="border-b pb-4">
+            <h1 className="text-xl font-extrabold tracking-tight text-foreground">{data.name}</h1>
+            <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-2 font-medium">
+              저장일: {new Date(data.createdAt).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}
+              <span className="inline-block w-1 h-1 rounded-full bg-muted-foreground/30" />
+              {data.items.length}개 종목
+            </p>
+            {data.tags.length > 0 && (
+              <div className="flex gap-1.5 flex-wrap mt-2">
+                {data.tags.map((tag) => (
+                  <Link
+                    key={tag}
+                    href={`/gallery/${encodeURIComponent(tag)}`}
+                    className="px-2 py-0.5 rounded-md bg-muted text-[11px] text-muted-foreground"
+                  >
+                    #{tag}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <SinceStatsHero
+            fetchKey={['public-since', data.slug]}
+            fetchFn={() => api.getPublicSince(data.slug)}
+            saveDate={data.createdAt}
+          />
+          <SnapshotSection items={data.items} period={period} onPeriodChange={setPeriod} totalAmount={Number(data.totalAmount)} />
+
+          {data.feedbackText && (
+            <FeedbackSection feedbackText={data.feedbackText} feedbackActions={data.feedbackActions} />
+          )}
+
+          <DividendSection items={data.items} period={period} totalAmount={Number(data.totalAmount)} />
+          <HoldingsSection items={data.items} />
+
+          <section className="text-center py-6 border-t">
+            <p className="text-muted-foreground text-sm mb-3">나만의 ETF 포트폴리오를 만들어보세요</p>
+            <Link
+              href="/"
+              className="inline-flex px-6 py-3 rounded-lg bg-primary text-primary-foreground font-medium"
+            >
+              ETF Canvas 시작하기
+            </Link>
+          </section>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-[calc(100vh-37px)] flex overflow-hidden">

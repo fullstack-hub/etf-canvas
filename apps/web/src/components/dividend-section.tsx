@@ -104,22 +104,22 @@ export function DividendSection({ items, period = '1y', totalAmount: totalAmount
         <h2 className="text-lg font-bold">분배금</h2>
         <p className="text-xs text-muted-foreground mt-0.5">같은 조건이라면, 분배금은 이만큼 받았어요</p>
       </div>
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
           <p className="text-xs text-muted-foreground mb-1">누적 분배율</p>
-          <p className="text-2xl font-bold tabular-nums text-sky-400">{stats.totalRate.toFixed(2)}%</p>
+          <p className="text-lg md:text-2xl font-bold tabular-nums text-sky-400">{stats.totalRate.toFixed(2)}%</p>
         </div>
         <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
           <p className="text-xs text-muted-foreground mb-1">연환산 분배율</p>
-          <p className="text-2xl font-bold tabular-nums text-sky-400">{stats.annualizedRate.toFixed(2)}%</p>
+          <p className="text-lg md:text-2xl font-bold tabular-nums text-sky-400">{stats.annualizedRate.toFixed(2)}%</p>
         </div>
         <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
           <p className="text-xs text-muted-foreground mb-1">월평균 분배율</p>
-          <p className="text-2xl font-bold tabular-nums">{stats.monthlyAvgRate.toFixed(2)}%</p>
+          <p className="text-lg md:text-2xl font-bold tabular-nums">{stats.monthlyAvgRate.toFixed(2)}%</p>
         </div>
         <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
           <p className="text-xs text-muted-foreground mb-1">기간 분배금</p>
-          <p className="text-2xl font-bold tabular-nums">{Math.round(totalAmount * stats.totalRate / 100).toLocaleString()}원</p>
+          <p className="text-lg md:text-2xl font-bold tabular-nums">{Math.round(totalAmount * stats.totalRate / 100).toLocaleString()}원</p>
         </div>
       </div>
       {perEtf.length > 0 && (
@@ -132,32 +132,24 @@ export function DividendSection({ items, period = '1y', totalAmount: totalAmount
             종목별 상세
           </button>
           {expanded && (
-            <div className="mt-3 rounded-lg border overflow-hidden">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-muted/30 text-xs text-muted-foreground">
-                    <th className="text-left px-4 py-2.5 font-medium">종목</th>
-                    <th className="text-right px-4 py-2.5 font-medium">비중</th>
-                    <th className="text-right px-4 py-2.5 font-medium">분배율</th>
-                    <th className="text-right px-4 py-2.5 font-medium">기간 분배금</th>
-                    <th className="text-right px-4 py-2.5 font-medium">횟수</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {perEtf.map((etf) => (
-                    <tr key={etf.code} className="border-t border-border/40">
-                      <td className="px-4 py-2.5">
-                        <p className="font-medium text-[13px]">{etf.name}</p>
-                        <p className="text-[11px] text-muted-foreground">{etf.code}</p>
-                      </td>
-                      <td className="text-right px-4 py-2.5 tabular-nums text-muted-foreground">{etf.weight}%</td>
-                      <td className="text-right px-4 py-2.5 font-bold tabular-nums text-sky-400">{etf.rate.toFixed(2)}%</td>
-                      <td className="text-right px-4 py-2.5 tabular-nums">{Math.round(totalAmount * (etf.weight / 100) * etf.rate / 100).toLocaleString()}원</td>
-                      <td className="text-right px-4 py-2.5 tabular-nums text-muted-foreground">{etf.count}회</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="mt-3 grid gap-2">
+              {perEtf.map((etf) => (
+                <div key={etf.code} className="rounded-lg border bg-card p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm truncate">{etf.name}</p>
+                      <p className="text-[11px] text-muted-foreground">{etf.code} · 비중 {etf.weight}%</p>
+                    </div>
+                    <span className="text-base font-bold tabular-nums shrink-0 ml-3 text-sky-400">
+                      {etf.rate.toFixed(2)}%
+                    </span>
+                  </div>
+                  <div className="flex gap-4 text-xs text-muted-foreground">
+                    <span>분배금 <strong className="text-foreground">{Math.round(totalAmount * (etf.weight / 100) * etf.rate / 100).toLocaleString()}원</strong></span>
+                    <span>횟수 <strong className="text-foreground">{etf.count}회</strong></span>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </>

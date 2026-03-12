@@ -125,6 +125,7 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    -webkit-tap-highlight-color: transparent;
   }
   body {
     @apply bg-background text-foreground;
@@ -168,4 +169,19 @@
 }
 .scroll-x-hide::-webkit-scrollbar {
   display: none;
+}
+
+/* recharts 차트 터치 시 선택/하이라이트 방지 */
+.recharts-wrapper,
+.recharts-wrapper * {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  outline: none !important;
+  -webkit-touch-callout: none;
+}
+
+/* SVG 요소 포커스 아웃라인 제거 */
+svg, svg * {
+  outline: none !important;
 }

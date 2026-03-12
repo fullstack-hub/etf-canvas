@@ -26,13 +26,37 @@ const CATEGORY_COLOR_MAP = Object.fromEntries(CATEGORIES.map((c) => [c.id, c.col
 const PAGE_SIZE = 30;
 
 export function MobileDiscoverSegment() {
-  const [search, setSearch] = useState('');
+  const discoverSearch = useMobileUIStore((s) => s.discoverSearch);
+  const setDiscoverSearch = useMobileUIStore((s) => s.setDiscoverSearch);
+  const discoverCategory = useMobileUIStore((s) => s.discoverCategory);
+  const setDiscoverCategory = useMobileUIStore((s) => s.setDiscoverCategory);
+  const [search, setSearch] = useState(discoverSearch);
   const [category, setCategory] = useState<string | null>(null);
   const { selected, addToCanvas } = useCanvasStore();
   const setEtfDetailCode = useMobileUIStore((s) => s.setEtfDetailCode);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState(discoverSearch);
+
+  // 외부에서 discoverSearch가 바뀌면 반영
+  useEffect(() => {
+    if (discoverSearch) {
+      setSearch(discoverSearch);
+      setDebouncedSearch(discoverSearch);
+      setCategory(null);
+      setDiscoverSearch('');
+    }
+  }, [discoverSearch, setDiscoverSearch]);
+
+  // 외부에서 discoverCategory가 바뀌면 반영
+  useEffect(() => {
+    if (discoverCategory) {
+      setCategory(discoverCategory);
+      setSearch('');
+      setDebouncedSearch('');
+      setDiscoverCategory('');
+    }
+  }, [discoverCategory, setDiscoverCategory]);
 
   useEffect(() => () => clearTimeout(debounceRef.current), []);
 
@@ -135,7 +159,7 @@ function EtfListRow({ etf, isAdded, onAdd, onDetail }: {
   return (
     <div className="flex items-center gap-3 px-4 py-3 border-b border-border/50">
       <div className={`w-1 self-stretch rounded-full shrink-0 ${CATEGORY_COLOR_MAP[etf.categories[0]] || 'bg-muted-foreground/30'}`} />
-      <button onClick={onDetail} className="flex-1 min-w-0 text-left">
+      <button onClick={(e) => { (e.currentTarget as HTMLElement).blur(); onDetail(); }} className="flex-1 min-w-0 text-left">
         <p className="text-sm font-medium truncate">{etf.name}</p>
         <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
           <span>{etf.categories[0] || '-'}</span>

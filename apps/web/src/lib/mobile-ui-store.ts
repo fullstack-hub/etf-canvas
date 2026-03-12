@@ -14,6 +14,12 @@ interface MobileUIState {
   setShowSaveModal: (v: boolean) => void;
   showFilterSheet: boolean;
   setShowFilterSheet: (v: boolean) => void;
+  discoverSearch: string;
+  setDiscoverSearch: (q: string) => void;
+  discoverCategory: string;
+  setDiscoverCategory: (c: string) => void;
+  showFullscreenAd: boolean;
+  setShowFullscreenAd: (v: boolean) => void;
 }
 
 export const useMobileUIStore = create<MobileUIState>()((set) => ({
@@ -27,4 +33,10 @@ export const useMobileUIStore = create<MobileUIState>()((set) => ({
   setShowSaveModal: (v) => set({ showSaveModal: v }),
   showFilterSheet: false,
   setShowFilterSheet: (v) => set({ showFilterSheet: v }),
+  discoverSearch: '',
+  setDiscoverSearch: (q) => set({ discoverSearch: q }),
+  discoverCategory: '',
+  setDiscoverCategory: (c) => set({ discoverCategory: c }),
+  showFullscreenAd: false,
+  setShowFullscreenAd: (v) => set({ showFullscreenAd: v }),
 }));

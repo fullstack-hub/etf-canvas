@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
-import { AppShell } from '@/components/app-shell';
-import { GalleryView } from '@/components/gallery-view';
+import { GalleryPageContent } from './gallery-content';
 
 export const metadata: Metadata = {
   title: '포트폴리오 갤러리 — ETF Canvas',
@@ -15,9 +14,5 @@ export const metadata: Metadata = {
 };
 
 export default function GalleryPage() {
-  return (
-    <AppShell>
-      <GalleryView />
-    </AppShell>
-  );
+  return <GalleryPageContent />;
 }

@@ -4,8 +4,9 @@ import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { PriceChart } from '@/components/price-chart';
+import { SafeChartContainer } from '@/components/safe-chart-container';
 import {
-  ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis,
+  ComposedChart, Bar, Line, XAxis, YAxis,
   CartesianGrid, Tooltip,
 } from 'recharts';
 import { X, TrendingUp, Building2, Percent, Target, DollarSign, Calendar, BarChart3 } from 'lucide-react';
@@ -66,7 +67,7 @@ export function EtfDetailModal({ etf, onClose, mode = 'modal', onAddToCanvas }: 
   const expenseRatio = detail?.expenseRatio ?? etf.expenseRatio;
 
   const content = (
-    <>
+    <div className="select-none">
       {/* Title */}
       <div className={mode === 'inline' ? 'pb-4' : 'px-6 pt-6 pb-4'}>
         <h2 className="text-xl font-bold pr-8">{etf.name}</h2>
@@ -136,15 +137,17 @@ export function EtfDetailModal({ etf, onClose, mode = 'modal', onAddToCanvas }: 
             ))}
           </div>
         </div>
-        <div className="h-52">
-          {prices && prices.length > 0 ? (
-            <PriceChart data={prices} compact />
-          ) : (
-            <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
-              로딩 중...
-            </div>
-          )}
-        </div>
+        <SafeChartContainer className="h-52">
+          {(size: { width: number; height: number }) =>
+            prices && prices.length > 0 ? (
+              <PriceChart data={prices} compact chartWidth={size.width} chartHeight={size.height} />
+            ) : (
+              <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
+                로딩 중...
+              </div>
+            )
+          }
+        </SafeChartContainer>
       </div>
 
       {/* (3) Dividend chart */}
@@ -161,7 +164,7 @@ export function EtfDetailModal({ etf, onClose, mode = 'modal', onAddToCanvas }: 
         </h3>
         {detail?.holdings && detail.holdings.length > 0 ? (
           <>
-            <div className="grid grid-cols-2 gap-x-6 gap-y-0">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-0">
               {(() => {
                 const palette = ['#3b82f6','#14b8a6','#8b5cf6','#d946ef','#84cc16','#06b6d4','#f59e0b','#f43f5e','#22c55e','#6366f1'];
                 const top10 = detail.holdings.slice(0, 10);
@@ -193,7 +196,7 @@ export function EtfDetailModal({ etf, onClose, mode = 'modal', onAddToCanvas }: 
           <p className="text-sm text-muted-foreground">보유 종목 정보가 없어요.</p>
         )}
       </div>
-    </>
+    </div>
   );
 
   if (mode === 'inline') {
@@ -294,9 +297,9 @@ function DividendDetailChart({ dividends, period }: {
           <span className="flex items-center gap-1"><span className="w-3 h-[1.5px] bg-amber-500 inline-block rounded" /> 누적{recent.length > 0 ? ` (${recent[recent.length - 1].cumRate}%)` : ''}</span>
         </div>
       </div>
-      <div className="h-48 [&_svg]:outline-none">
-        <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={recent} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
+      <SafeChartContainer className="h-48">
+        {(size: { width: number; height: number }) => (
+          <ComposedChart width={size.width} height={size.height} data={recent} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="text-border/20" strokeOpacity={0.2} />
             <XAxis dataKey="month" tickLine={false} axisLine={false} tick={{ fontSize: 9, fill: 'currentColor', opacity: 0.4 }} dy={4} />
             <YAxis yAxisId="left" tickLine={false} axisLine={false} tick={{ fontSize: 9, fill: 'currentColor', opacity: 0.4 }} tickFormatter={(v: number) => `${v.toFixed(v % 1 === 0 ? 0 : 2)}%`} width={50} tickCount={4} />
@@ -323,8 +326,8 @@ function DividendDetailChart({ dividends, period }: {
             <Bar yAxisId="left" dataKey="rate" fill="#5b9bd5" radius={[3, 3, 0, 0]} barSize={recent.length > 12 ? 20 : recent.length > 6 ? 28 : 36} />
             <Line yAxisId="right" type="monotone" dataKey="cumRate" stroke="#f59e0b" strokeWidth={1.5} dot={{ r: 2.5, fill: '#f59e0b', stroke: '#fff', strokeWidth: 1.5 }} strokeOpacity={0.8} />
           </ComposedChart>
-        </ResponsiveContainer>
-      </div>
+        )}
+      </SafeChartContainer>
     </>
   );
 }

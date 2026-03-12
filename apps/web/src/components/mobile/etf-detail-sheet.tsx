@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { Drawer, DrawerContent } from '@/components/ui/drawer';
+import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer';
 import { EtfDetailModal } from '@/components/etf-detail-modal';
 import { useCanvasStore } from '@/lib/store';
 import { useMobileUIStore } from '@/lib/mobile-ui-store';
@@ -24,7 +24,8 @@ export function EtfDetailSheet() {
 
   return (
     <Drawer open={!!etfDetailCode} onOpenChange={(open) => { if (!open) setEtfDetailCode(null); }}>
-      <DrawerContent className="max-h-[85vh]">
+      <DrawerContent className="max-h-[85vh]" aria-describedby={undefined}>
+        <DrawerTitle className="sr-only">ETF 상세</DrawerTitle>
         {etf && (
           <div className="overflow-y-auto max-h-[calc(85vh-2rem)]">
             <EtfDetailModal

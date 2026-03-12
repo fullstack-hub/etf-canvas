@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Heart, MessageCircle } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useMobileUIStore } from '@/lib/mobile-ui-store';
 import { useReturnColors } from '@/lib/return-colors';
@@ -70,8 +70,8 @@ export function MobileHomeTab() {
                   {post.category && (
                     <span className="px-1.5 py-0.5 rounded bg-muted text-[10px]">{post.category.name}</span>
                   )}
-                  <span>❤ {post.likeCount}</span>
-                  <span>💬 {post.commentCount}</span>
+                  <span className="flex items-center gap-0.5"><Heart className="w-3 h-3" />{post.likeCount}</span>
+                  <span className="flex items-center gap-0.5"><MessageCircle className="w-3 h-3" />{post.commentCount}</span>
                 </div>
               </div>
             </Link>

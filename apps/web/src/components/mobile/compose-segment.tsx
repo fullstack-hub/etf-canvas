@@ -35,42 +35,49 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 export function MobileComposeSegment() {
   const { data: session } = useSession();
-  const { selected, comparing, amounts, weights, synthesized, removeFromCanvas, setAmount, clearCanvas, synthesize, setFeedbackLoading, setFeedback, setPendingSynthesize } = useCanvasStore();
-  const { setCanvasSegment, showSaveModal, setShowSaveModal } = useMobileUIStore();
+  const { selected, comparing, amounts, weights, synthesized, removeFromCanvas, setAmount, clearCanvas, synthesize, setFeedbackLoading, setFeedback, setPendingSynthesize, feedbackEnabled, setFeedbackEnabled } = useCanvasStore();
+  const { setCanvasSegment, showSaveModal, setShowSaveModal, setShowFullscreenAd } = useMobileUIStore();
   const [showLogin, setShowLogin] = useState(false);
 
   const totalAmount = comparing.reduce((sum, code) => sum + (amounts[code] || 0), 0);
 
-  const handleSynthesize = async () => {
+  const executeSynthesize = async () => {
+    synthesize();
+    setCanvasSegment('performance');
+
+    if (feedbackEnabled || process.env.NODE_ENV === 'production') {
+      setFeedbackLoading(true);
+      let fbResult: { feedback: string; actions: { category: string; label: string }[]; tags: string[]; snippet: string } | null = null;
+      try {
+        const items = comparing.map((code) => {
+          const etf = selected.find((s) => s.code === code);
+          return { code, name: etf?.name || code, weight: weights[code] || 0, category: etf?.categories[0] || '' };
+        });
+        fbResult = await api.getPortfolioFeedback(items);
+        const hash = JSON.stringify(items);
+        setFeedback(hash, fbResult.feedback, fbResult.actions || []);
+      } catch {
+        setFeedbackLoading(false);
+      }
+
+      try {
+        const items = comparing.map((code) => {
+          const etf = selected.find((s) => s.code === code);
+          return { code, name: etf?.name || code, weight: weights[code] || 0, category: etf?.categories[0] };
+        });
+        await api.autoSavePortfolio(items, fbResult, totalAmount);
+      } catch { /* ignore */ }
+    }
+  };
+
+  const handleSynthesize = () => {
     if (!session?.user) {
       setPendingSynthesize(true);
       setShowLogin(true);
       return;
     }
-    synthesize();
-    setCanvasSegment('performance');
-
-    setFeedbackLoading(true);
-    let fbResult: { feedback: string; actions: { category: string; label: string }[]; tags: string[]; snippet: string } | null = null;
-    try {
-      const items = comparing.map((code) => {
-        const etf = selected.find((s) => s.code === code);
-        return { code, name: etf?.name || code, weight: weights[code] || 0, category: etf?.categories[0] || '' };
-      });
-      fbResult = await api.getPortfolioFeedback(items);
-      const hash = JSON.stringify(items);
-      setFeedback(hash, fbResult.feedback, fbResult.actions || []);
-    } catch {
-      setFeedbackLoading(false);
-    }
-
-    try {
-      const items = comparing.map((code) => {
-        const etf = selected.find((s) => s.code === code);
-        return { code, name: etf?.name || code, weight: weights[code] || 0, category: etf?.categories[0] };
-      });
-      await api.autoSavePortfolio(items, fbResult, totalAmount);
-    } catch { /* ignore */ }
+    setShowFullscreenAd(true);
+    executeSynthesize();
   };
 
   const formatAmount = (amount: number) => {
@@ -155,6 +162,14 @@ export function MobileComposeSegment() {
       </div>
 
       <div className="px-4 py-3 space-y-2 border-t">
+        {process.env.NODE_ENV !== 'production' && (
+          <div className="flex items-center justify-between py-1">
+            <span className="text-[10px] text-muted-foreground">AI 피드백 (dev)</span>
+            <button onClick={() => setFeedbackEnabled(!feedbackEnabled)} className="relative w-8 h-4 rounded-full transition-colors" style={{ backgroundColor: feedbackEnabled ? '#3b82f6' : 'rgba(128,128,128,0.3)' }}>
+              <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-transform ${feedbackEnabled ? 'translate-x-4' : 'translate-x-0.5'}`} />
+            </button>
+          </div>
+        )}
         <button
           onClick={handleSynthesize}
           disabled={totalAmount === 0}
@@ -175,6 +190,7 @@ export function MobileComposeSegment() {
 
       {showLogin && <LoginModal onClose={() => setShowLogin(false)} />}
       {showSaveModal && <SavePortfolioModal onClose={() => setShowSaveModal(false)} />}
+
     </div>
   );
 }

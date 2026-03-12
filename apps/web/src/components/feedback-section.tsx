@@ -1,8 +1,10 @@
 'use client';
 
 import { useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
+import { useMobileUIStore } from '@/lib/mobile-ui-store';
 
 marked.setOptions({ breaks: true, gfm: true });
 
@@ -17,7 +19,16 @@ export function FeedbackSection({ feedbackText, feedbackActions }: {
   feedbackText: string;
   feedbackActions?: { category: string; label: string }[] | null;
 }) {
+  const router = useRouter();
+  const { setActiveTab, setCanvasSegment, setDiscoverCategory } = useMobileUIStore();
   const html = useMemo(() => DOMPurify.sanitize(parseMarkdown(feedbackText)), [feedbackText]);
+
+  const handleAction = (action: { category: string; label: string }) => {
+    setDiscoverCategory(action.category);
+    setCanvasSegment('discover');
+    setActiveTab('canvas');
+    router.push('/');
+  };
 
   return (
     <div className="bg-card rounded-2xl border border-border/50 shadow-sm overflow-hidden">
@@ -29,7 +40,7 @@ export function FeedbackSection({ feedbackText, feedbackActions }: {
         {feedbackActions && feedbackActions.length > 0 && (
           <div className="flex flex-wrap gap-2 mt-4 not-prose">
             {feedbackActions.map((action, i) => (
-              <span key={i} className="px-2.5 py-1 rounded-full bg-muted text-xs font-medium">{action.label}</span>
+              <button key={i} onClick={() => handleAction(action)} className="px-2.5 py-1 rounded-full bg-muted text-xs font-medium hover:bg-muted/80 transition-colors">{action.label}</button>
             ))}
           </div>
         )}
