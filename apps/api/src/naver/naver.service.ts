@@ -329,9 +329,10 @@ export class NaverService {
       const resp = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
       if (!resp.ok) return null;
       const html = await resp.text();
-      const m = html.match(/상장일.*?(\d{4}[\/.]\d{2}[\/.]\d{2})/s);
+      // "2026년 03월 10일" 또는 "2026/03/10" 또는 "2026.03.10" 형식 지원
+      const m = html.match(/상장일.*?(\d{4})\s*[년\/\.]\s*(\d{2})\s*[월\/\.]\s*(\d{2})/s);
       if (!m) return null;
-      const dateStr = m[1].replace(/\//g, '-').replace(/\./g, '-');
+      const dateStr = `${m[1]}-${m[2]}-${m[3]}`;
       const date = new Date(dateStr);
       return isNaN(date.getTime()) ? null : date;
     } catch {
