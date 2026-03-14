@@ -45,6 +45,7 @@ export function PortfolioList() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [sort, setSort] = useState<string>('latest');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const isMobile = useIsMobile();
 
   const { data: portfolios, isLoading } = useQuery({
     queryKey: ['portfolios', sort],
@@ -70,8 +71,6 @@ export function PortfolioList() {
       </div>
     );
   }
-
-  const isMobile = useIsMobile();
   const selectedPortfolio = portfolios?.find(p => p.id === selectedId) || null;
 
   // 모바일: 상세 선택 시 상세만 표시
